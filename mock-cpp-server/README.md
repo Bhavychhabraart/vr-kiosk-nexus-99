@@ -1,9 +1,13 @@
 
 # VR Kiosk Command Center
 
-This folder contains a TypeScript mock implementation of the C++ WebSocket server that would be used in the real VR kiosk system. This mock server is intended for development and testing purposes only.
+This folder contains both a TypeScript mock implementation and a real C++ implementation of the WebSocket server used for the VR kiosk system.
 
-## Mock Server Usage
+## TypeScript Mock Server
+
+The TypeScript mock server is intended for development and testing purposes only.
+
+### Mock Server Usage
 
 1. Install dependencies:
    ```
@@ -17,92 +21,34 @@ This folder contains a TypeScript mock implementation of the C++ WebSocket serve
 
 3. The mock server will run on port 8081 by default.
 
-## Real C++ Implementation Guidelines
+## C++ Implementation
 
-In a real implementation, the command center would be written in C++ using a library like Boost.Beast for WebSockets. Here's what it would look like:
+The `cpp` directory contains a real implementation of the command center written in C++ using Boost.Beast for WebSockets. See the [C++ README](./cpp/README.md) for more details.
 
-### Dependencies
+### C++ Server Features
 
-- Boost.Beast for WebSocket communication
-- JSON library (e.g., nlohmann/json)
-- Process management library (platform dependent)
-- Logging library (e.g., spdlog)
+- WebSocket communication using Boost.Beast
+- Game process management
+- Session timing with pause/resume
+- System resource monitoring
+- Robust error handling
+- Cross-platform (Windows and Linux)
 
-### Architecture
+### Building the C++ Server
 
-```
-CommandCenter
-├── WebSocketServer      # Handles WebSocket connections
-├── CommandDispatcher    # Routes commands to appropriate handlers
-├── GameManager          # Manages game processes
-│   └── GameProcess      # Wrapper around a running game process
-├── SessionManager       # Manages active sessions and timers
-├── SystemMonitor        # Monitors system resources (CPU, memory, etc.)
-└── Logger               # Handles logging
-```
-
-### Sample C++ Code Structure
-
-```cpp
-// WebSocketServer.hpp
-class WebSocketServer {
-public:
-    WebSocketServer(uint16_t port);
-    void start();
-    void stop();
-    
-private:
-    void on_accept(boost::system::error_code ec, tcp::socket socket);
-    void do_accept();
-    
-    tcp::acceptor acceptor_;
-    boost::asio::io_context ioc_;
-    std::vector<std::shared_ptr<WebSocketSession>> sessions_;
-};
-
-// CommandDispatcher.hpp
-class CommandDispatcher {
-public:
-    void register_handler(const std::string& command_type, CommandHandlerFn handler);
-    void dispatch(const std::string& message, WebSocketSession& session);
-    
-private:
-    std::unordered_map<std::string, CommandHandlerFn> handlers_;
-};
-
-// GameManager.hpp
-class GameManager {
-public:
-    bool launch_game(const std::string& game_id, int duration_seconds);
-    bool end_game();
-    bool pause_game();
-    bool resume_game();
-    GameStatus get_status() const;
-    
-private:
-    std::unique_ptr<GameProcess> current_game_;
-    GameConfig game_configs_;
-    SessionTimer session_timer_;
-};
+```bash
+cd cpp
+mkdir build
+cd build
+cmake ..
+make
 ```
 
-### Security Considerations
+### Running the C++ Server
 
-1. **Command Validation**: All commands should be validated to prevent injection attacks
-2. **Process Isolation**: Games should run in isolated environments
-3. **Resource Limits**: Implement resource limits to prevent system overload
-4. **Authentication**: Use secure authentication for WebSocket connections
-5. **Logging**: Maintain detailed logs for audit and debugging
-
-### Real-World Deployment
-
-In a real VR kiosk deployment:
-
-1. The C++ server would run as a system service
-2. It would start automatically on system boot
-3. It would have watchdog processes to ensure reliability
-4. It would log to both local files and possibly remote monitoring services
-5. It would include mechanisms for remote updates and management
+```bash
+./vr_command_center
+```
 
 ## Communication Protocol
 
@@ -148,4 +94,4 @@ The WebSocket communication protocol is based on JSON messages with the followin
 
 ## Testing
 
-The mock server can be tested using the browser console by connecting to `ws://localhost:8081` or using a tool like Postman or WebSocket.org's echo test.
+Both the TypeScript mock and C++ implementation can be tested using the browser console by connecting to `ws://localhost:8081` or using tools like Postman with WebSocket support.

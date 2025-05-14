@@ -1,0 +1,38 @@
+
+{
+  "games": [
+    {
+      "id": "1",
+      "title": "Beat Saber",
+      "executable_path": "C:\\VRGames\\BeatSaber\\Beat Saber.exe",
+      "working_directory": "C:\\VRGames\\BeatSaber",
+      "arguments": "--vrmode openvr",
+      "description": "Rhythm game where you slash blocks with lightsabers",
+      "image_url": "/games/beatsaber.jpg",
+      "min_duration_seconds": 300,
+      "max_duration_seconds": 1800
+    },
+    {
+      "id": "2",
+      "title": "Half-Life: Alyx",
+      "executable_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Half-Life Alyx\\bin\\win64\\hlvr.exe",
+      "working_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Half-Life Alyx",
+      "arguments": "-novid -console",
+      "description": "Return to Half-Life in this VR masterpiece by Valve",
+      "image_url": "/games/alyx.jpg",
+      "min_duration_seconds": 600,
+      "max_duration_seconds": 3600
+    },
+    {
+      "id": "3",
+      "title": "VRChat",
+      "executable_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\VRChat\\VRChat.exe",
+      "working_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\VRChat",
+      "arguments": "",
+      "description": "Social VR platform to meet and interact with friends",
+      "image_url": "/games/vrchat.jpg",
+      "min_duration_seconds": 300,
+      "max_duration_seconds": 7200
+    }
+  ]
+}
