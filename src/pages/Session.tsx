@@ -20,9 +20,12 @@ import {
   Pause,
   Play,
   X,
-  ArrowLeft
+  ArrowLeft,
+  Server
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { CommandCenterStatus } from "@/components/CommandCenterStatus";
+import useCommandCenter from "@/hooks/useCommandCenter";
 
 // Mock session duration in seconds (5 minutes for demo)
 const MOCK_SESSION_DURATION = 300;
@@ -39,6 +42,25 @@ const Session = () => {
   const [isRunning, setIsRunning] = useState(true);
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
+  
+  // Connect to command center
+  const { 
+    connectionState, 
+    serverStatus, 
+    launchGame, 
+    endSession, 
+    pauseSession, 
+    resumeSession,
+    isConnected
+  } = useCommandCenter({
+    onStatusChange: (status) => {
+      // Update UI based on server status
+      if (status.gameRunning && !gameStarted) {
+        setGameStarted(true);
+      }
+    }
+  });
   
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
@@ -49,6 +71,28 @@ const Session = () => {
   
   // Calculate progress percentage
   const progress = (timeRemaining / MOCK_SESSION_DURATION) * 100;
+  
+  // Start the game when component mounts
+  useEffect(() => {
+    if (isConnected && gameId && !gameStarted) {
+      launchGame(gameId, MOCK_SESSION_DURATION)
+        .then(() => {
+          setGameStarted(true);
+          toast({
+            title: "Game launched",
+            description: "Your session has started",
+          });
+        })
+        .catch(error => {
+          toast({
+            title: "Failed to launch game",
+            description: "Please try again or contact staff",
+            variant: "destructive",
+          });
+          console.error("Error launching game:", error);
+        });
+    }
+  }, [isConnected, gameId, gameStarted, launchGame, toast]);
   
   // Timer effect
   useEffect(() => {
@@ -81,50 +125,90 @@ const Session = () => {
     }
   }, [timeRemaining, toast]);
   
-  const handlePauseResume = () => {
-    setIsRunning(!isRunning);
-    
-    toast({
-      title: isRunning ? "Session paused" : "Session resumed",
-      description: isRunning ? "Timer has been paused." : "Timer has been resumed.",
-    });
+  const handlePauseResume = async () => {
+    try {
+      if (isRunning) {
+        await pauseSession();
+        setIsRunning(false);
+        toast({
+          title: "Session paused",
+          description: "Timer has been paused.",
+        });
+      } else {
+        await resumeSession();
+        setIsRunning(true);
+        toast({
+          title: "Session resumed",
+          description: "Timer has been resumed.",
+        });
+      }
+    } catch (error) {
+      console.error("Error toggling pause/resume:", error);
+      toast({
+        title: "Action failed",
+        description: "Failed to pause/resume session. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
   
-  const handleEndSession = () => {
+  const handleEndSession = async () => {
     setShowEndDialog(false);
     
-    // In a real implementation, this would send a command to the C++ server
-    toast({
-      title: "Session ended",
-      description: "Thank you for playing!",
-    });
-    
-    setTimeout(() => {
-      navigate("/");
-    }, 1500);
+    try {
+      // Send command to end session
+      await endSession();
+      
+      toast({
+        title: "Session ended",
+        description: "Thank you for playing!",
+      });
+      
+      setTimeout(() => {
+        navigate("/");
+      }, 1500);
+    } catch (error) {
+      console.error("Error ending session:", error);
+      toast({
+        title: "Error ending session",
+        description: "Please try again or contact staff.",
+        variant: "destructive",
+      });
+    }
   };
   
   const handleExitPrompt = () => {
     setShowExitDialog(true);
   };
   
-  const handleExit = () => {
+  const handleExit = async () => {
     setShowExitDialog(false);
     
-    // In a real implementation, this would send a command to the C++ server
-    toast({
-      title: "Exiting game",
-      description: "Returning to home screen.",
-    });
-    
-    setTimeout(() => {
-      navigate("/");
-    }, 1000);
+    try {
+      // Send command to end session
+      await endSession();
+      
+      toast({
+        title: "Exiting game",
+        description: "Returning to home screen.",
+      });
+      
+      setTimeout(() => {
+        navigate("/");
+      }, 1000);
+    } catch (error) {
+      console.error("Error exiting session:", error);
+      toast({
+        title: "Error exiting",
+        description: "Please try again or contact staff.",
+        variant: "destructive",
+      });
+    }
   };
   
   return (
     <MainLayout className="relative px-4 py-8 h-screen flex flex-col">
-      <div className="absolute top-8 left-8">
+      <div className="absolute top-8 left-8 flex items-center gap-4">
         <Button 
           variant="ghost" 
           className="text-vr-muted hover:text-vr-text"
@@ -133,6 +217,7 @@ const Session = () => {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Exit Game
         </Button>
+        <CommandCenterStatus showLabel={true} />
       </div>
       
       {/* Session information */}
@@ -154,6 +239,7 @@ const Session = () => {
               <Button
                 className={isRunning ? "bg-vr-accent hover:bg-vr-accent/80" : "bg-vr-primary hover:bg-vr-primary/80"}
                 onClick={handlePauseResume}
+                disabled={!isConnected || !gameStarted}
               >
                 {isRunning ? (
                   <>
@@ -171,6 +257,7 @@ const Session = () => {
                 variant="outline"
                 className="border-vr-primary/50 text-vr-text hover:bg-vr-primary/20"
                 onClick={handleExitPrompt}
+                disabled={!isConnected}
               >
                 <X className="mr-2 h-4 w-4" />
                 End Session
