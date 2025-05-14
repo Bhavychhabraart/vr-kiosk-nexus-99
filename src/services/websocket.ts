@@ -1,4 +1,5 @@
-import { toast } from "@/components/ui/sonner";
+
+import { toast } from "@/components/ui/use-toast";
 
 // Connection states for the WebSocket
 export enum ConnectionState {
@@ -86,8 +87,10 @@ class WebSocketService {
     } catch (error) {
       console.error('WebSocket connection error:', error);
       this.updateConnectionState(ConnectionState.FAILED);
-      toast.error("Failed to connect to VR system", {
-        description: "Please check if the VR system is running",
+      toast({
+        variant: "destructive",
+        title: "Connection Failed",
+        description: "Failed to connect to VR system. Please check if the VR system is running.",
       });
     }
   }
@@ -189,7 +192,8 @@ class WebSocketService {
     this.sendCommand(CommandType.GET_STATUS)
       .catch(error => console.error('Failed to get initial status:', error));
     
-    toast.success("Connected to VR system", {
+    toast({
+      title: "Connected to VR System",
       description: "Communication established successfully",
     });
   };
@@ -230,8 +234,10 @@ class WebSocketService {
   // Handle WebSocket error event
   private handleError = (event: Event) => {
     console.error('WebSocket error:', event);
-    toast.error("VR system communication error", {
-      description: "Please try reconnecting or contact support",
+    toast({
+      variant: "destructive",
+      title: "Communication Error",
+      description: "VR system communication error. Please try reconnecting or contact support.",
     });
   };
   
@@ -239,8 +245,10 @@ class WebSocketService {
   private attemptReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       this.updateConnectionState(ConnectionState.FAILED);
-      toast.error("Failed to reconnect to VR system", {
-        description: "Maximum reconnect attempts reached",
+      toast({
+        variant: "destructive",
+        title: "Reconnection Failed",
+        description: "Maximum reconnect attempts reached. Please restart the application.",
       });
       return;
     }
@@ -248,7 +256,11 @@ class WebSocketService {
     this.updateConnectionState(ConnectionState.RECONNECTING);
     this.reconnectAttempts++;
     
-    toast.info(`Reconnecting to VR system (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+    toast({
+      variant: "default",
+      title: "Reconnecting",
+      description: `Attempting to reconnect to VR system (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`,
+    });
     
     setTimeout(() => {
       if (this.socket && this.socket.url) {
