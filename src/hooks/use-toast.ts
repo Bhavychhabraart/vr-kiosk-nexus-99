@@ -1,4 +1,3 @@
-
 import * as React from "react"
 import {
   Toast,
@@ -190,4 +189,3 @@ function useToast() {
 }
 
 export { useToast, toast }
-
