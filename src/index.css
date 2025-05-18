@@ -1,4 +1,5 @@
 
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -78,4 +79,52 @@
   .vr-button-secondary {
     @apply bg-vr-secondary text-vr-dark px-5 py-2 rounded-lg hover:bg-vr-secondary/80 transition-all duration-300 font-medium;
   }
+  
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-vr-text via-vr-secondary to-vr-text;
+  }
+  
+  .backdrop-blur-card {
+    @apply backdrop-blur-xl bg-vr-dark/30 border border-vr-primary/20;
+  }
+  
+  .animate-pulse-glow {
+    animation: pulse-glow 2s infinite;
+  }
 }
+
+/* Particle animation */
+@keyframes float {
+  0% {
+    transform: translateY(0) translateX(0);
+  }
+  25% {
+    transform: translateY(-10px) translateX(10px);
+  }
+  50% {
+    transform: translateY(0) translateX(20px);
+  }
+  75% {
+    transform: translateY(10px) translateX(10px);
+  }
+  100% {
+    transform: translateY(0) translateX(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px 2px rgba(0, 234, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px 5px rgba(0, 234, 255, 0.7);
+  }
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.6;
+  z-index: 0;
+}
+

@@ -21,8 +21,9 @@ import {
   Play,
   X,
   ArrowLeft,
-  Server
+  Star
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
 import { CommandCenterStatus } from "@/components/CommandCenterStatus";
 import useCommandCenter from "@/hooks/useCommandCenter";
@@ -43,6 +44,8 @@ const Session = () => {
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
+  const [showRating, setShowRating] = useState(false);
+  const [rating, setRating] = useState(0);
   
   // Connect to command center
   const { 
@@ -102,8 +105,8 @@ const Session = () => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          setShowEndDialog(true);
           setIsRunning(false);
+          setShowRating(true);
           return 0;
         }
         return prev - 1;
@@ -159,14 +162,7 @@ const Session = () => {
       // Send command to end session
       await endSession();
       
-      toast({
-        title: "Session ended",
-        description: "Thank you for playing!",
-      });
-      
-      setTimeout(() => {
-        navigate("/");
-      }, 1500);
+      setShowRating(true);
     } catch (error) {
       console.error("Error ending session:", error);
       toast({
@@ -193,9 +189,7 @@ const Session = () => {
         description: "Returning to home screen.",
       });
       
-      setTimeout(() => {
-        navigate("/");
-      }, 1000);
+      setShowRating(true);
     } catch (error) {
       console.error("Error exiting session:", error);
       toast({
@@ -205,62 +199,151 @@ const Session = () => {
       });
     }
   };
+
+  const handleRatingSubmit = () => {
+    toast({
+      title: "Thanks for your feedback!",
+      description: "Your rating has been recorded.",
+    });
+
+    setTimeout(() => {
+      navigate("/");
+    }, 1000);
+  };
+  
+  // If showing rating screen
+  if (showRating) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="min-h-screen flex flex-col items-center justify-center relative bg-vr-dark"
+      >
+        <ParticlesBackground />
+        
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", damping: 15 }}
+          className="vr-card max-w-md w-full z-10 p-8"
+        >
+          <h2 className="text-2xl font-bold mb-2 text-center">How was your experience?</h2>
+          <p className="text-vr-muted text-center mb-8">Rate your session playing {gameTitle}</p>
+          
+          <div className="flex justify-center mb-8">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Star
+                key={star}
+                className={`h-12 w-12 mx-1 cursor-pointer transition-all ${
+                  star <= rating 
+                    ? "text-vr-secondary fill-vr-secondary" 
+                    : "text-gray-400"
+                }`}
+                onClick={() => setRating(star)}
+              />
+            ))}
+          </div>
+          
+          <Button 
+            onClick={handleRatingSubmit}
+            className="w-full py-6 bg-vr-secondary text-vr-dark hover:bg-vr-secondary/90"
+            disabled={rating === 0}
+          >
+            Submit Rating
+          </Button>
+        </motion.div>
+      </motion.div>
+    );
+  }
   
   return (
     <MainLayout className="relative px-4 py-8 h-screen flex flex-col">
-      <div className="absolute top-8 left-8 flex items-center gap-4">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="absolute top-8 left-8 flex items-center gap-4"
+      >
         <Button 
           variant="ghost" 
-          className="text-vr-muted hover:text-vr-text"
+          className="text-vr-muted hover:text-vr-text flex items-center gap-2"
           onClick={handleExitPrompt}
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Exit Game
         </Button>
         <CommandCenterStatus showLabel={true} />
-      </div>
+      </motion.div>
       
       {/* Session information */}
       <div className="flex-1 flex flex-col items-center justify-center">
-        <div className="vr-card max-w-lg w-full">
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", damping: 15 }}
+          className="vr-card max-w-lg w-full backdrop-blur-md"
+        >
           <div className="flex flex-col items-center text-center mb-10">
             <h1 className="text-3xl font-bold mb-2">{gameTitle}</h1>
             <p className="text-vr-muted mb-6">Session in progress</p>
             
             {/* Timer display */}
-            <div className="w-full mb-4">
-              <div className={`text-5xl font-bold mb-3 ${timeRemaining < 60 ? 'text-vr-accent animate-pulse' : 'text-vr-text'}`}>
+            <div className="w-full mb-6">
+              <motion.div 
+                className={`text-6xl font-bold mb-4 ${
+                  timeRemaining < 60 ? 'text-vr-accent animate-pulse' : 'text-vr-text'
+                }`}
+                animate={{ scale: [1, 1.03, 1], opacity: [1, 1, 1] }}
+                transition={{ 
+                  duration: 1, 
+                  repeat: Infinity, 
+                  ease: "easeInOut",
+                  repeatType: "reverse"
+                }}
+              >
                 {formatTime(timeRemaining)}
+              </motion.div>
+              
+              <div className="relative h-4 w-full bg-vr-dark/50 rounded-full overflow-hidden">
+                <motion.div 
+                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-vr-secondary to-vr-primary rounded-full"
+                  initial={{ width: `${progress}%` }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ type: "spring", damping: 20 }}
+                />
               </div>
-              <Progress value={progress} className="h-3" />
             </div>
             
             <div className="flex items-center justify-center gap-3 mt-6">
               <Button
-                className={isRunning ? "bg-vr-accent hover:bg-vr-accent/80" : "bg-vr-primary hover:bg-vr-primary/80"}
+                className={`px-6 py-6 flex items-center gap-2 ${
+                  isRunning 
+                    ? "bg-vr-accent hover:bg-vr-accent/80" 
+                    : "bg-vr-primary hover:bg-vr-primary/80"
+                }`}
                 onClick={handlePauseResume}
                 disabled={!isConnected || !gameStarted}
               >
                 {isRunning ? (
                   <>
-                    <Pause className="mr-2 h-4 w-4" />
-                    Pause
+                    <Pause className="h-5 w-5" />
+                    <span className="text-lg">Pause Session</span>
                   </>
                 ) : (
                   <>
-                    <Play className="mr-2 h-4 w-4" />
-                    Resume
+                    <Play className="h-5 w-5" />
+                    <span className="text-lg">Resume Session</span>
                   </>
                 )}
               </Button>
               <Button
                 variant="outline"
-                className="border-vr-primary/50 text-vr-text hover:bg-vr-primary/20"
+                className="border-vr-primary/50 text-vr-text hover:bg-vr-primary/20 px-6 py-6"
                 onClick={handleExitPrompt}
                 disabled={!isConnected}
               >
-                <X className="mr-2 h-4 w-4" />
-                End Session
+                <X className="h-5 w-5 mr-2" />
+                <span className="text-lg">End Session</span>
               </Button>
             </div>
           </div>
@@ -270,36 +353,10 @@ const Session = () => {
               <Clock className="h-5 w-5" />
               <span>Please wear your VR headset to continue playing</span>
             </div>
-            
-            <div className="flex flex-col items-center justify-center p-4 border border-vr-primary/10 rounded-lg bg-vr-dark/50 gap-2">
-              <p className="text-sm text-vr-muted">
-                For help or assistance, please ask a staff member
-              </p>
-            </div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
-      {/* Session end dialog */}
-      <AlertDialog open={showEndDialog} onOpenChange={setShowEndDialog}>
-        <AlertDialogContent className="bg-vr-dark border-vr-primary/30">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Session Complete</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your session time has ended. Thank you for playing!
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction 
-              onClick={handleEndSession}
-              className="bg-vr-primary hover:bg-vr-primary/80"
-            >
-              Return to Home
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
       {/* Exit confirmation dialog */}
       <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
         <AlertDialogContent className="bg-vr-dark border-vr-primary/30">
@@ -328,6 +385,33 @@ const Session = () => {
         </AlertDialogContent>
       </AlertDialog>
     </MainLayout>
+  );
+};
+
+// Particle background component
+const ParticlesBackground = () => {
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      {[...Array(20)].map((_, i) => (
+        <div 
+          key={i}
+          className="particle"
+          style={{
+            position: 'absolute',
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+            width: `${Math.random() * 4 + 1}px`,
+            height: `${Math.random() * 4 + 1}px`,
+            background: `rgba(0, 234, 255, ${Math.random() * 0.5 + 0.1})`,
+            borderRadius: '50%',
+            boxShadow: '0 0 10px rgba(0, 234, 255, 0.5)',
+            animation: `float ${Math.random() * 10 + 10}s linear infinite`,
+            animationDelay: `${Math.random() * 5}s`,
+          }}
+        />
+      ))}
+      <div className="absolute inset-0 bg-gradient-radial from-vr-primary/5 to-transparent" />
+    </div>
   );
 };
 

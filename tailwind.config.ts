@@ -104,7 +104,8 @@ export default {
 			},
 			backgroundImage: {
 				'vr-gradient': 'linear-gradient(135deg, #0B0E18 0%, #1A1F35 100%)',
-				'card-gradient': 'linear-gradient(to bottom, rgba(93, 79, 255, 0.15), rgba(0, 234, 255, 0.05))'
+				'card-gradient': 'linear-gradient(to bottom, rgba(93, 79, 255, 0.15), rgba(0, 234, 255, 0.05))',
+				'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
 			}
 		}
 	},
