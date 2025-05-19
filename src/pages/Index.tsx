@@ -11,6 +11,7 @@ import { ChevronRight, ChevronLeft, Clock, Gamepad2, Sword, Play } from "lucide-
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import CommandCenterStatus from "@/components/CommandCenterStatus";
+
 const Index = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("featured");
@@ -104,13 +105,103 @@ const Index = () => {
         {/* Animated background */}
         <div className="absolute inset-0 bg-tech-pattern opacity-5" />
         <div className="absolute inset-0">
-          <div className="orb bg-vr-primary/30 w-96 h-96 -top-20 -left-20 animate-spin-slow"></div>
-          <div className="orb bg-vr-secondary/20 w-80 h-80 -bottom-20 right-10 animate-spin-slow" style={{
-          animationDelay: "-5s"
-        }}></div>
-          <div className="orb bg-vr-accent/20 w-64 h-64 top-1/4 right-1/4 animate-spin-slow" style={{
-          animationDelay: "-3s"
-        }}></div>
+          {/* Dynamic animated background elements */}
+          {Array.from({ length: 20 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute rounded-full bg-gradient-to-r"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                width: `${Math.random() * 150 + 50}px`,
+                height: `${Math.random() * 150 + 50}px`,
+                opacity: Math.random() * 0.3 + 0.05,
+                backgroundImage: 
+                  i % 3 === 0 
+                    ? 'linear-gradient(to right, rgba(99, 102, 241, 0.4), rgba(99, 102, 241, 0.1))'
+                    : i % 3 === 1
+                    ? 'linear-gradient(to right, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.1))'
+                    : 'linear-gradient(to right, rgba(236, 72, 153, 0.3), rgba(236, 72, 153, 0.1))'
+              }}
+              animate={{
+                x: [0, Math.random() * 40 - 20],
+                y: [0, Math.random() * 40 - 20],
+                scale: [1, Math.random() * 0.2 + 0.9, 1],
+                rotate: [0, Math.random() * 20 - 10]
+              }}
+              transition={{
+                duration: Math.random() * 10 + 15,
+                ease: "easeInOut",
+                repeat: Infinity,
+                repeatType: "reverse"
+              }}
+            />
+          ))}
+          
+          {/* Floating energy lines */}
+          {Array.from({ length: 8 }).map((_, i) => (
+            <motion.div
+              key={`line-${i}`}
+              className="absolute h-px"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                width: `${Math.random() * 200 + 100}px`,
+                background: `linear-gradient(90deg, transparent, 
+                  ${i % 2 === 0 ? '#6366F1' : '#10B981'}, transparent)`,
+                opacity: Math.random() * 0.5 + 0.2,
+                transformOrigin: 'center',
+              }}
+              animate={{
+                rotate: [Math.random() * 360, Math.random() * 360 + 90],
+                scale: [0.5, 1.5, 0.5],
+                opacity: [0.2, 0.5, 0.2]
+              }}
+              transition={{
+                duration: Math.random() * 20 + 20,
+                ease: "easeInOut",
+                repeat: Infinity,
+              }}
+            />
+          ))}
+          
+          {/* Keep the original orbs with some modifications */}
+          <motion.div 
+            className="orb bg-vr-primary/30 w-96 h-96 -top-20 -left-20"
+            animate={{
+              scale: [1, 1.1, 1],
+              opacity: [0.3, 0.4, 0.3]
+            }}
+            transition={{
+              duration: 12,
+              repeat: Infinity,
+              repeatType: "reverse"
+            }}
+          />
+          <motion.div 
+            className="orb bg-vr-secondary/20 w-80 h-80 -bottom-20 right-10"
+            animate={{
+              scale: [1, 1.15, 1],
+              opacity: [0.2, 0.3, 0.2]
+            }}
+            transition={{
+              duration: 15,
+              repeat: Infinity,
+              repeatType: "reverse"
+            }}
+          />
+          <motion.div 
+            className="orb bg-vr-accent/20 w-64 h-64 top-1/4 right-1/4"
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.2, 0.35, 0.2]
+            }}
+            transition={{
+              duration: 18,
+              repeat: Infinity,
+              repeatType: "reverse"
+            }}
+          />
         </div>
         
         <div className="absolute top-4 right-4 z-10">
@@ -351,6 +442,7 @@ const Index = () => {
       </section>
     </MainLayout>;
 };
+
 interface GameCardProps {
   game: {
     id: number;
