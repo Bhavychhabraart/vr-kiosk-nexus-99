@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -29,7 +28,7 @@ const RFIDScanScreen = ({
 }: RFIDScanScreenProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { isScanning, startRFIDScan, stopRFIDScan, lastScannedTag } = useRFID();
+  const { scanningForRFID, startRFIDScan, cancelRFIDScan, scannedRFID } = useRFID();
   
   const [scanStatus, setScanStatus] = useState<'waiting' | 'scanning' | 'success' | 'error'>('waiting');
   const [scanTimeout, setScanTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -41,23 +40,23 @@ const RFIDScanScreen = ({
     // Clean up if component unmounts during scan
     return () => {
       if (scanTimeout) clearTimeout(scanTimeout);
-      stopRFIDScan();
+      cancelRFIDScan();
     };
   }, []);
   
   // Watch for successful scan results
   useEffect(() => {
-    if (lastScannedTag && scanStatus === 'scanning') {
+    if (scannedRFID && scanStatus === 'scanning') {
       setScanStatus('success');
       
       // Add a slight delay before navigating
       const successTimer = setTimeout(() => {
-        onSuccess(lastScannedTag);
+        onSuccess(scannedRFID);
       }, 1500);
       
       return () => clearTimeout(successTimer);
     }
-  }, [lastScannedTag, scanStatus, onSuccess]);
+  }, [scannedRFID, scanStatus, onSuccess]);
   
   const handleStartScan = () => {
     setScanStatus('scanning');
@@ -67,7 +66,7 @@ const RFIDScanScreen = ({
     const timeout = setTimeout(() => {
       if (scanStatus === 'scanning') {
         setScanStatus('error');
-        stopRFIDScan();
+        cancelRFIDScan();
         
         toast({
           title: "Scan Timeout",
@@ -82,7 +81,7 @@ const RFIDScanScreen = ({
   
   const handleCancel = () => {
     if (scanTimeout) clearTimeout(scanTimeout);
-    stopRFIDScan();
+    cancelRFIDScan();
     onClose();
   };
   

@@ -169,7 +169,6 @@ export const useRFID = () => {
     try {
       const card = await getRFIDCardByTagId(tagId);
       if (card) {
-        // Fix for line 205 - use mutate() function properly
         markCardAsUsedMutation.mutate(tagId);
         return card;
       }
@@ -226,7 +225,11 @@ export const useRFID = () => {
     deleteCard: (id: string) => deleteCardMutation.mutate(id),
     isCreatingCard: createCardMutation.isPending,
     isUpdatingCard: updateCardMutation.isPending,
-    isDeletingCard: deleteCardMutation.isPending
+    isDeletingCard: deleteCardMutation.isPending,
+    // Adding missing properties for RFIDScanScreen
+    lastScannedTag: scannedRFID,
+    isScanning: scanningForRFID,
+    stopRFIDScan: cancelRFIDScan  // Aliasing cancelRFIDScan as stopRFIDScan
   };
 };
 
