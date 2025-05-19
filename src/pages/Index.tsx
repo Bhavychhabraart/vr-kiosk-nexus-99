@@ -138,26 +138,21 @@ const Index = () => {
             <span className="block text-vr-text text-5xl">kiosk experience</span>
           </h1>
           
-          <p className="text-vr-muted text-xl md:text-2xl mb-12 max-w-xl mx-auto font-light">
+          <p className="text-vr-text text-xl md:text-2xl mb-12 max-w-xl mx-auto font-light">
             Immerse yourself in cutting-edge virtual worlds with our premium VR kiosk system
           </p>
           
           <div className="flex justify-center">
-            <Button 
-              onClick={handleStartExperience} 
-              className="w-64 h-64 rounded-full bg-gradient-to-br from-vr-primary via-indigo-500 to-vr-accent text-white border-none relative overflow-hidden group hover:shadow-[0_0_30px_rgba(236,72,153,0.6)] transition-all duration-500"
-              onMouseEnter={() => setHoveringButton(true)} 
-              onMouseLeave={() => setHoveringButton(false)}
+            <button 
+              onClick={handleStartExperience}
+              className="relative overflow-hidden bg-gradient-to-r from-vr-accent via-vr-primary to-vr-secondary hover:from-vr-primary hover:to-vr-accent text-white font-medium py-4 px-10 rounded-lg transition-all duration-500 transform hover:scale-105 shadow-lg hover:shadow-xl w-64 h-16 text-xl"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-vr-primary/80 via-indigo-600/80 to-vr-accent/80 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <div className="relative z-10 flex flex-col items-center">
-                <div className="relative bg-vr-dark/50 p-6 rounded-full backdrop-blur-sm mb-6">
-                  <div className="absolute -inset-1 rounded-full animate-pulse-glow opacity-75 bg-vr-accent/30"></div>
-                  <Play className="h-16 w-16 text-white group-hover:scale-110 transition-all" />
-                </div>
-                <span className="text-2xl font-medium text-white tracking-wide">Begin Experience</span>
-              </div>
-            </Button>
+              <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-vr-secondary via-vr-primary to-vr-accent opacity-0 hover:opacity-100 transition-opacity duration-1000 animate-pulse-glow"></span>
+              <span className="relative z-10 flex items-center justify-center gap-2">
+                <Play className="h-6 w-6" />
+                Begin Experience
+              </span>
+            </button>
           </div>
           
           <motion.div className="absolute bottom-8 left-0 right-0 flex justify-center" initial={{
