@@ -12,9 +12,18 @@ Restart=always
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
 
-# Environment variables can be set here
+# Environment variables
 Environment=VR_SERVER_PORT=8081
 Environment=VR_GAMES_CONFIG=games.json
+Environment=VR_STATUS_INTERVAL=5
+Environment=LOG_LEVEL=INFO
+Environment=VR_DEFAULT_SESSION_DURATION=600
+Environment=VR_CPU_WARNING_THRESHOLD=80
+Environment=VR_MEMORY_WARNING_THRESHOLD=80
+
+# Uncomment and edit if you need to run as a different user
+#User=vr-admin
+#Group=vr-admin
 
 [Install]
 WantedBy=multi-user.target
