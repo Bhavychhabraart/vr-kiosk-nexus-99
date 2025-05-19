@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSpring, animated } from "react-spring";
@@ -12,7 +11,6 @@ import { ChevronRight, ChevronLeft, Clock, Gamepad2, Sword, Play } from "lucide-
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import CommandCenterStatus from "@/components/CommandCenterStatus";
-
 const Index = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("featured");
@@ -25,10 +23,11 @@ const Index = () => {
   // Animation properties
   const buttonAnimation = useSpring({
     transform: hoveringButton ? `scale(1.05)` : `scale(1)`,
-    boxShadow: hoveringButton 
-      ? '0 0 25px 5px rgba(99, 102, 241, 0.6)' 
-      : '0 0 15px 2px rgba(99, 102, 241, 0.3)',
-    config: { tension: 300, friction: 10 }
+    boxShadow: hoveringButton ? '0 0 25px 5px rgba(99, 102, 241, 0.6)' : '0 0 15px 2px rgba(99, 102, 241, 0.3)',
+    config: {
+      tension: 300,
+      friction: 10
+    }
   });
 
   // Mock featured games data
@@ -77,63 +76,64 @@ const Index = () => {
   // Auto rotate featured games
   useEffect(() => {
     if (showStartScreen) return;
-    
     const interval = setInterval(() => {
       setCurrentFeaturedIndex(prev => (prev + 1) % featuredGames.length);
     }, 6000);
     return () => clearInterval(interval);
   }, [featuredGames.length, showStartScreen]);
-  
   const handlePrevFeatured = () => {
     setCurrentFeaturedIndex(prev => prev === 0 ? featuredGames.length - 1 : prev - 1);
   };
-  
   const handleNextFeatured = () => {
     setCurrentFeaturedIndex(prev => (prev + 1) % featuredGames.length);
   };
-
   const handleStartExperience = () => {
     setShowStartScreen(false);
   };
-
-  const handleSelectGame = (game) => {
+  const handleSelectGame = game => {
     setSelectedGame(game);
   };
-
   const handleStartSession = () => {
     if (!selectedGame) return;
-    
     navigate(`/session?gameId=${selectedGame.id}&title=${selectedGame.title}`);
   };
 
   // If we're showing the start screen
   if (showStartScreen) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden bg-vr-dark">
+    return <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden bg-vr-dark">
         {/* Animated background */}
         <div className="absolute inset-0 bg-tech-pattern opacity-5" />
         <div className="absolute inset-0">
           <div className="orb bg-vr-primary/30 w-96 h-96 -top-20 -left-20 animate-spin-slow"></div>
-          <div className="orb bg-vr-secondary/20 w-80 h-80 -bottom-20 right-10 animate-spin-slow" style={{animationDelay: "-5s"}}></div>
-          <div className="orb bg-vr-accent/20 w-64 h-64 top-1/4 right-1/4 animate-spin-slow" style={{animationDelay: "-3s"}}></div>
+          <div className="orb bg-vr-secondary/20 w-80 h-80 -bottom-20 right-10 animate-spin-slow" style={{
+          animationDelay: "-5s"
+        }}></div>
+          <div className="orb bg-vr-accent/20 w-64 h-64 top-1/4 right-1/4 animate-spin-slow" style={{
+          animationDelay: "-3s"
+        }}></div>
         </div>
         
         <div className="absolute top-4 right-4 z-10">
           <CommandCenterStatus showLabel={false} />
         </div>
         
-        <motion.div 
-          className="text-center z-10"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
-        >
+        <motion.div className="text-center z-10" initial={{
+        y: 20,
+        opacity: 0
+      }} animate={{
+        y: 0,
+        opacity: 1
+      }} transition={{
+        delay: 0.2,
+        type: "spring",
+        stiffness: 100
+      }}>
           <div className="mb-8">
             <img src="/images/vr-illustration.svg" alt="VR Headset" className="h-36 mx-auto" />
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight">
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-vr-secondary via-vr-primary to-vr-accent">Virtual Reality</span>
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-vr-secondary via-vr-primary to-vr-accent">NextGen Arcadia</span>
             <span className="block text-vr-text">Premium Experience</span>
           </h1>
           
@@ -141,16 +141,8 @@ const Index = () => {
             Immerse yourself in cutting-edge virtual worlds with our premium VR kiosk system
           </p>
           
-          <animated.div 
-            style={buttonAnimation}
-            onMouseEnter={() => setHoveringButton(true)}
-            onMouseLeave={() => setHoveringButton(false)}
-            className="flex justify-center"
-          >
-            <Button 
-              onClick={handleStartExperience}
-              className="w-64 h-64 rounded-full bg-vr-primary/10 backdrop-blur-md border border-vr-primary/30 flex flex-col items-center justify-center group hover:bg-vr-primary/20"
-            >
+          <animated.div style={buttonAnimation} onMouseEnter={() => setHoveringButton(true)} onMouseLeave={() => setHoveringButton(false)} className="flex justify-center">
+            <Button onClick={handleStartExperience} className="w-64 h-64 rounded-full bg-vr-primary/10 backdrop-blur-md border border-vr-primary/30 flex flex-col items-center justify-center group hover:bg-vr-primary/20">
               <div className="relative">
                 <div className="absolute -inset-1 rounded-full animate-pulse-glow opacity-75"></div>
                 <div className="relative bg-vr-dark/50 p-6 rounded-full backdrop-blur-sm">
@@ -161,12 +153,13 @@ const Index = () => {
             </Button>
           </animated.div>
           
-          <motion.div
-            className="absolute bottom-8 left-0 right-0 flex justify-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-          >
+          <motion.div className="absolute bottom-8 left-0 right-0 flex justify-center" initial={{
+          opacity: 0
+        }} animate={{
+          opacity: 1
+        }} transition={{
+          delay: 1
+        }}>
             <div className="flex gap-8 px-6 py-3 backdrop-blur-md bg-white/5 rounded-full border border-white/10">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-vr-secondary animate-pulse"></div>
@@ -183,20 +176,14 @@ const Index = () => {
             </div>
           </motion.div>
         </motion.div>
-      </div>
-    );
+      </div>;
   }
-  
+
   // If a game is selected, show the duration selection screen
   if (selectedGame) {
-    return (
-      <MainLayout className="space-y-8 pt-8" backgroundVariant="dots">
+    return <MainLayout className="space-y-8 pt-8" backgroundVariant="dots">
         <div className="flex items-center">
-          <Button 
-            variant="ghost" 
-            className="mr-2"
-            onClick={() => setSelectedGame(null)}
-          >
+          <Button variant="ghost" className="mr-2" onClick={() => setSelectedGame(null)}>
             <ChevronLeft />
             <span>Back to Games</span>
           </Button>
@@ -208,11 +195,7 @@ const Index = () => {
           <PremiumCard className="p-8" glowEffect={true}>
             <div className="flex items-center gap-6 mb-8">
               <div className="relative rounded-lg overflow-hidden w-24 h-24 border border-vr-primary/20">
-                <img 
-                  src={selectedGame.image} 
-                  alt={selectedGame.title} 
-                  className="w-full h-full object-cover"
-                />
+                <img src={selectedGame.image} alt={selectedGame.title} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-vr-dark to-transparent"></div>
               </div>
               <div className="flex-1">
@@ -230,23 +213,12 @@ const Index = () => {
               <div>
                 <label className="block text-lg font-medium mb-4">Session Duration</label>
                 <div className="relative h-2 bg-vr-primary/20 rounded-full mb-8">
-                  {[5, 10, 15, 30].map((mins, i) => (
-                    <button 
-                      key={i}
-                      className={cn(
-                        "absolute top-1/2 -translate-y-1/2 transform -translate-x-1/2 h-6 w-6 rounded-full border-2 transition-all",
-                        sessionDuration === mins 
-                          ? "border-vr-secondary bg-vr-secondary" 
-                          : "border-vr-primary bg-vr-dark"
-                      )}
-                      style={{ left: `${(mins / 30) * 100}%` }}
-                      onClick={() => setSessionDuration(mins)}
-                    />
-                  ))}
-                  <div 
-                    className="absolute top-0 left-0 h-full bg-vr-secondary rounded-full"
-                    style={{ width: `${(sessionDuration / 30) * 100}%` }}
-                  />
+                  {[5, 10, 15, 30].map((mins, i) => <button key={i} className={cn("absolute top-1/2 -translate-y-1/2 transform -translate-x-1/2 h-6 w-6 rounded-full border-2 transition-all", sessionDuration === mins ? "border-vr-secondary bg-vr-secondary" : "border-vr-primary bg-vr-dark")} style={{
+                  left: `${mins / 30 * 100}%`
+                }} onClick={() => setSessionDuration(mins)} />)}
+                  <div className="absolute top-0 left-0 h-full bg-vr-secondary rounded-full" style={{
+                  width: `${sessionDuration / 30 * 100}%`
+                }} />
                 </div>
                 <div className="flex justify-between text-vr-muted text-sm px-2">
                   <span>5 min</span>
@@ -268,25 +240,18 @@ const Index = () => {
               </div>
               
               <div className="pt-4">
-                <PremiumButton 
-                  onClick={handleStartSession}
-                  glowEffect={true}
-                  variant="secondary"
-                  className="w-full py-6 text-lg font-semibold"
-                >
+                <PremiumButton onClick={handleStartSession} glowEffect={true} variant="secondary" className="w-full py-6 text-lg font-semibold">
                   Start Session
                 </PremiumButton>
               </div>
             </div>
           </PremiumCard>
         </div>
-      </MainLayout>
-    );
+      </MainLayout>;
   }
-  
+
   // Main games selection screen
-  return (
-    <MainLayout className="space-y-12" withPattern={true}>
+  return <MainLayout className="space-y-12" withPattern={true}>
       <section className="text-center mt-8">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">
@@ -302,16 +267,11 @@ const Index = () => {
 
       {/* Featured Game Carousel */}
       <section className="relative h-[400px] md:h-[500px] overflow-hidden rounded-2xl perspective-container">
-        {featuredGames.map((game, index) => (
-          <div 
-            key={game.id} 
-            className={`absolute inset-0 transition-all duration-1000 ease-in-out perspective-card ${index === currentFeaturedIndex ? "opacity-100 z-10" : "opacity-0 z-0"}`} 
-            style={{
-              backgroundImage: `linear-gradient(to top, rgba(10, 12, 23, 0.9), rgba(10, 12, 23, 0.3)), url(${game.image})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center"
-            }}
-          >
+        {featuredGames.map((game, index) => <div key={game.id} className={`absolute inset-0 transition-all duration-1000 ease-in-out perspective-card ${index === currentFeaturedIndex ? "opacity-100 z-10" : "opacity-0 z-0"}`} style={{
+        backgroundImage: `linear-gradient(to top, rgba(10, 12, 23, 0.9), rgba(10, 12, 23, 0.3)), url(${game.image})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center"
+      }}>
             <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12">
               <div className="max-w-3xl">
                 <span className="inline-block px-3 py-1 rounded-full bg-vr-primary/30 backdrop-blur-sm text-vr-secondary text-xs mb-4 border border-vr-primary/20">
@@ -327,12 +287,7 @@ const Index = () => {
                 </p>
                 
                 <div className="flex items-center gap-4 flex-wrap">
-                  <PremiumButton 
-                    variant="primary"
-                    className="px-6 py-2.5"
-                    glowEffect={true}
-                    onClick={() => handleSelectGame(game)}
-                  >
+                  <PremiumButton variant="primary" className="px-6 py-2.5" glowEffect={true} onClick={() => handleSelectGame(game)}>
                     Select Experience
                     <ChevronRight size={16} />
                   </PremiumButton>
@@ -341,46 +296,26 @@ const Index = () => {
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-        <button 
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-vr-dark/40 hover:bg-vr-primary/60 p-3 rounded-full backdrop-blur-md transition-colors border border-white/10" 
-          onClick={handlePrevFeatured}
-        >
+          </div>)}
+        <button className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-vr-dark/40 hover:bg-vr-primary/60 p-3 rounded-full backdrop-blur-md transition-colors border border-white/10" onClick={handlePrevFeatured}>
           <ChevronLeft className="h-6 w-6 text-white" />
         </button>
-        <button 
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-vr-dark/40 hover:bg-vr-primary/60 p-3 rounded-full backdrop-blur-md transition-colors border border-white/10" 
-          onClick={handleNextFeatured}
-        >
+        <button className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-vr-dark/40 hover:bg-vr-primary/60 p-3 rounded-full backdrop-blur-md transition-colors border border-white/10" onClick={handleNextFeatured}>
           <ChevronRight className="h-6 w-6 text-white" />
         </button>
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-          {featuredGames.map((_, index) => (
-            <button 
-              key={index} 
-              className={`h-2 w-12 rounded-full transition-colors ${index === currentFeaturedIndex ? "bg-vr-secondary" : "bg-vr-text/30"}`} 
-              onClick={() => setCurrentFeaturedIndex(index)} 
-            />
-          ))}
+          {featuredGames.map((_, index) => <button key={index} className={`h-2 w-12 rounded-full transition-colors ${index === currentFeaturedIndex ? "bg-vr-secondary" : "bg-vr-text/30"}`} onClick={() => setCurrentFeaturedIndex(index)} />)}
         </div>
       </section>
 
       {/* Game Categories */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-6">
-        {gameCategories.map(category => (
-          <PremiumCard
-            key={category.id} 
-            className="flex flex-col items-center justify-center gap-3 py-8 cursor-pointer hover:border-vr-secondary/50 transition-all group"
-            variant={category.id % 2 === 0 ? "secondary" : "primary"}
-            onClick={() => navigate(`/games?category=${category.name.toLowerCase()}`)}
-          >
+        {gameCategories.map(category => <PremiumCard key={category.id} className="flex flex-col items-center justify-center gap-3 py-8 cursor-pointer hover:border-vr-secondary/50 transition-all group" variant={category.id % 2 === 0 ? "secondary" : "primary"} onClick={() => navigate(`/games?category=${category.name.toLowerCase()}`)}>
             <div className="p-4 rounded-full bg-vr-dark/50 glass-card group-hover:scale-110 transition-transform">
               {category.icon}
             </div>
             <h3 className="text-lg font-semibold">{category.name}</h3>
-          </PremiumCard>
-        ))}
+          </PremiumCard>)}
       </section>
       
       {/* Game Browser Tabs */}
@@ -416,10 +351,8 @@ const Index = () => {
           </TabsContent>
         </Tabs>
       </section>
-    </MainLayout>
-  );
+    </MainLayout>;
 };
-
 interface GameCardProps {
   game: {
     id: number;
@@ -430,19 +363,13 @@ interface GameCardProps {
   };
   onGameSelect: (game: any) => void;
 }
-
-const GameCard = ({ game, onGameSelect }: GameCardProps) => {
-  return (
-    <div 
-      className="glass-card cursor-pointer group h-full flex flex-col overflow-hidden border border-vr-primary/10 rounded-xl transition-all duration-300 hover:shadow-glow hover:-translate-y-1" 
-      onClick={() => onGameSelect(game)}
-    >
+const GameCard = ({
+  game,
+  onGameSelect
+}: GameCardProps) => {
+  return <div className="glass-card cursor-pointer group h-full flex flex-col overflow-hidden border border-vr-primary/10 rounded-xl transition-all duration-300 hover:shadow-glow hover:-translate-y-1" onClick={() => onGameSelect(game)}>
       <div className="aspect-[16/9] overflow-hidden rounded-t-lg mb-0 relative shine-effect">
-        <img 
-          src={game.image} 
-          alt={game.title} 
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-        />
+        <img src={game.image} alt={game.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
         <div className="absolute inset-0 bg-gradient-to-t from-vr-dark to-transparent opacity-60"></div>
         <div className="absolute top-3 right-3 flex items-center gap-1 bg-vr-dark/70 px-2 py-1 rounded-md text-xs backdrop-blur-sm">
           <RatingDisplay rating={game.rating || 4.5} size="sm" />
@@ -457,23 +384,18 @@ const GameCard = ({ game, onGameSelect }: GameCardProps) => {
           {game.category}
         </span>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 interface GameGridProps {
   games: GameCardProps['game'][];
   onGameSelect: (game: any) => void;
 }
-
-const GameGrid = ({ games, onGameSelect }: GameGridProps) => {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-      {games.map(game => (
-        <GameCard key={game.id} game={game} onGameSelect={onGameSelect} />
-      ))}
-    </div>
-  );
+const GameGrid = ({
+  games,
+  onGameSelect
+}: GameGridProps) => {
+  return <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      {games.map(game => <GameCard key={game.id} game={game} onGameSelect={onGameSelect} />)}
+    </div>;
 };
-
 export default Index;
