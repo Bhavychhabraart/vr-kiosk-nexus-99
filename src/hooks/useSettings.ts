@@ -5,6 +5,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { WebSocketSettings, KioskSettings } from '@/types';
 
+interface WebSocketSettingsRaw {
+  url: string;
+  reconnect_attempts: number;
+  reconnect_delay: number;
+}
+
+interface KioskSettingsRaw {
+  name: string;
+  location: string;
+  idle_timeout: number;
+}
+
 export function useWebSocketSettings() {
   const queryClient = useQueryClient();
   
@@ -25,10 +37,13 @@ export function useWebSocketSettings() {
       };
     }
     
+    // Cast the value to the correct type
+    const rawSettings = data.value as WebSocketSettingsRaw;
+    
     return {
-      url: data.value.url || 'ws://localhost:8081',
-      reconnectAttempts: data.value.reconnect_attempts || 5,
-      reconnectDelay: data.value.reconnect_delay || 2000
+      url: rawSettings.url || 'ws://localhost:8081',
+      reconnectAttempts: rawSettings.reconnect_attempts || 5,
+      reconnectDelay: rawSettings.reconnect_delay || 2000
     };
   };
   
@@ -98,10 +113,13 @@ export function useKioskSettings() {
       };
     }
     
+    // Cast the value to the correct type
+    const rawSettings = data.value as KioskSettingsRaw;
+    
     return {
-      name: data.value.name || 'VR Kiosk',
-      location: data.value.location || 'Main Hall',
-      idleTimeout: data.value.idle_timeout || 300
+      name: rawSettings.name || 'VR Kiosk',
+      location: rawSettings.location || 'Main Hall',
+      idleTimeout: rawSettings.idle_timeout || 300
     };
   };
   

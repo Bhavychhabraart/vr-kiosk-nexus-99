@@ -2,12 +2,37 @@ import { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  PieChart,
+  Pie,
+  Cell,
+  Legend
+} from "recharts";
 import {
   Users,
   BarChart3,
   Activity,
   Library,
   Settings,
+  Search,
+  Clock as Timer,
+  Calendar
 } from "lucide-react";
 import SettingsTab from "@/components/admin/SettingsTab";
 
