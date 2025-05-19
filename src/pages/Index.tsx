@@ -11,7 +11,6 @@ import { ChevronRight, ChevronLeft, Clock, Gamepad2, Sword, Play } from "lucide-
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import CommandCenterStatus from "@/components/CommandCenterStatus";
-
 const Index = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("featured");
@@ -143,12 +142,9 @@ const Index = () => {
           </p>
           
           <div className="flex justify-center">
-            <button 
-              onClick={handleStartExperience}
-              className="relative overflow-hidden bg-gradient-to-r from-vr-accent via-vr-primary to-vr-secondary hover:from-vr-primary hover:to-vr-accent text-white font-medium py-4 px-10 rounded-lg transition-all duration-500 transform hover:scale-105 shadow-lg hover:shadow-xl w-64 h-16 text-xl"
-            >
+            <button onClick={handleStartExperience} className="relative overflow-hidden bg-gradient-to-r from-vr-accent via-vr-primary to-vr-secondary hover:from-vr-primary hover:to-vr-accent text-white font-medium py-4 px-10 rounded-lg transition-all duration-500 transform hover:scale-105 shadow-lg hover:shadow-xl w-64 h-16 text-xl">
               <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-vr-secondary via-vr-primary to-vr-accent opacity-0 hover:opacity-100 transition-opacity duration-1000 animate-pulse-glow"></span>
-              <span className="relative z-10 flex items-center justify-center gap-2">
+              <span className="relative z-10 flex items-center justify-center gap-2 text-base">
                 <Play className="h-6 w-6" />
                 Begin Experience
               </span>
@@ -355,7 +351,6 @@ const Index = () => {
       </section>
     </MainLayout>;
 };
-
 interface GameCardProps {
   game: {
     id: number;
