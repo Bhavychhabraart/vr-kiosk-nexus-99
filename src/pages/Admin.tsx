@@ -2,10 +2,11 @@
 import React, { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CreditCard, Database, Settings } from "lucide-react";
+import { BarChart3, CreditCard, Database, Settings } from "lucide-react";
 import GamesManagementTab from "@/components/admin/GamesManagementTab";
 import SettingsTab from "@/components/admin/SettingsTab";
 import RfidManagementTab from "@/components/admin/RfidManagementTab";
+import AnalyticsTab from "@/components/admin/AnalyticsTab";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState("games");
@@ -22,7 +23,7 @@ const Admin = () => {
         onValueChange={setActiveTab}
         className="w-full"
       >
-        <TabsList className="w-full grid grid-cols-3 mb-8">
+        <TabsList className="w-full grid grid-cols-4 mb-8">
           <TabsTrigger value="games" className="py-3">
             <Database className="h-4 w-4 mr-2" />
             Games
@@ -30,6 +31,10 @@ const Admin = () => {
           <TabsTrigger value="rfid" className="py-3">
             <CreditCard className="h-4 w-4 mr-2" />
             RFID Cards
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="py-3">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Analytics
           </TabsTrigger>
           <TabsTrigger value="settings" className="py-3">
             <Settings className="h-4 w-4 mr-2" />
@@ -43,6 +48,10 @@ const Admin = () => {
         
         <TabsContent value="rfid" className="mt-0">
           <RfidManagementTab />
+        </TabsContent>
+        
+        <TabsContent value="analytics" className="mt-0">
+          <AnalyticsTab />
         </TabsContent>
         
         <TabsContent value="settings" className="mt-0">
