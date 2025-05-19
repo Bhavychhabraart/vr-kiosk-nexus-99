@@ -8,12 +8,22 @@ interface CommandCenterStatusProps {
 }
 
 const CommandCenterStatus = ({ showLabel = true }: CommandCenterStatusProps) => {
-  const { status, startTime } = useCommandCenter();
+  const { connectionState, isConnected } = useCommandCenter();
   const [timeConnected, setTimeConnected] = useState<string>("00:00:00");
+  const [startTime, setStartTime] = useState<Date | null>(null);
+
+  // Set start time when connection is established
+  useEffect(() => {
+    if (isConnected && !startTime) {
+      setStartTime(new Date());
+    } else if (!isConnected) {
+      setStartTime(null);
+    }
+  }, [isConnected, startTime]);
 
   // Update connected time every second
   useEffect(() => {
-    if (status !== "connected" || !startTime) return;
+    if (!isConnected || !startTime) return;
 
     const updateTime = () => {
       const now = new Date();
@@ -30,7 +40,16 @@ const CommandCenterStatus = ({ showLabel = true }: CommandCenterStatusProps) => 
     const interval = setInterval(updateTime, 1000);
     
     return () => clearInterval(interval);
-  }, [status, startTime]);
+  }, [isConnected, startTime]);
+
+  // Map connectionState to status for display
+  const getStatusFromConnectionState = () => {
+    if (connectionState === "connected") return "connected";
+    if (connectionState === "connecting" || connectionState === "reconnecting") return "connecting";
+    return "disconnected";
+  };
+  
+  const status = getStatusFromConnectionState();
 
   if (!showLabel) {
     return (

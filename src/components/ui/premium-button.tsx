@@ -3,7 +3,8 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import { Button, ButtonProps } from "@/components/ui/button";
 
-interface PremiumButtonProps extends ButtonProps {
+// Extend ButtonProps but override the variant property
+interface PremiumButtonProps extends Omit<ButtonProps, 'variant'> {
   glowEffect?: boolean;
   rippleEffect?: boolean;
   variant?: "primary" | "secondary" | "accent" | "outline" | "ghost";
@@ -34,6 +35,17 @@ const PremiumButton = React.forwardRef<HTMLButtonElement, PremiumButtonProps>(
       [props, rippleEffect]
     );
 
+    // Map our premium variants to standard Button variants when applicable
+    const getButtonVariant = (): ButtonProps['variant'] => {
+      if (variant === "secondary" || variant === "outline" || variant === "ghost") {
+        return variant;
+      }
+      if (variant === "primary" || variant === "accent") {
+        return "default"; // Map our custom variants to default
+      }
+      return "default";
+    };
+
     const variants = {
       primary: "bg-vr-primary hover:bg-vr-primary/80 text-white",
       secondary: "bg-vr-secondary hover:bg-vr-secondary/80 text-vr-dark",
@@ -42,6 +54,7 @@ const PremiumButton = React.forwardRef<HTMLButtonElement, PremiumButtonProps>(
       ghost: "bg-transparent hover:bg-white/10 text-white"
     };
 
+    // Override default button styles with our custom class
     return (
       <Button
         className={cn(
@@ -52,6 +65,7 @@ const PremiumButton = React.forwardRef<HTMLButtonElement, PremiumButtonProps>(
         )}
         ref={ref}
         onClick={handleClick}
+        variant={getButtonVariant()}
         {...props}
       >
         {children}

@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
-import { CommandCenterStatus } from "@/components/CommandCenterStatus";
+import CommandCenterStatus from "@/components/CommandCenterStatus";
 import useCommandCenter from "@/hooks/useCommandCenter";
 
 // Mock session duration in seconds (5 minutes for demo)
