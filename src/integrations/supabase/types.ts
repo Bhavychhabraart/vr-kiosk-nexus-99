@@ -21,6 +21,7 @@ export type Database = {
           max_duration_seconds: number
           min_duration_seconds: number
           title: string
+          trailer_url: string | null
           updated_at: string
           working_directory: string | null
         }
@@ -35,6 +36,7 @@ export type Database = {
           max_duration_seconds?: number
           min_duration_seconds?: number
           title: string
+          trailer_url?: string | null
           updated_at?: string
           working_directory?: string | null
         }
@@ -49,6 +51,7 @@ export type Database = {
           max_duration_seconds?: number
           min_duration_seconds?: number
           title?: string
+          trailer_url?: string | null
           updated_at?: string
           working_directory?: string | null
         }

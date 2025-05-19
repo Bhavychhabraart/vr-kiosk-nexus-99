@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -12,7 +13,8 @@ import {
   Timer,
   Users,
   Cpu,
-  LayoutGrid
+  LayoutGrid,
+  Film
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useGames } from "@/hooks/useGames";
@@ -115,6 +117,8 @@ const GameDetail = () => {
     );
   }
 
+  const hasTrailer = !!game.trailerUrl;
+
   return (
     <MainLayout className="relative">
       {/* Back button */}
@@ -140,9 +144,17 @@ const GameDetail = () => {
           <Button 
             className="rounded-full bg-vr-primary/80 hover:bg-vr-primary w-16 h-16 flex items-center justify-center animate-pulse-glow"
             onClick={() => {
-              setTrailerOpen(true);
-              searchParams.set("showTrailer", "true");
-              setSearchParams(searchParams);
+              if (hasTrailer) {
+                setTrailerOpen(true);
+                searchParams.set("showTrailer", "true");
+                setSearchParams(searchParams);
+              } else {
+                toast({
+                  title: "No trailer available",
+                  description: "This game does not have a trailer yet.",
+                  variant: "default"
+                });
+              }
             }}
           >
             <Play className="h-8 w-8 fill-white text-white ml-1" />
@@ -175,14 +187,23 @@ const GameDetail = () => {
               </Button>
               <Button
                 variant="outline"
-                className="border-vr-primary/50 text-vr-text hover:bg-vr-primary/20 flex-1 md:flex-none"
+                className={`border-vr-primary/50 text-vr-text hover:bg-vr-primary/20 flex-1 md:flex-none ${!hasTrailer ? 'opacity-70' : ''}`}
                 onClick={() => {
-                  setTrailerOpen(true);
-                  searchParams.set("showTrailer", "true");
-                  setSearchParams(searchParams);
+                  if (hasTrailer) {
+                    setTrailerOpen(true);
+                    searchParams.set("showTrailer", "true");
+                    setSearchParams(searchParams);
+                  } else {
+                    toast({
+                      title: "No trailer available",
+                      description: "This game does not have a trailer yet.",
+                      variant: "default"
+                    });
+                  }
                 }}
+                disabled={!hasTrailer}
               >
-                Watch Trailer
+                {hasTrailer ? "Watch Trailer" : "No Trailer"}
               </Button>
             </div>
           </div>
@@ -293,9 +314,22 @@ const GameDetail = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="aspect-video relative">
-            <div className="absolute inset-0 flex items-center justify-center bg-vr-dark/80">
-              <p className="text-vr-muted">Video trailer would play here in the actual application.</p>
-            </div>
+            {hasTrailer ? (
+              <iframe
+                className="w-full h-full"
+                src={game.trailerUrl}
+                title={`${game.title} trailer`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center bg-vr-dark/80">
+                <div className="text-center">
+                  <Film className="h-16 w-16 text-vr-muted mx-auto mb-4" />
+                  <p className="text-vr-muted">No trailer available for this game.</p>
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -329,10 +363,11 @@ const getEnhancedGameDetails = (game: any): GameDetails => {
     : ['Uncategorized'];
   
   return {
-    id: Number(game.id),
+    id: game.id,
     title: game.title,
     description: game.description || "No description available for this game.",
     coverImage: game.image_url || "https://images.unsplash.com/photo-1559363367-ee2b206e73ea?q=80&w=1600&auto=format&fit=crop",
+    trailerUrl: game.trailer_url || "",
     screenshots: [
       "https://images.unsplash.com/photo-1593508512255-86ab42a8e620?q=80&w=800&auto=format&fit=crop",
       "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?q=80&w=800&auto=format&fit=crop",
@@ -354,7 +389,7 @@ const getEnhancedGameDetails = (game: any): GameDetails => {
 
 // Types and mock data
 interface GameDetails {
-  id: number;
+  id: string;
   title: string;
   description: string;
   coverImage: string;
@@ -377,10 +412,11 @@ interface GameDetails {
 function getMockGameById(id: number): GameDetails | null {
   const games: Record<number, GameDetails> = {
     1: {
-      id: 1,
+      id: "1",
       title: "Beat Saber",
       description: "Beat Saber is a VR rhythm game where your goal is to slash the beats which fit perfectly into precisely handcrafted music. Every beat indicates which saber you need to use and the direction you need to match. All the music is composed to perfectly fit the handmade levels. Our goal is to make players almost dance while cutting the cubes and avoiding obstacles.",
       coverImage: "https://images.unsplash.com/photo-1559363367-ee2b206e73ea?q=80&w=1600&auto=format&fit=crop",
+      trailerUrl: "https://www.youtube.com/embed/vL39Sg2AqWg",
       screenshots: [
         "https://images.unsplash.com/photo-1593508512255-86ab42a8e620?q=80&w=800&auto=format&fit=crop",
         "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?q=80&w=800&auto=format&fit=crop",
@@ -399,10 +435,11 @@ function getMockGameById(id: number): GameDetails | null {
       }
     },
     2: {
-      id: 2,
+      id: "2",
       title: "Half-Life: Alyx",
       description: "Half-Life: Alyx is Valve's VR return to the Half-Life series. It's the story of an impossible fight against a vicious alien race known as the Combine, set between the events of Half-Life and Half-Life 2. Playing as Alyx Vance, you are humanity's only chance for survival.",
       coverImage: "https://images.unsplash.com/photo-1593508512255-86ab42a8e620?q=80&w=1600&auto=format&fit=crop",
+      trailerUrl: "https://www.youtube.com/embed/O2W0N3uKXmo",
       screenshots: [
         "https://images.unsplash.com/photo-1559363367-ee2b206e73ea?q=80&w=800&auto=format&fit=crop",
         "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?q=80&w=800&auto=format&fit=crop",
@@ -421,10 +458,11 @@ function getMockGameById(id: number): GameDetails | null {
       }
     },
     3: {
-      id: 3,
+      id: "3",
       title: "Superhot VR",
       description: "SUPERHOT VR is a virtual reality first-person shooter video game. Time in the game progresses only when the player moves, allowing for a unique gameplay experience where players can plan their actions in slow-motion. The game features multiple locations and gives players access to a variety of weapons.",
       coverImage: "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?q=80&w=1600&auto=format&fit=crop",
+      trailerUrl: "https://www.youtube.com/embed/pzG7Wc6mbwE",
       screenshots: [
         "https://images.unsplash.com/photo-1559363367-ee2b206e73ea?q=80&w=800&auto=format&fit=crop",
         "https://images.unsplash.com/photo-1593508512255-86ab42a8e620?q=80&w=800&auto=format&fit=crop",

@@ -23,7 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { GameInsert, GameUpdate, Game } from "@/types";
-import { Loader2 } from "lucide-react";
+import { Loader2, Film } from "lucide-react";
 
 // Define the form validation schema
 const gameSchema = z.object({
@@ -33,6 +33,7 @@ const gameSchema = z.object({
   working_directory: z.string().optional(),
   arguments: z.string().optional(),
   image_url: z.string().optional(),
+  trailer_url: z.string().optional(),
   min_duration_seconds: z.coerce.number()
     .int()
     .min(1, "Minimum duration must be at least 1 second"),
@@ -64,6 +65,7 @@ const GameForm = ({ open, onClose, onSubmit, isSubmitting, game }: GameFormProps
       working_directory: game?.working_directory || "",
       arguments: game?.arguments || "",
       image_url: game?.image_url || "",
+      trailer_url: game?.trailer_url || "",
       min_duration_seconds: game?.min_duration_seconds || 300,
       max_duration_seconds: game?.max_duration_seconds || 1800
     }
@@ -123,22 +125,44 @@ const GameForm = ({ open, onClose, onSubmit, isSubmitting, game }: GameFormProps
               )}
             />
             
-            <FormField
-              control={form.control}
-              name="image_url"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Image URL</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="/games/imagename.jpg" />
-                  </FormControl>
-                  <FormDescription>
-                    Path to the game image (e.g., /games/beatsaber.jpg)
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="image_url"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Image URL</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="/games/imagename.jpg" />
+                    </FormControl>
+                    <FormDescription>
+                      Path to the game image (e.g., /games/beatsaber.jpg)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="trailer_url"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center">
+                      <Film className="h-4 w-4 mr-1 text-vr-secondary" />
+                      <span>Trailer URL</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="https://www.youtube.com/embed/VIDEO_ID" />
+                    </FormControl>
+                    <FormDescription>
+                      YouTube embed URL (e.g., https://www.youtube.com/embed/VIDEO_ID)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField

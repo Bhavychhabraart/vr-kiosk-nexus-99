@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Loader2, Search, Star } from "lucide-react";
+import { Film, Loader2, Search, Star } from "lucide-react";
 import { useGames } from "@/hooks/useGames";
 
 const Games = () => {
@@ -119,12 +119,14 @@ interface GameCardProps {
     title: string;
     description?: string | null;
     image_url?: string | null;
+    trailer_url?: string | null;
   };
 }
 
 const GameCard = ({ game }: GameCardProps) => {
   const navigate = useNavigate();
   const category = game.description?.split(",")[0] || "Uncategorized";
+  const hasTrailer = !!game.trailer_url;
   
   // Use a default image if no image_url is provided
   const imageUrl = game.image_url || "https://images.unsplash.com/photo-1559363367-ee2b206e73ea?q=80&w=800&auto=format&fit=crop";
@@ -148,6 +150,13 @@ const GameCard = ({ game }: GameCardProps) => {
           <Star className="h-3 w-3 fill-vr-secondary text-vr-secondary" />
           <span className="text-vr-text">4.5</span>
         </div>
+        {hasTrailer && (
+          <div className="absolute bottom-2 right-2">
+            <div className="bg-vr-secondary/90 text-vr-dark p-1 rounded-full w-6 h-6 flex items-center justify-center">
+              <Film className="h-3 w-3" />
+            </div>
+          </div>
+        )}
       </div>
       <h3 className="text-lg font-medium group-hover:text-vr-secondary transition-colors">
         {game.title}

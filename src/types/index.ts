@@ -26,3 +26,28 @@ export interface KioskSettings {
   location: string;
   idleTimeout: number;
 }
+
+// Game card view in the Games listing
+export interface GameCardView {
+  id: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  trailer_url: string | null;
+}
+
+// Game detail view with additional information
+export interface GameDetailView extends GameCardView {
+  categories: string[];
+  rating: number;
+  duration: string;
+  players: string;
+  ageRating: string;
+  systemRequirements: {
+    headset: string;
+    processor: string;
+    graphics: string;
+    memory: string;
+  };
+  screenshots: string[];
+}
