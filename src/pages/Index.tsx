@@ -11,6 +11,7 @@ import { ChevronRight, ChevronLeft, Clock, Gamepad2, Sword, Play } from "lucide-
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import CommandCenterStatus from "@/components/CommandCenterStatus";
+
 const Index = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("featured");
@@ -141,17 +142,23 @@ const Index = () => {
             Immerse yourself in cutting-edge virtual worlds with our premium VR kiosk system
           </p>
           
-          <animated.div style={buttonAnimation} onMouseEnter={() => setHoveringButton(true)} onMouseLeave={() => setHoveringButton(false)} className="flex justify-center">
-            <Button onClick={handleStartExperience} className="w-64 h-64 rounded-full bg-vr-primary/10 backdrop-blur-md border border-vr-primary/30 flex flex-col items-center justify-center group hover:bg-vr-primary/20">
-              <div className="relative">
-                <div className="absolute -inset-1 rounded-full animate-pulse-glow opacity-75"></div>
-                <div className="relative bg-vr-dark/50 p-6 rounded-full backdrop-blur-sm">
-                  <Play className="h-16 w-16 text-vr-primary group-hover:scale-110 transition-all" />
+          <div className="flex justify-center">
+            <Button 
+              onClick={handleStartExperience} 
+              className="w-64 h-64 rounded-full bg-gradient-to-br from-vr-primary via-indigo-500 to-vr-accent text-white border-none relative overflow-hidden group hover:shadow-[0_0_30px_rgba(236,72,153,0.6)] transition-all duration-500"
+              onMouseEnter={() => setHoveringButton(true)} 
+              onMouseLeave={() => setHoveringButton(false)}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-vr-primary/80 via-indigo-600/80 to-vr-accent/80 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="relative z-10 flex flex-col items-center">
+                <div className="relative bg-vr-dark/50 p-6 rounded-full backdrop-blur-sm mb-6">
+                  <div className="absolute -inset-1 rounded-full animate-pulse-glow opacity-75 bg-vr-accent/30"></div>
+                  <Play className="h-16 w-16 text-white group-hover:scale-110 transition-all" />
                 </div>
+                <span className="text-2xl font-medium text-white tracking-wide">Begin Experience</span>
               </div>
-              <span className="text-2xl font-medium text-vr-text mt-6 tracking-wide">Begin Experience</span>
             </Button>
-          </animated.div>
+          </div>
           
           <motion.div className="absolute bottom-8 left-0 right-0 flex justify-center" initial={{
           opacity: 0
@@ -353,6 +360,7 @@ const Index = () => {
       </section>
     </MainLayout>;
 };
+
 interface GameCardProps {
   game: {
     id: number;
@@ -370,7 +378,7 @@ const GameCard = ({
   return <div className="glass-card cursor-pointer group h-full flex flex-col overflow-hidden border border-vr-primary/10 rounded-xl transition-all duration-300 hover:shadow-glow hover:-translate-y-1" onClick={() => onGameSelect(game)}>
       <div className="aspect-[16/9] overflow-hidden rounded-t-lg mb-0 relative shine-effect">
         <img src={game.image} alt={game.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-        <div className="absolute inset-0 bg-gradient-to-t from-vr-dark to-transparent opacity-60"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-vr-dark to-transparent"></div>
         <div className="absolute top-3 right-3 flex items-center gap-1 bg-vr-dark/70 px-2 py-1 rounded-md text-xs backdrop-blur-sm">
           <RatingDisplay rating={game.rating || 4.5} size="sm" />
         </div>
