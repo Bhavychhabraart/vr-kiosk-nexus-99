@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -11,7 +10,7 @@ import {
   ChevronLeft,
   RefreshCw,
   WifiOff,
-  SimCard
+  Smartphone
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useRFID } from "@/hooks/useRFID";
@@ -248,7 +247,7 @@ const RFIDScanScreen = ({
                   variant="outline" 
                   className="gap-2"
                 >
-                  <SimCard className="h-4 w-4" />
+                  <Smartphone className="h-4 w-4" />
                   Simulate RFID
                 </Button>
               </div>
