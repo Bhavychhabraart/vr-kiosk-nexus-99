@@ -223,7 +223,7 @@ const OverviewTab = () => {
           description="Per user" 
           trend="-2%" 
           positive={false} 
-          icon={<Timer className="h-5 w-5 text-vr-accent" />}
+          icon={<Clock className="h-5 w-5 text-vr-accent" />}
         />
       </div>
       
@@ -339,91 +339,6 @@ const OverviewTab = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
-};
-
-const GamesManagementTab = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  
-  // Mock games data
-  const games = [
-    { id: 1, title: "Beat Saber", category: "Rhythm, Action", status: "Available" },
-    { id: 2, title: "Half-Life: Alyx", category: "Adventure, Shooter", status: "Available" },
-    { id: 3, title: "Superhot VR", category: "Action, Strategy", status: "Available" },
-    { id: 4, title: "Moss", category: "Adventure", status: "Maintenance" },
-    { id: 5, title: "The Room VR", category: "Puzzle", status: "Available" },
-    { id: 6, title: "Star Wars: Squadrons", category: "Simulation", status: "Available" },
-  ];
-  
-  // Filter games based on search term
-  const filteredGames = games.filter(game =>
-    game.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  return (
-    <div className="vr-card">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold">Game Library</h2>
-        <Button className="vr-button-secondary">
-          Add New Game
-        </Button>
-      </div>
-      
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-vr-muted h-4 w-4" />
-        <Input
-          placeholder="Search games..."
-          className="pl-10 bg-vr-dark border-vr-primary/30 focus:border-vr-secondary"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
-      
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-vr-primary/20">
-              <th className="py-3 px-4 text-left text-vr-muted font-medium">Game Title</th>
-              <th className="py-3 px-4 text-left text-vr-muted font-medium">Category</th>
-              <th className="py-3 px-4 text-left text-vr-muted font-medium">Status</th>
-              <th className="py-3 px-4 text-right text-vr-muted font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredGames.map(game => (
-              <tr key={game.id} className="border-b border-vr-primary/10 hover:bg-vr-dark/50">
-                <td className="py-3 px-4 font-medium">{game.title}</td>
-                <td className="py-3 px-4 text-vr-muted">{game.category}</td>
-                <td className="py-3 px-4">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    game.status === 'Available' 
-                      ? 'bg-green-500/20 text-green-400' 
-                      : 'bg-yellow-500/20 text-yellow-400'
-                  }`}>
-                    {game.status}
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-right">
-                  <Button variant="ghost" size="sm" className="text-vr-secondary hover:text-vr-secondary/80">
-                    Edit
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-vr-accent hover:text-vr-accent/80">
-                    Delete
-                  </Button>
-                </td>
-              </tr>
-            ))}
-            {filteredGames.length === 0 && (
-              <tr>
-                <td colSpan={4} className="py-8 text-center text-vr-muted">
-                  No games found matching "{searchTerm}"
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 };
