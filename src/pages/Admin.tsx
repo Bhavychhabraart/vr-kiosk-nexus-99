@@ -1,34 +1,15 @@
-
 import { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Users,
   BarChart3,
   Activity,
   Library,
-  Lock,
-  Timer,
   Settings,
-  Search,
-  Calendar
 } from "lucide-react";
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend
-} from "recharts";
+import SettingsTab from "@/components/admin/SettingsTab";
 
 const Admin = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -116,7 +97,7 @@ const Admin = () => {
               <span>Games</span>
             </TabsTrigger>
             <TabsTrigger value="sessions" className="data-[state=active]:bg-vr-primary gap-2">
-              <Timer size={16} />
+              <BarChart3 size={16} />
               <span>Sessions</span>
             </TabsTrigger>
             <TabsTrigger value="users" className="data-[state=active]:bg-vr-primary gap-2">
@@ -153,10 +134,7 @@ const Admin = () => {
         </TabsContent>
 
         <TabsContent value="settings" className="m-0">
-          <div className="vr-card">
-            <h2 className="text-xl font-bold mb-4">System Settings</h2>
-            <p className="text-vr-muted">This section would contain system settings and configuration.</p>
-          </div>
+          <SettingsTab />
         </TabsContent>
       </Tabs>
     </MainLayout>

@@ -1,4 +1,6 @@
 import { toast } from "@/components/ui/use-toast";
+import { WebSocketSettings } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
 // Connection states for the WebSocket
 export enum ConnectionState {
@@ -54,6 +56,13 @@ export interface ServerStatus {
   diskSpace?: number;
 }
 
+// Default WebSocket settings
+const defaultSettings: WebSocketSettings = {
+  url: 'ws://localhost:8081',
+  reconnectAttempts: 5,
+  reconnectDelay: 2000,
+};
+
 class WebSocketService {
   private socket: WebSocket | null = null;
   private connectionState: ConnectionState = ConnectionState.DISCONNECTED;
@@ -68,9 +77,44 @@ class WebSocketService {
     connected: false,
     gameRunning: false,
   };
+  private settings: WebSocketSettings = { ...defaultSettings };
+  private _initialized = false;
+
+  // Initialize with settings from Supabase if available
+  async initializeSettings(): Promise<void> {
+    try {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('id', 'websocket')
+        .single();
+      
+      if (error) throw error;
+      
+      if (data && data.value) {
+        const storedSettings = data.value as Record<string, any>;
+        this.settings = {
+          url: storedSettings.url || defaultSettings.url,
+          reconnectAttempts: storedSettings.reconnect_attempts || defaultSettings.reconnectAttempts,
+          reconnectDelay: storedSettings.reconnect_delay || defaultSettings.reconnectDelay
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to load WebSocket settings from database, using defaults', error);
+      this.settings = { ...defaultSettings };
+    }
+  }
 
   // Connect to the C++ WebSocket server
-  public connect(url: string): void {
+  async connect(customUrl?: string): Promise<void> {
+    // Load settings from database if not done already
+    if (!this._initialized) {
+      await this.initializeSettings();
+      this._initialized = true;
+    }
+
+    const url = customUrl || this.settings.url;
+    
     if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
       return;
     }

@@ -9,7 +9,113 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      games: {
+        Row: {
+          arguments: string | null
+          created_at: string
+          description: string | null
+          executable_path: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          max_duration_seconds: number
+          min_duration_seconds: number
+          title: string
+          updated_at: string
+          working_directory: string | null
+        }
+        Insert: {
+          arguments?: string | null
+          created_at?: string
+          description?: string | null
+          executable_path?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          max_duration_seconds?: number
+          min_duration_seconds?: number
+          title: string
+          updated_at?: string
+          working_directory?: string | null
+        }
+        Update: {
+          arguments?: string | null
+          created_at?: string
+          description?: string | null
+          executable_path?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          max_duration_seconds?: number
+          min_duration_seconds?: number
+          title?: string
+          updated_at?: string
+          working_directory?: string | null
+        }
+        Relationships: []
+      }
+      session_history: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          end_time: string | null
+          game_id: string | null
+          id: string
+          notes: string | null
+          rating: number | null
+          start_time: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          end_time?: string | null
+          game_id?: string | null
+          id?: string
+          notes?: string | null
+          rating?: number | null
+          start_time?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          end_time?: string | null
+          game_id?: string | null
+          id?: string
+          notes?: string | null
+          rating?: number | null
+          start_time?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_history_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settings: {
+        Row: {
+          id: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          id: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          id?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
