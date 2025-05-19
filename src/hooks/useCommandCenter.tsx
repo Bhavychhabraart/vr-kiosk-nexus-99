@@ -84,6 +84,20 @@ export function useCommandCenter(options: UseCommandCenterOptions = {}) {
     }
   }, []);
   
+  // Submit game rating
+  const submitRating = useCallback(async (gameId: string, rating: number) => {
+    try {
+      const response = await websocketService.sendCommand(CommandType.SUBMIT_RATING, {
+        gameId,
+        rating
+      });
+      return response;
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      throw error;
+    }
+  }, []);
+  
   // Get server status
   const getStatus = useCallback(async () => {
     try {
@@ -144,6 +158,7 @@ export function useCommandCenter(options: UseCommandCenterOptions = {}) {
     endSession,
     pauseSession,
     resumeSession,
+    submitRating,
     getStatus,
     sendCommand,
     isConnected: connectionState === ConnectionState.CONNECTED,

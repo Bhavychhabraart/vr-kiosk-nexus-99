@@ -20,6 +20,9 @@ Environment=LOG_LEVEL=INFO
 Environment=VR_DEFAULT_SESSION_DURATION=600
 Environment=VR_CPU_WARNING_THRESHOLD=80
 Environment=VR_MEMORY_WARNING_THRESHOLD=80
+Environment=VR_DISK_WARNING_THRESHOLD=90
+Environment=VR_RATINGS_FILE=ratings.json
+Environment=VR_BACKUP_INTERVAL=3600
 
 # Uncomment and edit if you need to run as a different user
 #User=vr-admin

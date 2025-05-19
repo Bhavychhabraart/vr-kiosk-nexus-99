@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -20,13 +19,13 @@ import {
   Pause,
   Play,
   X,
-  ArrowLeft,
-  Star
+  ArrowLeft
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
 import CommandCenterStatus from "@/components/CommandCenterStatus";
 import useCommandCenter from "@/hooks/useCommandCenter";
+import { RatingInput } from "@/components/ui/rating-input";
 
 // Mock session duration in seconds (5 minutes for demo)
 const MOCK_SESSION_DURATION = 300;
@@ -46,6 +45,7 @@ const Session = () => {
   const [gameStarted, setGameStarted] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(0);
+  const [submittingRating, setSubmittingRating] = useState(false);
   
   // Connect to command center
   const { 
@@ -55,6 +55,7 @@ const Session = () => {
     endSession, 
     pauseSession, 
     resumeSession,
+    submitRating,
     isConnected
   } = useCommandCenter({
     onStatusChange: (status) => {
@@ -200,15 +201,31 @@ const Session = () => {
     }
   };
 
-  const handleRatingSubmit = () => {
-    toast({
-      title: "Thanks for your feedback!",
-      description: "Your rating has been recorded.",
-    });
+  const handleRatingSubmit = async () => {
+    if (!gameId || rating === 0) return;
+    
+    setSubmittingRating(true);
+    
+    try {
+      await submitRating(gameId, rating);
+      
+      toast({
+        title: "Thanks for your feedback!",
+        description: "Your rating has been recorded.",
+      });
 
-    setTimeout(() => {
-      navigate("/");
-    }, 1000);
+      setTimeout(() => {
+        navigate("/");
+      }, 1000);
+    } catch (error) {
+      console.error("Error submitting rating:", error);
+      toast({
+        title: "Rating submission failed",
+        description: "Could not save your rating. Please try again.",
+        variant: "destructive",
+      });
+      setSubmittingRating(false);
+    }
   };
   
   // If showing rating screen
@@ -231,25 +248,19 @@ const Session = () => {
           <p className="text-vr-muted text-center mb-8">Rate your session playing {gameTitle}</p>
           
           <div className="flex justify-center mb-8">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <Star
-                key={star}
-                className={`h-12 w-12 mx-1 cursor-pointer transition-all ${
-                  star <= rating 
-                    ? "text-vr-secondary fill-vr-secondary" 
-                    : "text-gray-400"
-                }`}
-                onClick={() => setRating(star)}
-              />
-            ))}
+            <RatingInput 
+              size="lg" 
+              onChange={setRating} 
+              initialRating={rating}
+            />
           </div>
           
           <Button 
             onClick={handleRatingSubmit}
             className="w-full py-6 bg-vr-secondary text-vr-dark hover:bg-vr-secondary/90"
-            disabled={rating === 0}
+            disabled={rating === 0 || submittingRating}
           >
-            Submit Rating
+            {submittingRating ? "Submitting..." : "Submit Rating"}
           </Button>
         </motion.div>
       </motion.div>

@@ -1,4 +1,3 @@
-
 import { toast } from "@/components/ui/use-toast";
 
 // Connection states for the WebSocket
@@ -18,6 +17,7 @@ export enum CommandType {
   RESUME_SESSION = 'resumeSession',
   GET_STATUS = 'getStatus',
   HEARTBEAT = 'heartbeat',
+  SUBMIT_RATING = 'submitRating',
 }
 
 // Response status from C++ server
