@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -8,10 +9,12 @@ import {
   CheckCircle2,
   Loader2,
   ChevronLeft,
-  RefreshCw
+  RefreshCw,
+  WifiOff
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useRFID } from "@/hooks/useRFID";
+import websocketService, { ConnectionState } from "@/services/websocket";
 
 interface RFIDScanScreenProps {
   gameId: string;
@@ -28,37 +31,65 @@ const RFIDScanScreen = ({
 }: RFIDScanScreenProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { scanningForRFID, startRFIDScan, cancelRFIDScan, scannedRFID } = useRFID();
+  const { 
+    isScanning, 
+    lastScannedTag, 
+    startRFIDScan, 
+    cancelRFIDScan 
+  } = useRFID();
   
-  const [scanStatus, setScanStatus] = useState<'waiting' | 'scanning' | 'success' | 'error'>('waiting');
+  const [scanStatus, setScanStatus] = useState<'waiting' | 'scanning' | 'success' | 'error' | 'hardware-error'>('waiting');
   const [scanTimeout, setScanTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [connectionState, setConnectionState] = useState<ConnectionState>(
+    websocketService.getConnectionState()
+  );
+
+  // Monitor WebSocket connection state
+  useEffect(() => {
+    const unsubscribe = websocketService.onConnectionStateChange(setConnectionState);
+    return unsubscribe;
+  }, []);
   
   // Start scanning automatically when component mounts
   useEffect(() => {
-    handleStartScan();
+    if (connectionState === ConnectionState.CONNECTED) {
+      handleStartScan();
+    } else {
+      setScanStatus('hardware-error');
+    }
     
     // Clean up if component unmounts during scan
     return () => {
       if (scanTimeout) clearTimeout(scanTimeout);
       cancelRFIDScan();
     };
-  }, []);
+  }, [connectionState]);
   
   // Watch for successful scan results
   useEffect(() => {
-    if (scannedRFID && scanStatus === 'scanning') {
+    if (lastScannedTag && scanStatus === 'scanning') {
       setScanStatus('success');
       
       // Add a slight delay before navigating
       const successTimer = setTimeout(() => {
-        onSuccess(scannedRFID);
+        onSuccess(lastScannedTag);
       }, 1500);
       
       return () => clearTimeout(successTimer);
     }
-  }, [scannedRFID, scanStatus, onSuccess]);
+  }, [lastScannedTag, scanStatus, onSuccess]);
   
   const handleStartScan = () => {
+    if (connectionState !== ConnectionState.CONNECTED) {
+      setScanStatus('hardware-error');
+      toast({
+        title: "Hardware Error",
+        description: "RFID reader is not connected. Please check hardware connection.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setScanStatus('scanning');
     startRFIDScan();
     
@@ -88,6 +119,14 @@ const RFIDScanScreen = ({
   const handleRetry = () => {
     if (scanTimeout) clearTimeout(scanTimeout);
     handleStartScan();
+  };
+
+  const handleReconnect = () => {
+    websocketService.connect();
+    toast({
+      title: "Reconnecting",
+      description: "Attempting to connect to RFID reader...",
+    });
   };
   
   return (
@@ -170,6 +209,18 @@ const RFIDScanScreen = ({
               </Button>
             </div>
           )}
+          
+          {scanStatus === 'hardware-error' && (
+            <div className="flex flex-col items-center">
+              <WifiOff className="h-16 w-16 text-vr-accent mb-4" />
+              <p className="text-vr-accent mb-2">RFID reader not connected</p>
+              <p className="text-vr-muted text-sm mb-4">Please check hardware connection</p>
+              <Button onClick={handleReconnect} className="gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Reconnect Hardware
+              </Button>
+            </div>
+          )}
         </div>
         
         <div className="flex justify-between mt-6">
@@ -182,7 +233,7 @@ const RFIDScanScreen = ({
             Back
           </Button>
           
-          {scanStatus !== 'scanning' && scanStatus !== 'success' && (
+          {scanStatus !== 'scanning' && scanStatus !== 'success' && scanStatus !== 'hardware-error' && (
             <Button
               variant="default"
               className="bg-vr-secondary hover:bg-vr-secondary/90 text-vr-dark"

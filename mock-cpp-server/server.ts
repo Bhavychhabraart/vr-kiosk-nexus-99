@@ -1,4 +1,3 @@
-
 // This is a mock implementation of a C++ WebSocket server for testing
 // In a real implementation, this would be written in C++ using a library like Boost.Beast
 // To run this: npm install ws && npx ts-node server.ts
@@ -140,6 +139,61 @@ const commandHandlers = {
     sendResponse(ws, commandId, 'success', {
       timestamp: Date.now(),
     });
+  },
+  
+  scanRfid: (ws: WebSocket, params: any, commandId: string) => {
+    console.log('RFID scan requested');
+    
+    // In a real implementation, this would activate the RFID hardware
+    // and wait for a card to be scanned
+    
+    // For now, we'll simulate reading a real tag after a short delay
+    setTimeout(() => {
+      // Real hardware would return the actual scanned tag ID here
+      // We're still simulating the tag for testing purposes
+      const tagId = `RFID-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      
+      sendResponse(ws, commandId, 'success', {
+        tagId,
+        readTime: new Date().toISOString(),
+        readerStatus: 'connected'
+      });
+    }, 1500);
+  },
+  
+  validateRfid: (ws: WebSocket, params: any, commandId: string) => {
+    if (params.cancel) {
+      console.log('RFID scan cancelled');
+      sendResponse(ws, commandId, 'success', {
+        cancelled: true
+      });
+      return;
+    }
+    
+    const { tagId } = params;
+    
+    if (!tagId) {
+      sendResponse(ws, commandId, 'error', null, 'Missing tagId parameter');
+      return;
+    }
+    
+    console.log(`Validating RFID tag: ${tagId}`);
+    
+    // In a real implementation, this would validate the tag against a secure database
+    // or communicate with an authentication service
+    
+    // For demo purposes, simulate a valid tag
+    const isValid = Math.random() > 0.2; // 80% chance of success
+    
+    if (isValid) {
+      sendResponse(ws, commandId, 'success', {
+        tagId,
+        isValid: true,
+        validatedAt: new Date().toISOString()
+      });
+    } else {
+      sendResponse(ws, commandId, 'error', null, 'Invalid or unauthorized RFID tag');
+    }
   },
 };
 

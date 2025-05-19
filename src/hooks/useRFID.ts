@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { RFIDCard, RFIDCardInsert } from '@/types';
+import websocketService, { CommandType } from '@/services/websocket';
 
 // Fetch all RFID cards
 const fetchRFIDCards = async (): Promise<RFIDCard[]> => {
@@ -98,7 +99,7 @@ const markRFIDCardAsUsed = async (tagId: string): Promise<RFIDCard> => {
 
 export const useRFID = () => {
   const queryClient = useQueryClient();
-  const [scanningForRFID, setScanningForRFID] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [scannedRFID, setScannedRFID] = useState<string | null>(null);
   
   // Query to get all RFID cards
@@ -179,45 +180,67 @@ export const useRFID = () => {
     }
   }, [markCardAsUsedMutation]);
   
-  // Simulate RFID scanning (for development without actual hardware)
+  // Start RFID scanning using the WebSocket service to connect with hardware
   const startRFIDScan = useCallback(() => {
-    setScanningForRFID(true);
+    setIsScanning(true);
     setScannedRFID(null);
     
-    // In a real implementation, this would connect to actual RFID hardware
-    // For development, we'll simulate a scan after a short delay
-    const timeout = setTimeout(() => {
-      // Generate a random RFID tag for simulation
-      const simulatedTag = `RFID-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
-      setScannedRFID(simulatedTag);
-      setScanningForRFID(false);
-      
-      // Check if this is a registered tag
-      checkRFIDTag(simulatedTag).then(card => {
-        if (!card) {
-          console.log('Unregistered RFID tag scanned:', simulatedTag);
+    // Use the WebSocket service to send a command to start RFID scanning
+    // This connects to the actual hardware through the C++/Python backend
+    websocketService.sendCommand(CommandType.SCAN_RFID)
+      .then(response => {
+        if (response.status === 'success' && response.data?.tagId) {
+          const tagId = response.data.tagId;
+          setScannedRFID(tagId);
+          
+          // Check if this is a registered tag
+          checkRFIDTag(tagId).then(card => {
+            if (!card) {
+              console.log('Unregistered RFID tag scanned:', tagId);
+            }
+          });
+        } else {
+          toast({
+            title: "Scan Error",
+            description: "Failed to read RFID card. Please try again.",
+            variant: "destructive",
+          });
         }
+        setIsScanning(false);
+      })
+      .catch(error => {
+        console.error('RFID scan error:', error);
+        toast({
+          title: "Hardware Error",
+          description: "Could not connect to RFID reader. Please check hardware connection.",
+          variant: "destructive",
+        });
+        setIsScanning(false);
       });
-      
-    }, 2000); // Simulate 2 second scan time
-    
-    return () => clearTimeout(timeout);
   }, [checkRFIDTag]);
   
   // Cancel an ongoing scan
   const cancelRFIDScan = useCallback(() => {
-    setScanningForRFID(false);
+    if (isScanning) {
+      websocketService.sendCommand(CommandType.VALIDATE_RFID, { cancel: true })
+        .catch(error => console.error('Error cancelling RFID scan:', error));
+    }
+    
+    setIsScanning(false);
     setScannedRFID(null);
-  }, []);
+  }, [isScanning]);
   
   return {
     rfidCards,
     isLoadingCards,
     cardsError,
-    scanningForRFID,
-    scannedRFID,
+    scanningForRFID: isScanning,  // For backward compatibility
+    isScanning,                   // New preferred name
+    scannedRFID,                  // For backward compatibility
+    lastScannedTag: scannedRFID,  // New preferred name
     startRFIDScan,
     cancelRFIDScan,
+    stopRFIDScan: cancelRFIDScan, // Aliasing for compatibility
     checkRFIDTag,
     createCard: (card: RFIDCardInsert) => createCardMutation.mutate(card),
     updateCard: (id: string, updates: Partial<RFIDCard>) => 
@@ -225,11 +248,7 @@ export const useRFID = () => {
     deleteCard: (id: string) => deleteCardMutation.mutate(id),
     isCreatingCard: createCardMutation.isPending,
     isUpdatingCard: updateCardMutation.isPending,
-    isDeletingCard: deleteCardMutation.isPending,
-    // Adding missing properties for RFIDScanScreen
-    lastScannedTag: scannedRFID,
-    isScanning: scanningForRFID,
-    stopRFIDScan: cancelRFIDScan  // Aliasing cancelRFIDScan as stopRFIDScan
+    isDeletingCard: deleteCardMutation.isPending
   };
 };
 
