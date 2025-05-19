@@ -134,7 +134,7 @@ const Index = () => {
           
           <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight">
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-vr-secondary via-vr-primary to-vr-accent">NextGen Arcadia</span>
-            <span className="block text-vr-text">Premium Experience</span>
+            <span className="block text-vr-text text-5xl">kiosk experience</span>
           </h1>
           
           <p className="text-vr-muted text-xl md:text-2xl mb-12 max-w-xl mx-auto font-light">
