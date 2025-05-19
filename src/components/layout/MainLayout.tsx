@@ -1,5 +1,5 @@
 
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import Navbar from "./Navbar";
 import { cn } from "@/lib/utils";
 import { AnimatedBackground } from "../ui/animated-background";
@@ -7,8 +7,9 @@ import { AnimatedBackground } from "../ui/animated-background";
 interface MainLayoutProps {
   children: ReactNode;
   className?: string;
-  backgroundVariant?: "dots" | "orbs" | "grid" | "none";
+  backgroundVariant?: "dots" | "orbs" | "grid" | "waves" | "none";
   withPattern?: boolean;
+  intensity?: "low" | "medium" | "high";
 }
 
 const MainLayout = ({ 
@@ -16,9 +17,19 @@ const MainLayout = ({
   className,
   backgroundVariant = "orbs",
   withPattern = false,
+  intensity = "medium",
 }: MainLayoutProps) => {
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
   return (
-    <div className="min-h-screen flex flex-col bg-vr-gradient relative">
+    <div className={cn(
+      "min-h-screen flex flex-col bg-vr-gradient relative transition-opacity duration-700",
+      mounted ? "opacity-100" : "opacity-0"
+    )}>
       {withPattern && (
         <div className="absolute inset-0 pointer-events-none bg-tech-pattern opacity-10" />
       )}
@@ -27,6 +38,7 @@ const MainLayout = ({
       
       <AnimatedBackground 
         variant={backgroundVariant === "none" ? undefined : backgroundVariant}
+        intensity={intensity}
         className="flex-1 mt-16"
       >
         <main className={cn("px-4 py-8 md:px-6 lg:px-8 max-w-7xl mx-auto", className)}>

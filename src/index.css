@@ -45,6 +45,7 @@
   body {
     @apply bg-vr-dark text-vr-text font-montserrat antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    background-image: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.15), rgba(10, 12, 23, 0.95));
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -120,6 +121,35 @@
   .premium-gradient {
     @apply bg-gradient-to-br from-vr-primary via-indigo-600 to-vr-secondary;
   }
+  
+  /* New UI components matching welcome screen */
+  .glass-panel {
+    @apply backdrop-blur-xl bg-vr-dark/30 border border-vr-primary/20 rounded-xl shadow-glow-sm transition-all duration-300;
+  }
+  
+  .glass-button {
+    @apply bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-lg hover:bg-white/20 transition-all duration-300;
+  }
+  
+  .orb-bg {
+    @apply relative overflow-hidden;
+  }
+  
+  .orb-bg::before {
+    content: "";
+    @apply absolute w-64 h-64 rounded-full -top-32 -left-32 bg-vr-primary/30 blur-[50px];
+    animation: float-slow 15s infinite alternate;
+  }
+  
+  .orb-bg::after {
+    content: "";
+    @apply absolute w-72 h-72 rounded-full -bottom-40 -right-20 bg-vr-accent/20 blur-[60px];
+    animation: float-slow 20s infinite alternate-reverse;
+  }
+  
+  .shadow-glow-sm {
+    box-shadow: 0 0 10px 1px rgba(99, 102, 241, 0.2);
+  }
 }
 
 /* Particle animation */
@@ -138,6 +168,18 @@
   }
   100% {
     transform: translateY(0) translateX(0);
+  }
+}
+
+@keyframes float-slow {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+  }
+  50% {
+    transform: translateY(-20px) translateX(10px) scale(1.05);
+  }
+  100% {
+    transform: translateY(0) translateX(0) scale(1);
   }
 }
 
@@ -162,6 +204,39 @@
   z-index: 0;
 }
 
+/* Wave animation for new background variant */
+.wave {
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  border-radius: 40%;
+  opacity: 0.2;
+}
+
+.wave-1 {
+  background: rgba(99, 102, 241, 0.2);
+  animation: wave 15s linear infinite;
+}
+
+.wave-2 {
+  background: rgba(16, 185, 129, 0.2);
+  animation: wave 17s linear infinite;
+  animation-delay: -5s;
+}
+
+.wave-3 {
+  background: rgba(236, 72, 153, 0.2);
+  animation: wave 20s linear infinite;
+  animation-delay: -2s;
+}
+
+@keyframes wave {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* 3D perspective effect */
 .perspective-container {
   perspective: 1000px;
@@ -178,5 +253,5 @@
 
 /* Blurred orbs */
 .orb {
-  @apply absolute rounded-full blur-[32px] opacity-50;
+  @apply absolute rounded-full opacity-0 transition-opacity duration-700;
 }
