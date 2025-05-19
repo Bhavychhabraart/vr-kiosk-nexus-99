@@ -56,7 +56,11 @@ const Admin = () => {
             className={`aspect-square text-xl font-bold ${num === 0 ? 'col-start-2' : ''}`}
             onClick={() => {
               if (pinValue.length < 6) {
-                setPinValue(prev => prev + num);
+                const newPin = pinValue + num;
+                setPinValue(newPin);
+                if (newPin.length === 6) {
+                  handlePinComplete(newPin);
+                }
               }
             }}
           >
@@ -93,10 +97,9 @@ const Admin = () => {
                     value={pinValue}
                     onChange={setPinValue}
                     maxLength={6}
-                    onComplete={handlePinComplete}
                     render={({ slots }) => (
                       <InputOTPGroup className="gap-2">
-                        {slots.map((slot, index) => (
+                        {Array(6).fill(0).map((_, index) => (
                           <InputOTPSlot
                             key={index}
                             index={index}
