@@ -1,169 +1,176 @@
 
 import { useState, useEffect, useCallback } from 'react';
+import { toast } from '@/components/ui/use-toast';
 import websocketService, { 
   ConnectionState, 
-  CommandType,
-  ServerStatus,
-  CommandResponse
+  CommandType, 
+  ServerStatus 
 } from '@/services/websocket';
 
-// Environment variables (in a real implementation, this would be in .env)
-const WS_SERVER_URL = import.meta.env.VITE_WS_SERVER_URL || 'ws://localhost:8081';
-
-interface UseCommandCenterOptions {
-  autoConnect?: boolean;
+interface CommandCenterOptions {
   onStatusChange?: (status: ServerStatus) => void;
-  onConnectionChange?: (state: ConnectionState) => void;
 }
 
-export function useCommandCenter(options: UseCommandCenterOptions = {}) {
-  const { autoConnect = true, onStatusChange, onConnectionChange } = options;
-  
+const useCommandCenter = (options: CommandCenterOptions = {}) => {
   const [connectionState, setConnectionState] = useState<ConnectionState>(
     websocketService.getConnectionState()
   );
-  
   const [serverStatus, setServerStatus] = useState<ServerStatus>(
     websocketService.getServerStatus()
   );
 
-  // Connect to WebSocket server
-  const connect = useCallback(() => {
-    websocketService.connect(WS_SERVER_URL);
-  }, []);
-  
-  // Disconnect from WebSocket server
-  const disconnect = useCallback(() => {
-    websocketService.disconnect();
-  }, []);
-  
+  useEffect(() => {
+    // Connect to the WebSocket server when the component mounts
+    websocketService.connect();
+
+    // Subscribe to connection state changes
+    const unsubConnectionState = websocketService.onConnectionStateChange(
+      (state) => {
+        setConnectionState(state);
+      }
+    );
+
+    // Subscribe to server status updates
+    const unsubServerStatus = websocketService.onStatusUpdate((status) => {
+      setServerStatus(status);
+      options.onStatusChange?.(status);
+    });
+
+    // Cleanup function
+    return () => {
+      unsubConnectionState();
+      unsubServerStatus();
+    };
+  }, [options]);
+
+  // Check if connected
+  const isConnected = connectionState === ConnectionState.CONNECTED;
+
   // Launch a game
-  const launchGame = useCallback(async (gameId: string, sessionDuration: number) => {
+  const launchGame = useCallback(async (gameId: string, durationSeconds: number, rfidTag?: string) => {
     try {
-      const response = await websocketService.sendCommand(CommandType.LAUNCH_GAME, {
-        gameId,
-        sessionDuration
+      const response = await websocketService.sendCommand(CommandType.LAUNCH_GAME, { 
+        gameId, 
+        durationSeconds,
+        rfidTag 
       });
+      
+      // Store session start in database
+      try {
+        const sessionData = {
+          game_id: gameId,
+          duration_seconds: durationSeconds,
+          rfid_tag: rfidTag,
+          status: 'active',
+        };
+        
+        // Implementation would typically store this in a database
+        console.log('Starting new session:', sessionData);
+      } catch (err) {
+        console.error('Error recording session start:', err);
+      }
+      
       return response;
     } catch (error) {
       console.error('Error launching game:', error);
       throw error;
     }
   }, []);
-  
+
   // End the current session
   const endSession = useCallback(async () => {
     try {
       const response = await websocketService.sendCommand(CommandType.END_SESSION);
+      
+      // Log session end in database
+      try {
+        // Implementation would typically update the session in the database
+        console.log('Ending session');
+      } catch (err) {
+        console.error('Error recording session end:', err);
+      }
+      
       return response;
     } catch (error) {
       console.error('Error ending session:', error);
       throw error;
     }
   }, []);
-  
+
   // Pause the current session
   const pauseSession = useCallback(async () => {
     try {
-      const response = await websocketService.sendCommand(CommandType.PAUSE_SESSION);
-      return response;
+      return await websocketService.sendCommand(CommandType.PAUSE_SESSION);
     } catch (error) {
       console.error('Error pausing session:', error);
       throw error;
     }
   }, []);
-  
+
   // Resume the current session
   const resumeSession = useCallback(async () => {
     try {
-      const response = await websocketService.sendCommand(CommandType.RESUME_SESSION);
-      return response;
+      return await websocketService.sendCommand(CommandType.RESUME_SESSION);
     } catch (error) {
       console.error('Error resuming session:', error);
       throw error;
     }
   }, []);
-  
-  // Submit game rating
-  const submitRating = useCallback(async (gameId: string, rating: number) => {
+
+  // Get the current server status
+  const getServerStatus = useCallback(async () => {
     try {
-      const response = await websocketService.sendCommand(CommandType.SUBMIT_RATING, {
-        gameId,
-        rating
+      return await websocketService.sendCommand(CommandType.GET_STATUS);
+    } catch (error) {
+      console.error('Error getting server status:', error);
+      throw error;
+    }
+  }, []);
+
+  // Submit a game rating
+  const submitRating = useCallback(async (gameId: string, rating: number, rfidTag?: string) => {
+    try {
+      // Send rating to the server
+      await websocketService.sendCommand(CommandType.SUBMIT_RATING, { 
+        gameId, 
+        rating,
+        rfidTag 
       });
-      return response;
+      
+      // Also store it in our database
+      try {
+        const ratingData = {
+          game_id: gameId,
+          rating: rating,
+          rfid_tag: rfidTag,
+          end_time: new Date().toISOString(),
+          status: 'completed'
+        };
+        
+        // Implementation would typically store this in a database
+        console.log('Submitting rating:', ratingData);
+      } catch (err) {
+        console.error('Error recording rating:', err);
+      }
+      
+      return true;
     } catch (error) {
       console.error('Error submitting rating:', error);
       throw error;
     }
   }, []);
-  
-  // Get server status
-  const getStatus = useCallback(async () => {
-    try {
-      const response = await websocketService.sendCommand(CommandType.GET_STATUS);
-      return response;
-    } catch (error) {
-      console.error('Error getting status:', error);
-      throw error;
-    }
-  }, []);
-  
-  // Send a custom command
-  const sendCommand = useCallback(async (type: CommandType, params?: Record<string, any>) => {
-    try {
-      const response = await websocketService.sendCommand(type, params);
-      return response;
-    } catch (error) {
-      console.error(`Error sending command ${type}:`, error);
-      throw error;
-    }
-  }, []);
-
-  useEffect(() => {
-    // Subscribe to connection state changes
-    const unsubscribeConnection = websocketService.onConnectionStateChange((state) => {
-      setConnectionState(state);
-      if (onConnectionChange) {
-        onConnectionChange(state);
-      }
-    });
-    
-    // Subscribe to server status updates
-    const unsubscribeStatus = websocketService.onStatusUpdate((status) => {
-      setServerStatus(status);
-      if (onStatusChange) {
-        onStatusChange(status);
-      }
-    });
-    
-    // Auto connect if enabled
-    if (autoConnect) {
-      connect();
-    }
-    
-    // Cleanup subscriptions on unmount
-    return () => {
-      unsubscribeConnection();
-      unsubscribeStatus();
-    };
-  }, [autoConnect, connect, onConnectionChange, onStatusChange]);
 
   return {
     connectionState,
     serverStatus,
-    connect,
-    disconnect,
+    isConnected,
     launchGame,
     endSession,
     pauseSession,
     resumeSession,
+    getServerStatus,
     submitRating,
-    getStatus,
-    sendCommand,
-    isConnected: connectionState === ConnectionState.CONNECTED,
-    isConnecting: connectionState === ConnectionState.CONNECTING || connectionState === ConnectionState.RECONNECTING,
   };
-}
+};
 
 export default useCommandCenter;

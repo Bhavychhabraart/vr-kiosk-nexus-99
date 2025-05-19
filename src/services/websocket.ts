@@ -1,3 +1,4 @@
+
 import { toast } from "@/components/ui/use-toast";
 import { WebSocketSettings } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +21,8 @@ export enum CommandType {
   GET_STATUS = 'getStatus',
   HEARTBEAT = 'heartbeat',
   SUBMIT_RATING = 'submitRating',
+  SCAN_RFID = 'scanRfid',  // New command for RFID scanning
+  VALIDATE_RFID = 'validateRfid', // New command for RFID validation
 }
 
 // Response status from C++ server
@@ -54,6 +57,8 @@ export interface ServerStatus {
   cpuUsage?: number;
   memoryUsage?: number;
   diskSpace?: number;
+  isPaused?: boolean;
+  timeRemaining?: number;
 }
 
 // Default WebSocket settings

@@ -14,6 +14,10 @@ export type Settings = Database["public"]["Tables"]["settings"]["Row"];
 export type SettingsInsert = Database["public"]["Tables"]["settings"]["Insert"];
 export type SettingsUpdate = Database["public"]["Tables"]["settings"]["Update"];
 
+export type RFIDCard = Database["public"]["Tables"]["rfid_cards"]["Row"];
+export type RFIDCardInsert = Database["public"]["Tables"]["rfid_cards"]["Insert"];
+export type RFIDCardUpdate = Database["public"]["Tables"]["rfid_cards"]["Update"];
+
 // Add any additional custom types here
 export interface WebSocketSettings {
   url: string;

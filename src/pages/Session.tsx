@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -37,6 +38,7 @@ const Session = () => {
   
   const gameId = searchParams.get("gameId");
   const gameTitle = searchParams.get("title") || "VR Game";
+  const rfidTag = searchParams.get("rfidTag");
   
   const [timeRemaining, setTimeRemaining] = useState(MOCK_SESSION_DURATION);
   const [isRunning, setIsRunning] = useState(true);
@@ -66,6 +68,20 @@ const Session = () => {
     }
   });
   
+  // Check for RFID tag - redirect if missing
+  useEffect(() => {
+    if (!rfidTag) {
+      toast({
+        title: "Authentication Required",
+        description: "Please scan your RFID card first",
+        variant: "destructive",
+      });
+      
+      // Redirect back to games page
+      navigate("/games");
+    }
+  }, [rfidTag, navigate, toast]);
+  
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -78,8 +94,8 @@ const Session = () => {
   
   // Start the game when component mounts
   useEffect(() => {
-    if (isConnected && gameId && !gameStarted) {
-      launchGame(gameId, MOCK_SESSION_DURATION)
+    if (isConnected && gameId && rfidTag && !gameStarted) {
+      launchGame(gameId, MOCK_SESSION_DURATION, rfidTag)
         .then(() => {
           setGameStarted(true);
           toast({
@@ -96,7 +112,7 @@ const Session = () => {
           console.error("Error launching game:", error);
         });
     }
-  }, [isConnected, gameId, gameStarted, launchGame, toast]);
+  }, [isConnected, gameId, rfidTag, gameStarted, launchGame, toast]);
   
   // Timer effect
   useEffect(() => {
@@ -207,7 +223,8 @@ const Session = () => {
     setSubmittingRating(true);
     
     try {
-      await submitRating(gameId, rating);
+      // Submit rating including RFID tag
+      await submitRating(gameId, rating, rfidTag || undefined);
       
       toast({
         title: "Thanks for your feedback!",
@@ -297,6 +314,13 @@ const Session = () => {
           <div className="flex flex-col items-center text-center mb-10">
             <h1 className="text-3xl font-bold mb-2">{gameTitle}</h1>
             <p className="text-vr-muted mb-6">Session in progress</p>
+            
+            {/* RFID Tag display */}
+            {rfidTag && (
+              <div className="bg-vr-primary/10 text-vr-primary text-sm px-3 py-1 rounded-full mb-4">
+                RFID: {rfidTag}
+              </div>
+            )}
             
             {/* Timer display */}
             <div className="w-full mb-6">

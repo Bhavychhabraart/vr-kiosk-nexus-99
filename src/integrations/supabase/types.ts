@@ -57,6 +57,36 @@ export type Database = {
         }
         Relationships: []
       }
+      rfid_cards: {
+        Row: {
+          created_at: string
+          id: string
+          last_used_at: string | null
+          name: string | null
+          status: string
+          tag_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          name?: string | null
+          status?: string
+          tag_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          name?: string | null
+          status?: string
+          tag_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       session_history: {
         Row: {
           created_at: string
@@ -66,6 +96,7 @@ export type Database = {
           id: string
           notes: string | null
           rating: number | null
+          rfid_tag: string | null
           start_time: string
           status: string
         }
@@ -77,6 +108,7 @@ export type Database = {
           id?: string
           notes?: string | null
           rating?: number | null
+          rfid_tag?: string | null
           start_time?: string
           status?: string
         }
@@ -88,6 +120,7 @@ export type Database = {
           id?: string
           notes?: string | null
           rating?: number | null
+          rfid_tag?: string | null
           start_time?: string
           status?: string
         }
