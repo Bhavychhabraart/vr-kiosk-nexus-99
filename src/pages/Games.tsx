@@ -11,7 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Search, Star } from "lucide-react";
+import { Loader2, Search, Star } from "lucide-react";
+import { useGames } from "@/hooks/useGames";
 
 const Games = () => {
   const navigate = useNavigate();
@@ -21,79 +22,25 @@ const Games = () => {
   const [category, setCategory] = useState<string>(initialCategory);
   const [searchQuery, setSearchQuery] = useState<string>("");
   
-  // Mock games data - in production, this would come from an API
-  const allGames = [
-    {
-      id: 1,
-      title: "Beat Saber",
-      category: "action",
-      image: "https://images.unsplash.com/photo-1559363367-ee2b206e73ea?q=80&w=800&auto=format&fit=crop",
-      rating: 4.9,
-    },
-    {
-      id: 2,
-      title: "Half-Life: Alyx",
-      category: "adventure",
-      image: "https://images.unsplash.com/photo-1593508512255-86ab42a8e620?q=80&w=800&auto=format&fit=crop",
-      rating: 4.8,
-    },
-    {
-      id: 3,
-      title: "Superhot VR",
-      category: "action",
-      image: "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?q=80&w=800&auto=format&fit=crop",
-      rating: 4.7,
-    },
-    {
-      id: 4,
-      title: "Moss",
-      category: "adventure",
-      image: "https://images.unsplash.com/photo-1626379961798-54b76fb1a8da?q=80&w=800&auto=format&fit=crop",
-      rating: 4.6,
-    },
-    {
-      id: 5,
-      title: "The Room VR",
-      category: "puzzle",
-      image: "https://images.unsplash.com/photo-1634986666676-ec8fd927c23d?q=80&w=800&auto=format&fit=crop",
-      rating: 4.5,
-    },
-    {
-      id: 6,
-      title: "Star Wars: Squadrons",
-      category: "simulation",
-      image: "https://images.unsplash.com/photo-1561089489-f13d5e730d72?q=80&w=800&auto=format&fit=crop",
-      rating: 4.4,
-    },
-    {
-      id: 7,
-      title: "Arizona Sunshine",
-      category: "action",
-      image: "https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=800&auto=format&fit=crop",
-      rating: 4.3,
-    },
-    {
-      id: 8,
-      title: "Tetris Effect",
-      category: "puzzle",
-      image: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=800&auto=format&fit=crop",
-      rating: 4.7,
-    },
-    {
-      id: 9,
-      title: "No Man's Sky VR",
-      category: "simulation",
-      image: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=800&auto=format&fit=crop",
-      rating: 4.2,
-    }
-  ];
+  const { games, isLoading, error } = useGames();
 
+  // Extract unique categories from games
+  const uniqueCategories = games 
+    ? Array.from(new Set(games.map(game => 
+        game.description?.toLowerCase().split(",")[0] || "uncategorized"
+      )))
+    : [];
+  
   // Filter games based on category and search query
-  const filteredGames = allGames.filter((game) => {
-    const matchesCategory = category === "all" || game.category === category;
+  const filteredGames = games?.filter((game) => {
+    // Only show active games on the public games page
+    if (!game.is_active) return false;
+    
+    const gameCategory = game.description?.toLowerCase().split(",")[0] || "uncategorized";
+    const matchesCategory = category === "all" || gameCategory.includes(category.toLowerCase());
     const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
-  });
+  }) || [];
 
   return (
     <MainLayout>
@@ -118,35 +65,49 @@ const Games = () => {
           </SelectTrigger>
           <SelectContent className="bg-vr-dark border-vr-primary/30">
             <SelectItem value="all">All Categories</SelectItem>
-            <SelectItem value="action">Action</SelectItem>
-            <SelectItem value="adventure">Adventure</SelectItem>
-            <SelectItem value="puzzle">Puzzle</SelectItem>
-            <SelectItem value="simulation">Simulation</SelectItem>
+            {uniqueCategories.map(category => (
+              <SelectItem key={category} value={category}>
+                {category.charAt(0).toUpperCase() + category.slice(1)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {filteredGames.map((game) => (
-          <GameCard key={game.id} game={game} />
-        ))}
-      </div>
-
-      {filteredGames.length === 0 && (
-        <div className="text-center py-12">
-          <h3 className="text-xl font-medium text-vr-muted mb-2">No games found</h3>
-          <p className="text-vr-muted mb-6">Try changing your search or filter criteria</p>
-          <Button 
-            variant="outline" 
-            className="border-vr-primary/50 text-vr-text hover:bg-vr-primary/20"
-            onClick={() => {
-              setCategory("all");
-              setSearchQuery("");
-            }}
-          >
-            Clear Filters
-          </Button>
+      {isLoading ? (
+        <div className="flex justify-center items-center py-20">
+          <Loader2 className="h-10 w-10 animate-spin text-vr-secondary" />
         </div>
+      ) : error ? (
+        <div className="text-center py-12">
+          <h3 className="text-xl font-medium text-vr-accent mb-2">Error loading games</h3>
+          <p className="text-vr-muted mb-6">Please try again later</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filteredGames.map((game) => (
+              <GameCard key={game.id} game={game} />
+            ))}
+          </div>
+
+          {filteredGames.length === 0 && (
+            <div className="text-center py-12">
+              <h3 className="text-xl font-medium text-vr-muted mb-2">No games found</h3>
+              <p className="text-vr-muted mb-6">Try changing your search or filter criteria</p>
+              <Button 
+                variant="outline" 
+                className="border-vr-primary/50 text-vr-text hover:bg-vr-primary/20"
+                onClick={() => {
+                  setCategory("all");
+                  setSearchQuery("");
+                }}
+              >
+                Clear Filters
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </MainLayout>
   );
@@ -154,16 +115,19 @@ const Games = () => {
 
 interface GameCardProps {
   game: {
-    id: number;
+    id: string;
     title: string;
-    category: string;
-    image: string;
-    rating: number;
+    description?: string | null;
+    image_url?: string | null;
   };
 }
 
 const GameCard = ({ game }: GameCardProps) => {
   const navigate = useNavigate();
+  const category = game.description?.split(",")[0] || "Uncategorized";
+  
+  // Use a default image if no image_url is provided
+  const imageUrl = game.image_url || "https://images.unsplash.com/photo-1559363367-ee2b206e73ea?q=80&w=800&auto=format&fit=crop";
   
   return (
     <div 
@@ -172,19 +136,23 @@ const GameCard = ({ game }: GameCardProps) => {
     >
       <div className="aspect-[16/9] overflow-hidden rounded-lg mb-3 relative">
         <img 
-          src={game.image} 
+          src={imageUrl} 
           alt={game.title}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          onError={(e) => {
+            // Fallback to a default image if the specified one fails to load
+            (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1559363367-ee2b206e73ea?q=80&w=800&auto=format&fit=crop";
+          }}
         />
         <div className="absolute top-2 right-2 flex items-center gap-1 bg-vr-dark/70 px-2 py-1 rounded-md text-xs backdrop-blur-sm">
           <Star className="h-3 w-3 fill-vr-secondary text-vr-secondary" />
-          <span className="text-vr-text">{game.rating}</span>
+          <span className="text-vr-text">4.5</span>
         </div>
       </div>
       <h3 className="text-lg font-medium group-hover:text-vr-secondary transition-colors">
         {game.title}
       </h3>
-      <span className="text-sm text-vr-muted capitalize">{game.category}</span>
+      <span className="text-sm text-vr-muted capitalize">{category}</span>
     </div>
   );
 };

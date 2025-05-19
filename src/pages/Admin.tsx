@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,13 +32,14 @@ import {
   Library,
   Settings,
   Search,
-  Clock as Timer,
+  Clock,
   Calendar
 } from "lucide-react";
 import SettingsTab from "@/components/admin/SettingsTab";
+import GamesManagementTab from "@/components/admin/GamesManagementTab";
 
 const Admin = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(true); // Changed to true for development
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
