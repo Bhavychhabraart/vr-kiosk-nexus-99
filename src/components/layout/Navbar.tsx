@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,8 +5,7 @@ import { PremiumVrIcon } from "../icons/PremiumVrIcon";
 import { PremiumButton } from "../ui/premium-button";
 import { 
   Home, 
-  Grid, 
-  Timer, 
+  Grid,  
   Settings, 
   ChevronRight,
   Menu,
@@ -68,7 +66,6 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-2">
             <NavItem to="/" icon={<Home size={18} />} label="Home" active={isActive("/")} />
             <NavItem to="/games" icon={<Grid size={18} />} label="Games" active={isActive("/games")} />
-            <NavItem to="/session" icon={<Timer size={18} />} label="Session" active={isActive("/session")} />
             <NavItem to="/admin" icon={<Settings size={18} />} label="Admin" active={isActive("/admin")} />
           </div>
         </div>
@@ -79,7 +76,6 @@ const Navbar = () => {
         <div className="md:hidden absolute top-full left-0 right-0 bg-vr-dark/95 backdrop-blur-md border-b border-vr-primary/20 py-2 z-50">
           <MobileNavItem to="/" icon={<Home size={18} />} label="Home" onClick={toggleMenu} active={isActive("/")} />
           <MobileNavItem to="/games" icon={<Grid size={18} />} label="Games" onClick={toggleMenu} active={isActive("/games")} />
-          <MobileNavItem to="/session" icon={<Timer size={18} />} label="Session" onClick={toggleMenu} active={isActive("/session")} />
           <MobileNavItem to="/admin" icon={<Settings size={18} />} label="Admin" onClick={toggleMenu} active={isActive("/admin")} />
         </div>
       )}
