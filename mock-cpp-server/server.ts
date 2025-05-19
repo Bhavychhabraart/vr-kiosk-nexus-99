@@ -1,3 +1,4 @@
+
 // This is a mock implementation of a C++ WebSocket server for testing
 // In a real implementation, this would be written in C++ using a library like Boost.Beast
 // To run this: npm install ws && npx ts-node server.ts
@@ -144,21 +145,25 @@ const commandHandlers = {
   scanRfid: (ws: WebSocket, params: any, commandId: string) => {
     console.log('RFID scan requested');
     
+    // Check if this is a simulated scan request
+    const isSimulated = params?.simulate === true;
+    
     // In a real implementation, this would activate the RFID hardware
     // and wait for a card to be scanned
     
     // For now, we'll simulate reading a real tag after a short delay
     setTimeout(() => {
-      // Real hardware would return the actual scanned tag ID here
-      // We're still simulating the tag for testing purposes
-      const tagId = `RFID-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      // For simulated tags, use a different prefix
+      const prefix = isSimulated ? 'SIM-' : 'RFID-';
+      const tagId = `${prefix}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
       
       sendResponse(ws, commandId, 'success', {
         tagId,
         readTime: new Date().toISOString(),
-        readerStatus: 'connected'
+        readerStatus: 'connected',
+        simulated: isSimulated
       });
-    }, 1500);
+    }, isSimulated ? 300 : 1500); // Simulated tags are read faster
   },
   
   validateRfid: (ws: WebSocket, params: any, commandId: string) => {
@@ -182,14 +187,18 @@ const commandHandlers = {
     // In a real implementation, this would validate the tag against a secure database
     // or communicate with an authentication service
     
-    // For demo purposes, simulate a valid tag
-    const isValid = Math.random() > 0.2; // 80% chance of success
+    // For simulated tags, always return valid
+    const isSimulated = tagId.startsWith('SIM-');
+    
+    // For real tags, simulate a valid tag with 80% probability
+    const isValid = isSimulated ? true : Math.random() > 0.2;
     
     if (isValid) {
       sendResponse(ws, commandId, 'success', {
         tagId,
         isValid: true,
-        validatedAt: new Date().toISOString()
+        validatedAt: new Date().toISOString(),
+        simulated: isSimulated
       });
     } else {
       sendResponse(ws, commandId, 'error', null, 'Invalid or unauthorized RFID tag');

@@ -168,6 +168,40 @@ export const useRFID = () => {
   // Function to check if an RFID tag is valid
   const checkRFIDTag = useCallback(async (tagId: string) => {
     try {
+      // For simulated tags, either create a temporary card or return an existing one
+      if (tagId.startsWith('SIM-')) {
+        // Check if this simulated card already exists
+        const existingCard = await getRFIDCardByTagId(tagId);
+        if (existingCard) {
+          markCardAsUsedMutation.mutate(tagId);
+          return existingCard;
+        }
+        
+        // If using a simulated tag in production, we could automatically register it
+        // This is commented out for now, but could be uncommented if auto-registration is desired
+        /*
+        const newCard: RFIDCardInsert = {
+          tag_id: tagId,
+          name: `Simulated Card ${tagId.split('-')[1]}`,
+          status: 'active',
+          last_used_at: new Date().toISOString()
+        };
+        const createdCard = await createRFIDCard(newCard);
+        return createdCard;
+        */
+        
+        // For now, just return a temporary card object that isn't saved to the database
+        return {
+          id: 'temp-' + Date.now(),
+          tag_id: tagId,
+          name: `Temporary Simulated Card`,
+          status: 'active',
+          last_used_at: new Date().toISOString(),
+          created_at: new Date().toISOString()
+        };
+      }
+      
+      // For real cards, check the database
       const card = await getRFIDCardByTagId(tagId);
       if (card) {
         markCardAsUsedMutation.mutate(tagId);
@@ -181,13 +215,13 @@ export const useRFID = () => {
   }, [markCardAsUsedMutation]);
   
   // Start RFID scanning using the WebSocket service to connect with hardware
-  const startRFIDScan = useCallback(() => {
+  const startRFIDScan = useCallback((simulate = false) => {
     setIsScanning(true);
     setScannedRFID(null);
     
     // Use the WebSocket service to send a command to start RFID scanning
     // This connects to the actual hardware through the C++/Python backend
-    websocketService.sendCommand(CommandType.SCAN_RFID)
+    websocketService.sendCommand(CommandType.SCAN_RFID, { simulate })
       .then(response => {
         if (response.status === 'success' && response.data?.tagId) {
           const tagId = response.data.tagId;

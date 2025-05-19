@@ -10,7 +10,8 @@ import {
   Loader2,
   ChevronLeft,
   RefreshCw,
-  WifiOff
+  WifiOff,
+  SimCard
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useRFID } from "@/hooks/useRFID";
@@ -129,6 +130,28 @@ const RFIDScanScreen = ({
     });
   };
   
+  const handleSimulateRFID = () => {
+    // Generate a simulated RFID tag and trigger success flow
+    const simulatedTag = `SIM-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    
+    toast({
+      title: "Simulated RFID",
+      description: `Using simulated tag: ${simulatedTag}`,
+    });
+    
+    // Set a short delay to simulate scanning
+    setScanStatus('scanning');
+    
+    setTimeout(() => {
+      setScanStatus('success');
+      
+      // Add a slight delay before navigating
+      setTimeout(() => {
+        onSuccess(simulatedTag);
+      }, 1500);
+    }, 800);
+  };
+  
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -215,10 +238,20 @@ const RFIDScanScreen = ({
               <WifiOff className="h-16 w-16 text-vr-accent mb-4" />
               <p className="text-vr-accent mb-2">RFID reader not connected</p>
               <p className="text-vr-muted text-sm mb-4">Please check hardware connection</p>
-              <Button onClick={handleReconnect} className="gap-2">
-                <RefreshCw className="h-4 w-4" />
-                Reconnect Hardware
-              </Button>
+              <div className="flex flex-col gap-3">
+                <Button onClick={handleReconnect} className="gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Reconnect Hardware
+                </Button>
+                <Button 
+                  onClick={handleSimulateRFID} 
+                  variant="outline" 
+                  className="gap-2"
+                >
+                  <SimCard className="h-4 w-4" />
+                  Simulate RFID
+                </Button>
+              </div>
             </div>
           )}
         </div>
