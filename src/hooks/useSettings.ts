@@ -37,8 +37,8 @@ export function useWebSocketSettings() {
       };
     }
     
-    // Cast the value to the correct type
-    const rawSettings = data.value as WebSocketSettingsRaw;
+    // First cast to unknown, then to the specific type to avoid TypeScript errors
+    const rawSettings = data.value as unknown as WebSocketSettingsRaw;
     
     return {
       url: rawSettings.url || 'ws://localhost:8081',
@@ -113,8 +113,8 @@ export function useKioskSettings() {
       };
     }
     
-    // Cast the value to the correct type
-    const rawSettings = data.value as KioskSettingsRaw;
+    // First cast to unknown, then to the specific type to avoid TypeScript errors
+    const rawSettings = data.value as unknown as KioskSettingsRaw;
     
     return {
       name: rawSettings.name || 'VR Kiosk',

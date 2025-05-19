@@ -246,7 +246,7 @@ const OverviewTab = () => {
                   <CartesianGrid strokeDasharray="3 3" stroke="#1A1F35" />
                   <XAxis dataKey="name" stroke="#8E9DC0" />
                   <YAxis stroke="#8E9DC0" />
-                  <Tooltip 
+                  <RechartsTooltip 
                     contentStyle={{ 
                       backgroundColor: "#0B0E18", 
                       borderColor: "#5D4FFF40",
@@ -292,7 +292,7 @@ const OverviewTab = () => {
                     ))}
                   </Pie>
                   <Legend />
-                  <Tooltip 
+                  <RechartsTooltip 
                     contentStyle={{ 
                       backgroundColor: "#0B0E18", 
                       borderColor: "#5D4FFF40",
@@ -306,7 +306,7 @@ const OverviewTab = () => {
         </Card>
       </div>
       
-      {/* Recent activity would go here */}
+      {/* Recent activity */}
       <Card className="vr-card">
         <CardHeader>
           <CardTitle>Recent Activity</CardTitle>
