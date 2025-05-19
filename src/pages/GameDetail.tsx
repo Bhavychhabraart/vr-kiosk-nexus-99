@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -16,6 +15,7 @@ import {
   LayoutGrid
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useGames } from "@/hooks/useGames";
 
 const GameDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,29 +25,46 @@ const GameDetail = () => {
   const [trailerOpen, setTrailerOpen] = useState(searchParams.get("showTrailer") === "true");
   const [isLoading, setIsLoading] = useState(true);
   const [game, setGame] = useState<GameDetails | null>(null);
+  
+  // Get games data from hook
+  const { games } = useGames();
 
-  // Mock game data - in production, this would come from an API fetch
+  // Load game data from games API
   useEffect(() => {
-    // Simulate API loading
     setIsLoading(true);
     
-    // Mock API call with timeout
-    setTimeout(() => {
-      const gameData = getMockGameById(Number(id));
-      if (gameData) {
+    if (games && games.length > 0 && id) {
+      // Find the game in our games list
+      const foundGame = games.find(g => g.id === id);
+      
+      if (foundGame) {
+        // Transform the game data to match our detailed view format
+        const gameData = getEnhancedGameDetails(foundGame);
         setGame(gameData);
       } else {
-        // Game not found
-        toast({
-          title: "Game not found",
-          description: "The requested game could not be found.",
-          variant: "destructive"
-        });
-        navigate("/games");
+        // If game not in API results, try mock data as fallback
+        const mockGame = getMockGameById(Number(id));
+        if (mockGame) {
+          setGame(mockGame);
+        } else {
+          // No game found in either source
+          toast({
+            title: "Game not found",
+            description: "The requested game could not be found.",
+            variant: "destructive"
+          });
+        }
       }
-      setIsLoading(false);
-    }, 800);
-  }, [id, navigate, toast]);
+    } else {
+      // If no games loaded yet or no id, try to get from mock data
+      const mockGame = getMockGameById(Number(id));
+      if (mockGame) {
+        setGame(mockGame);
+      }
+    }
+    
+    setIsLoading(false);
+  }, [id, games, toast]);
 
   // Handle trailer dialog open state from URL param
   useEffect(() => {
@@ -70,11 +87,8 @@ const GameDetail = () => {
       description: `Launching ${game?.title}. Please put on your VR headset.`,
     });
     
-    // In a real implementation, this would send a command to the C++ server
-    // For now, we'll just simulate by navigating to the session page
-    setTimeout(() => {
-      navigate(`/session?gameId=${id}&title=${game?.title}`);
-    }, 2000);
+    // Navigate to the session page
+    navigate(`/session?gameId=${id}&title=${encodeURIComponent(game?.title || "VR Game")}`);
   };
 
   if (isLoading) {
@@ -92,6 +106,7 @@ const GameDetail = () => {
       <MainLayout>
         <div className="text-center py-16">
           <h2 className="text-2xl font-bold mb-4">Game not found</h2>
+          <p className="text-vr-muted mb-6">The requested game could not be found in our library.</p>
           <Button onClick={() => navigate("/games")}>
             Back to Games
           </Button>
@@ -304,6 +319,37 @@ const InfoCard = ({ icon, title, value }: InfoCardProps) => {
       <p className="font-medium">{value}</p>
     </div>
   );
+};
+
+// Helper function to convert API game data to detailed format
+const getEnhancedGameDetails = (game: any): GameDetails => {
+  // Extract category from description if available
+  const categories = game.description 
+    ? game.description.split(',').map((cat: string) => cat.trim()) 
+    : ['Uncategorized'];
+  
+  return {
+    id: Number(game.id),
+    title: game.title,
+    description: game.description || "No description available for this game.",
+    coverImage: game.image_url || "https://images.unsplash.com/photo-1559363367-ee2b206e73ea?q=80&w=1600&auto=format&fit=crop",
+    screenshots: [
+      "https://images.unsplash.com/photo-1593508512255-86ab42a8e620?q=80&w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?q=80&w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1626379961798-54b76fb1a8da?q=80&w=800&auto=format&fit=crop",
+    ],
+    categories: categories,
+    rating: 4.5, // Default rating
+    duration: "10-30 min",
+    players: "Single Player",
+    ageRating: "E for Everyone",
+    systemRequirements: {
+      headset: "Oculus Quest 2 or higher",
+      processor: "Intel i5-7500 / AMD Ryzen 5 1600",
+      graphics: "GTX 1060 / AMD Radeon RX 580",
+      memory: "8 GB RAM"
+    }
+  };
 };
 
 // Types and mock data
