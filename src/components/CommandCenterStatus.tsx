@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useCommandCenter } from "@/hooks/useCommandCenter";
+import useCommandCenter from "@/hooks/useCommandCenter";
 import { PremiumCard } from "./ui/premium-card";
 
 interface CommandCenterStatusProps {
