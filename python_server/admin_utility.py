@@ -4,280 +4,514 @@ import argparse
 import json
 import os
 import sys
-import logging
 import sqlite3
-from datetime import datetime
+import secrets
+import bcrypt
+import datetime
+from pathlib import Path
+from dotenv import load_dotenv
+from loguru import logger
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-logger = logging.getLogger("vr-admin")
+# Load environment variables
+load_dotenv()
 
-# Default paths
-DATABASE_PATH = os.getenv("VR_DATABASE", "vr_kiosk.db")
-GAMES_CONFIG_PATH = os.getenv("VR_GAMES_CONFIG", "games.json")
+# Setup logger
+logger.remove()
+logger.add(sys.stderr, level="INFO")
+logger.add("logs/admin.log", level="INFO", rotation="10 MB", retention="30 days")
 
-def connect_db():
-    """Connect to the SQLite database"""
-    try:
-        conn = sqlite3.connect(DATABASE_PATH)
+class AdminUtility:
+    """Admin utility for VR Command Center setup and maintenance"""
+    
+    def __init__(self):
+        self.db_path = os.getenv("VR_DATABASE", "vr_kiosk.db")
+        self._ensure_directories()
+    
+    def _ensure_directories(self):
+        """Ensure all required directories exist"""
+        os.makedirs("logs", exist_ok=True)
+        os.makedirs("data", exist_ok=True)
+        os.makedirs("certificates", exist_ok=True)
+        
+    def initialize_database(self):
+        """Initialize the SQLite database with all required tables"""
+        logger.info(f"Initializing database at {self.db_path}")
+        
+        conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
-        return conn
-    except sqlite3.Error as e:
-        logger.error(f"Error connecting to database: {e}")
-        sys.exit(1)
-
-def list_games():
-    """List all games in the database"""
-    conn = connect_db()
-    cursor = conn.cursor()
-    
-    try:
-        cursor.execute("SELECT id, title, executable_path FROM games ORDER BY title")
-        games = cursor.fetchall()
+        cursor = conn.cursor()
         
-        if not games:
-            print("No games found in the database.")
-            return
-        
-        print("\nGames:")
-        print("-" * 80)
-        print(f"{'ID':<10} {'Title':<30} {'Executable Path':<40}")
-        print("-" * 80)
-        
-        for game in games:
-            print(f"{game['id']:<10} {game['title']:<30} {game['executable_path']:<40}")
-            
-    except sqlite3.Error as e:
-        logger.error(f"Error listing games: {e}")
-    finally:
-        conn.close()
-
-def list_rfid_cards():
-    """List all RFID cards in the database"""
-    conn = connect_db()
-    cursor = conn.cursor()
-    
-    try:
-        cursor.execute("SELECT tag_id, name, status, last_used_at FROM rfid_cards ORDER BY status, name")
-        cards = cursor.fetchall()
-        
-        if not cards:
-            print("No RFID cards found in the database.")
-            return
-        
-        print("\nRFID Cards:")
-        print("-" * 80)
-        print(f"{'Tag ID':<20} {'Name':<20} {'Status':<10} {'Last Used':<20}")
-        print("-" * 80)
-        
-        for card in cards:
-            last_used = card['last_used_at'] or "Never"
-            print(f"{card['tag_id']:<20} {card['name']:<20} {card['status']:<10} {last_used:<20}")
-            
-    except sqlite3.Error as e:
-        logger.error(f"Error listing RFID cards: {e}")
-    finally:
-        conn.close()
-
-def list_sessions(limit=10):
-    """List recent game sessions"""
-    conn = connect_db()
-    cursor = conn.cursor()
-    
-    try:
+        # Create games table
         cursor.execute("""
-            SELECT s.id, s.game_id, g.title, s.start_time, s.end_time, 
-                   s.duration_seconds, s.rfid_tag, s.rating, s.status
-            FROM sessions s
-            LEFT JOIN games g ON s.game_id = g.id
-            ORDER BY s.start_time DESC
-            LIMIT ?
-        """, (limit,))
+            CREATE TABLE IF NOT EXISTS games (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                executable_path TEXT,
+                working_directory TEXT,
+                arguments TEXT,
+                description TEXT,
+                image_url TEXT,
+                min_duration_seconds INTEGER NOT NULL DEFAULT 300,
+                max_duration_seconds INTEGER NOT NULL DEFAULT 1800,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                trailer_url TEXT
+            )
+        """)
         
-        sessions = cursor.fetchall()
-        
-        if not sessions:
-            print("No game sessions found in the database.")
-            return
-        
-        print("\nRecent Game Sessions:")
-        print("-" * 100)
-        print(f"{'Session ID':<15} {'Game':<20} {'Start Time':<20} {'Duration':<10} {'Status':<10} {'Rating':<6}")
-        print("-" * 100)
-        
-        for session in sessions:
-            game_name = session['title'] or session['game_id']
-            start_time = session['start_time'][:16] if session['start_time'] else "Unknown"
-            duration = f"{session['duration_seconds']}s" if session['duration_seconds'] else "N/A"
-            rating = session['rating'] if session['rating'] else "-"
-            
-            print(f"{session['id'][:12]:<15} {game_name[:20]:<20} {start_time:<20} {duration:<10} {session['status']:<10} {rating:<6}")
-            
-    except sqlite3.Error as e:
-        logger.error(f"Error listing sessions: {e}")
-    finally:
-        conn.close()
-
-def add_rfid_card(tag_id, name):
-    """Add a new RFID card"""
-    conn = connect_db()
-    cursor = conn.cursor()
-    
-    try:
-        # Check if tag already exists
-        cursor.execute("SELECT tag_id FROM rfid_cards WHERE tag_id = ?", (tag_id,))
-        if cursor.fetchone():
-            print(f"RFID card with tag ID {tag_id} already exists")
-            return False
-        
-        # Add the new card
+        # Create RFID cards table
         cursor.execute("""
-            INSERT INTO rfid_cards (tag_id, name, status, created_at)
-            VALUES (?, ?, ?, ?)
-        """, (tag_id, name, "active", datetime.now().isoformat()))
+            CREATE TABLE IF NOT EXISTS rfid_cards (
+                tag_id TEXT PRIMARY KEY,
+                name TEXT,
+                status TEXT NOT NULL DEFAULT 'active',
+                permission_level TEXT DEFAULT 'user',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                last_used_at TIMESTAMP
+            )
+        """)
         
+        # Create RFID access log table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS rfid_access_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tag_id TEXT NOT NULL,
+                action TEXT NOT NULL,
+                timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                success BOOLEAN NOT NULL,
+                details TEXT,
+                FOREIGN KEY (tag_id) REFERENCES rfid_cards (tag_id)
+            )
+        """)
+        
+        # Create game permissions table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS rfid_game_permissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tag_id TEXT NOT NULL,
+                game_id TEXT NOT NULL,
+                permission_type TEXT NOT NULL DEFAULT 'allow',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(tag_id, game_id),
+                FOREIGN KEY (tag_id) REFERENCES rfid_cards (tag_id),
+                FOREIGN KEY (game_id) REFERENCES games (id)
+            )
+        """)
+        
+        # Create sessions table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                game_id TEXT,
+                rfid_tag TEXT,
+                start_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                end_time TIMESTAMP,
+                duration_seconds INTEGER,
+                status TEXT NOT NULL DEFAULT 'active',
+                rating INTEGER,
+                notes TEXT,
+                FOREIGN KEY (game_id) REFERENCES games (id),
+                FOREIGN KEY (rfid_tag) REFERENCES rfid_cards (tag_id)
+            )
+        """)
+        
+        # Create system events table for logging
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS system_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_type TEXT NOT NULL,
+                severity TEXT NOT NULL,
+                message TEXT NOT NULL,
+                details TEXT,
+                timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Create admin users table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS admin_users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                permission_level TEXT NOT NULL DEFAULT 'admin',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                last_login TIMESTAMP
+            )
+        """)
+        
+        # Create settings table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS settings (
+                id TEXT PRIMARY KEY,
+                value JSON NOT NULL,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Create triggers for updated_at fields
+        cursor.execute("""
+            CREATE TRIGGER IF NOT EXISTS games_updated_at 
+            AFTER UPDATE ON games
+            BEGIN
+                UPDATE games SET updated_at = CURRENT_TIMESTAMP
+                WHERE id = NEW.id;
+            END;
+        """)
+        
+        cursor.execute("""
+            CREATE TRIGGER IF NOT EXISTS rfid_cards_updated_at 
+            AFTER UPDATE ON rfid_cards
+            BEGIN
+                UPDATE rfid_cards SET updated_at = CURRENT_TIMESTAMP
+                WHERE tag_id = NEW.tag_id;
+            END;
+        """)
+        
+        cursor.execute("""
+            CREATE TRIGGER IF NOT EXISTS settings_updated_at 
+            AFTER UPDATE ON settings
+            BEGIN
+                UPDATE settings SET updated_at = CURRENT_TIMESTAMP
+                WHERE id = NEW.id;
+            END;
+        """)
+        
+        # Commit changes and close connection
         conn.commit()
-        print(f"Added RFID card: {tag_id} - {name}")
-        return True
-        
-    except sqlite3.Error as e:
-        logger.error(f"Error adding RFID card: {e}")
-        return False
-    finally:
         conn.close()
-
-def change_rfid_status(tag_id, status):
-    """Change the status of an RFID card"""
-    if status not in ["active", "inactive"]:
-        print(f"Invalid status: {status}. Must be 'active' or 'inactive'")
-        return False
-    
-    conn = connect_db()
-    cursor = conn.cursor()
-    
-    try:
-        cursor.execute("""
-            UPDATE rfid_cards
-            SET status = ?, updated_at = ?
-            WHERE tag_id = ?
-        """, (status, datetime.now().isoformat(), tag_id))
         
-        if cursor.rowcount == 0:
-            print(f"No RFID card found with tag ID: {tag_id}")
+        logger.info("Database initialization complete")
+        
+    def create_admin_user(self, username, password):
+        """Create a new admin user"""
+        if not username or not password:
+            logger.error("Username and password are required")
             return False
             
-        conn.commit()
-        print(f"Changed RFID card {tag_id} status to {status}")
-        return True
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
         
-    except sqlite3.Error as e:
-        logger.error(f"Error changing RFID card status: {e}")
-        return False
-    finally:
-        conn.close()
-
-def show_system_info():
-    """Show system information"""
-    conn = connect_db()
-    cursor = conn.cursor()
-    
-    try:
-        # Count games
-        cursor.execute("SELECT COUNT(*) as count FROM games")
-        game_count = cursor.fetchone()['count']
-        
-        # Count RFID cards
-        cursor.execute("SELECT COUNT(*) as count FROM rfid_cards")
-        rfid_count = cursor.fetchone()['count']
-        
-        # Count sessions
-        cursor.execute("SELECT COUNT(*) as count FROM sessions")
-        session_count = cursor.fetchone()['count']
-        
-        # Get database file size
-        db_size_mb = os.path.getsize(DATABASE_PATH) / (1024 * 1024)
-        
-        # Get settings
-        cursor.execute("SELECT COUNT(*) as count FROM settings")
-        settings_count = cursor.fetchone()['count']
-        
-        print("\nSystem Information:")
-        print("-" * 40)
-        print(f"Database Path:      {DATABASE_PATH}")
-        print(f"Database Size:      {db_size_mb:.2f} MB")
-        print(f"Games:              {game_count}")
-        print(f"RFID Cards:         {rfid_count}")
-        print(f"Session History:    {session_count}")
-        print(f"Settings:           {settings_count}")
-        
-        # Show database schema version or other important info
-        print("\nDatabase Tables:")
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = cursor.fetchall()
-        for table in tables:
-            print(f"  - {table['name']}")
+        try:
+            # Check if user already exists
+            cursor.execute("SELECT username FROM admin_users WHERE username = ?", (username,))
+            if cursor.fetchone():
+                logger.error(f"User {username} already exists")
+                return False
             
-    except sqlite3.Error as e:
-        logger.error(f"Error getting system info: {e}")
-    finally:
-        conn.close()
+            # Hash password
+            password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+            
+            # Insert new user
+            cursor.execute(
+                """
+                INSERT INTO admin_users (username, password_hash)
+                VALUES (?, ?)
+                """,
+                (username, password_hash)
+            )
+            
+            conn.commit()
+            logger.info(f"Admin user {username} created successfully")
+            return True
+            
+        except Exception as e:
+            logger.exception(f"Error creating admin user: {e}")
+            return False
+        finally:
+            conn.close()
+    
+    def import_games_from_json(self, json_file):
+        """Import games from a JSON file into the database"""
+        try:
+            if not os.path.exists(json_file):
+                logger.error(f"File not found: {json_file}")
+                return False
+                
+            with open(json_file, 'r') as f:
+                data = json.load(f)
+                
+            if not isinstance(data, dict) or 'games' not in data:
+                logger.error(f"Invalid JSON format in {json_file}")
+                return False
+                
+            games = data['games']
+            if not isinstance(games, list):
+                logger.error(f"Invalid games format in {json_file}")
+                return False
+                
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Import each game
+            for game in games:
+                if 'id' not in game or 'title' not in game:
+                    logger.warning(f"Skipping game without id or title: {game}")
+                    continue
+                    
+                # Check if game already exists
+                cursor.execute("SELECT id FROM games WHERE id = ?", (game['id'],))
+                existing = cursor.fetchone()
+                
+                if existing:
+                    # Update existing game
+                    cursor.execute(
+                        """
+                        UPDATE games SET
+                            title = ?,
+                            executable_path = ?,
+                            working_directory = ?,
+                            arguments = ?,
+                            description = ?,
+                            image_url = ?,
+                            min_duration_seconds = ?,
+                            max_duration_seconds = ?,
+                            is_active = ?,
+                            trailer_url = ?
+                        WHERE id = ?
+                        """,
+                        (
+                            game.get('title'),
+                            game.get('executable_path'),
+                            game.get('working_directory'),
+                            game.get('arguments'),
+                            game.get('description'),
+                            game.get('image_url'),
+                            game.get('min_duration_seconds', 300),
+                            game.get('max_duration_seconds', 1800),
+                            1,  # Active by default
+                            game.get('trailer_url'),
+                            game['id']
+                        )
+                    )
+                    logger.info(f"Updated existing game: {game['title']}")
+                else:
+                    # Insert new game
+                    cursor.execute(
+                        """
+                        INSERT INTO games (
+                            id, title, executable_path, working_directory, arguments,
+                            description, image_url, min_duration_seconds, max_duration_seconds,
+                            trailer_url
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            game['id'],
+                            game.get('title'),
+                            game.get('executable_path'),
+                            game.get('working_directory'),
+                            game.get('arguments'),
+                            game.get('description'),
+                            game.get('image_url'),
+                            game.get('min_duration_seconds', 300),
+                            game.get('max_duration_seconds', 1800),
+                            game.get('trailer_url')
+                        )
+                    )
+                    logger.info(f"Imported new game: {game['title']}")
+            
+            conn.commit()
+            conn.close()
+            
+            logger.info(f"Successfully imported {len(games)} games from {json_file}")
+            return True
+            
+        except Exception as e:
+            logger.exception(f"Error importing games: {e}")
+            return False
+    
+    def export_games_to_json(self, output_file):
+        """Export games from the database to a JSON file"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                SELECT * FROM games
+                WHERE is_active = 1
+            """)
+            
+            games = []
+            for row in cursor.fetchall():
+                game = dict(row)
+                # Convert datetime objects to strings
+                for key, value in game.items():
+                    if isinstance(value, datetime.datetime):
+                        game[key] = value.isoformat()
+                games.append(game)
+                
+            output = {"games": games}
+            
+            with open(output_file, 'w') as f:
+                json.dump(output, f, indent=2)
+                
+            conn.close()
+            logger.info(f"Successfully exported {len(games)} games to {output_file}")
+            return True
+            
+        except Exception as e:
+            logger.exception(f"Error exporting games: {e}")
+            return False
+    
+    def register_rfid_card(self, tag_id, name=None):
+        """Register a new RFID card"""
+        if not tag_id:
+            logger.error("RFID tag ID is required")
+            return False
+            
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        try:
+            # Check if card already exists
+            cursor.execute("SELECT tag_id FROM rfid_cards WHERE tag_id = ?", (tag_id,))
+            if cursor.fetchone():
+                logger.error(f"RFID card {tag_id} already exists")
+                return False
+                
+            # Insert new card
+            display_name = name or f"Card-{tag_id[-6:]}"
+            cursor.execute(
+                """
+                INSERT INTO rfid_cards (tag_id, name, status)
+                VALUES (?, ?, 'active')
+                """,
+                (tag_id, display_name)
+            )
+            
+            conn.commit()
+            logger.info(f"RFID card {tag_id} registered successfully as {display_name}")
+            return True
+            
+        except Exception as e:
+            logger.exception(f"Error registering RFID card: {e}")
+            return False
+        finally:
+            conn.close()
+    
+    def backup_database(self, backup_dir="backups"):
+        """Backup the SQLite database"""
+        try:
+            os.makedirs(backup_dir, exist_ok=True)
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_file = os.path.join(backup_dir, f"vr_kiosk_backup_{timestamp}.db")
+            
+            # Create a database connection
+            conn = sqlite3.connect(self.db_path)
+            
+            # Create a backup connection and backup the database
+            backup_conn = sqlite3.connect(backup_file)
+            conn.backup(backup_conn)
+            
+            # Close connections
+            backup_conn.close()
+            conn.close()
+            
+            logger.info(f"Database backup created at {backup_file}")
+            return backup_file
+            
+        except Exception as e:
+            logger.exception(f"Error backing up database: {e}")
+            return None
+    
+    def generate_env_file(self):
+        """Generate a secure .env file with random secrets"""
+        try:
+            if os.path.exists(".env") and not self._confirm_overwrite(".env"):
+                logger.info("Skipping .env generation to preserve existing file")
+                return False
+                
+            with open(".env.example", "r") as f:
+                template = f.read()
+                
+            # Replace secrets with random values
+            template = template.replace("change_this_to_a_secure_random_string", secrets.token_hex(32))
+            
+            # Write the new .env file
+            with open(".env", "w") as f:
+                f.write(template)
+                
+            logger.info("Generated secure .env file")
+            return True
+            
+        except Exception as e:
+            logger.exception(f"Error generating .env file: {e}")
+            return False
+    
+    def _confirm_overwrite(self, file_path):
+        """Ask user to confirm file overwrite"""
+        response = input(f"File {file_path} already exists. Overwrite? (y/N): ").lower()
+        return response == 'y' or response == 'yes'
+    
+    def cleanup_logs(self, max_age_days=30):
+        """Clean up old log files"""
+        try:
+            log_dir = Path("logs")
+            if not log_dir.exists():
+                return True
+                
+            cutoff_date = datetime.datetime.now() - datetime.timedelta(days=max_age_days)
+            count = 0
+            
+            for log_file in log_dir.glob("*.log*"):
+                # Check file modification time
+                if datetime.datetime.fromtimestamp(log_file.stat().st_mtime) < cutoff_date:
+                    log_file.unlink()
+                    count += 1
+                    
+            logger.info(f"Cleaned up {count} log files older than {max_age_days} days")
+            return True
+            
+        except Exception as e:
+            logger.exception(f"Error cleaning up log files: {e}")
+            return False
 
-def main():
-    parser = argparse.ArgumentParser(description='VR Kiosk Server Admin Utility')
-    subparsers = parser.add_subparsers(dest='command', help='Command to run')
-    
-    # List games command
-    list_games_parser = subparsers.add_parser('list-games', help='List all games')
-    
-    # List RFID cards command
-    list_rfid_parser = subparsers.add_parser('list-rfid', help='List all RFID cards')
-    
-    # List sessions command
-    list_sessions_parser = subparsers.add_parser('list-sessions', help='List recent game sessions')
-    list_sessions_parser.add_argument('--limit', type=int, default=10, help='Maximum number of sessions to show')
-    
-    # Add RFID card command
-    add_rfid_parser = subparsers.add_parser('add-rfid', help='Add a new RFID card')
-    add_rfid_parser.add_argument('tag_id', help='RFID tag ID')
-    add_rfid_parser.add_argument('name', help='Name for the RFID card')
-    
-    # Change RFID status command
-    change_rfid_status_parser = subparsers.add_parser('change-rfid-status', help='Change RFID card status')
-    change_rfid_status_parser.add_argument('tag_id', help='RFID tag ID')
-    change_rfid_status_parser.add_argument('status', choices=['active', 'inactive'], help='New status')
-    
-    # System info command
-    system_info_parser = subparsers.add_parser('system-info', help='Show system information')
-    
-    # Parse arguments
-    args = parser.parse_args()
-    
-    # Check if database exists
-    if not os.path.exists(DATABASE_PATH):
-        logger.error(f"Database file not found: {DATABASE_PATH}")
-        return 1
-    
-    # Execute command
-    if args.command == 'list-games':
-        list_games()
-    elif args.command == 'list-rfid':
-        list_rfid_cards()
-    elif args.command == 'list-sessions':
-        list_sessions(args.limit)
-    elif args.command == 'add-rfid':
-        add_rfid_card(args.tag_id, args.name)
-    elif args.command == 'change-rfid-status':
-        change_rfid_status(args.tag_id, args.status)
-    elif args.command == 'system-info':
-        show_system_info()
-    else:
-        parser.print_help()
-    
-    return 0
 
 if __name__ == "__main__":
-    sys.exit(main())
+    parser = argparse.ArgumentParser(description='VR Command Center Admin Utility')
+    
+    parser.add_argument('--init-db', action='store_true', help='Initialize the database')
+    parser.add_argument('--create-admin', action='store_true', help='Create an admin user')
+    parser.add_argument('--username', help='Admin username')
+    parser.add_argument('--password', help='Admin password')
+    parser.add_argument('--import-games', help='Import games from JSON file')
+    parser.add_argument('--export-games', help='Export games to JSON file')
+    parser.add_argument('--register-rfid', help='Register an RFID card')
+    parser.add_argument('--card-name', help='Name for the RFID card')
+    parser.add_argument('--backup-db', action='store_true', help='Backup the database')
+    parser.add_argument('--backup-dir', default='backups', help='Backup directory')
+    parser.add_argument('--generate-env', action='store_true', help='Generate secure .env file')
+    parser.add_argument('--cleanup-logs', action='store_true', help='Clean up old log files')
+    parser.add_argument('--log-age', type=int, default=30, help='Max log age in days')
+    
+    args = parser.parse_args()
+    admin = AdminUtility()
+    
+    if args.init_db:
+        admin.initialize_database()
+        
+    if args.create_admin:
+        username = args.username or input("Enter admin username: ")
+        password = args.password or input("Enter admin password: ")
+        admin.create_admin_user(username, password)
+        
+    if args.import_games:
+        admin.import_games_from_json(args.import_games)
+        
+    if args.export_games:
+        admin.export_games_to_json(args.export_games)
+        
+    if args.register_rfid:
+        admin.register_rfid_card(args.register_rfid, args.card_name)
+        
+    if args.backup_db:
+        admin.backup_database(args.backup_dir)
+        
+    if args.generate_env:
+        admin.generate_env_file()
+        
+    if args.cleanup_logs:
+        admin.cleanup_logs(args.log_age)

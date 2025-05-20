@@ -1,3 +1,4 @@
+
 import { toast } from "@/components/ui/use-toast";
 import { WebSocketSettings } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +23,11 @@ export enum CommandType {
   SUBMIT_RATING = 'submitRating',
   SCAN_RFID = 'scanRfid',       // Command for RFID scanning
   VALIDATE_RFID = 'validateRfid', // Command for RFID validation
+  REGISTER_RFID = 'registerRfid', // Command to register new RFID
+  DEACTIVATE_RFID = 'deactivateRfid', // Command to deactivate RFID
+  GET_RFID_HISTORY = 'getRfidHistory', // Get RFID card history
+  SET_RFID_GAME_PERMISSION = 'setRfidGamePermission', // Set RFID card game permissions
+  GET_DIAGNOSTICS = 'getDiagnostics', // Get system diagnostics
 }
 
 // Response status from Python server
@@ -37,6 +43,7 @@ export interface Command {
   type: CommandType;
   params?: Record<string, any>;
   timestamp?: number;
+  auth?: string; // Optional authentication token
 }
 
 // Response interface
@@ -55,6 +62,7 @@ export interface RfidCardData {
   status: string;
   valid: boolean;
   authorized?: boolean;
+  permissionLevel?: string;
   message?: string;
 }
 
@@ -97,12 +105,38 @@ class WebSocketService {
   private statusListeners: ((status: ServerStatus) => void)[] = [];
   private rfidListeners: ((rfidData: RfidCardData) => void)[] = [];
   private heartbeatInterval: number | null = null;
+  private commandRateLimiter: Map<CommandType, number> = new Map();
+  private commandRateLimits: Map<CommandType, { max: number, window: number }> = new Map();
   private serverStatus: ServerStatus = {
     connected: false,
     gameRunning: false,
   };
   private settings: WebSocketSettings = { ...defaultSettings };
   private _initialized = false;
+  private authToken: string | null = null;
+
+  constructor() {
+    // Set up default rate limits for commands
+    this.setDefaultRateLimits();
+  }
+
+  // Set default rate limits for commands
+  private setDefaultRateLimits() {
+    // Global default limit: 20 calls per 10 seconds
+    const globalDefault = { max: 20, window: 10000 };
+    
+    // Specific limits for certain commands
+    this.commandRateLimits.set(CommandType.HEARTBEAT, { max: 6, window: 60000 }); // 6 per minute
+    this.commandRateLimits.set(CommandType.GET_STATUS, { max: 30, window: 60000 }); // 30 per minute
+    this.commandRateLimits.set(CommandType.SCAN_RFID, { max: 20, window: 10000 }); // 20 per 10 seconds
+    
+    // Default for other commands
+    Object.values(CommandType).forEach(cmd => {
+      if (!this.commandRateLimits.has(cmd as CommandType)) {
+        this.commandRateLimits.set(cmd as CommandType, globalDefault);
+      }
+    });
+  }
 
   // Initialize with settings from Supabase if available
   async initializeSettings(): Promise<void> {
@@ -122,10 +156,48 @@ class WebSocketService {
           reconnectAttempts: storedSettings.reconnect_attempts || defaultSettings.reconnectAttempts,
           reconnectDelay: storedSettings.reconnect_delay || defaultSettings.reconnectDelay
         };
+        
+        // Update max reconnect attempts
+        this.maxReconnectAttempts = this.settings.reconnectAttempts;
+        this.reconnectDelay = this.settings.reconnectDelay;
       }
     } catch (error) {
       console.warn('Failed to load WebSocket settings from database, using defaults', error);
       this.settings = { ...defaultSettings };
+    }
+  }
+  
+  // Set authentication token
+  public setAuthToken(token: string | null): void {
+    this.authToken = token;
+  }
+
+  // Check if a command is rate limited
+  private isRateLimited(commandType: CommandType): boolean {
+    const now = Date.now();
+    const limit = this.commandRateLimits.get(commandType);
+    
+    if (!limit) return false;
+    
+    // Get previous calls within the time window
+    const calls = Array.from(this.commandRateLimiter.entries())
+      .filter(([cmd, time]) => cmd === commandType && now - time < limit.window)
+      .length;
+      
+    return calls >= limit.max;
+  }
+
+  // Record command usage for rate limiting
+  private recordCommandUsage(commandType: CommandType): void {
+    const now = Date.now();
+    this.commandRateLimiter.set(commandType, now);
+    
+    // Clean up old entries
+    for (const [cmd, time] of this.commandRateLimiter.entries()) {
+      const limit = this.commandRateLimits.get(cmd);
+      if (limit && now - time > limit.window) {
+        this.commandRateLimiter.delete(cmd);
+      }
     }
   }
 
@@ -186,6 +258,12 @@ class WebSocketService {
         return;
       }
       
+      // Check rate limits
+      if (this.isRateLimited(type)) {
+        reject(new Error('Rate limit exceeded for this command type'));
+        return;
+      }
+      
       const id = this.generateCommandId();
       const command: Command = {
         id,
@@ -193,6 +271,11 @@ class WebSocketService {
         params,
         timestamp: Date.now(),
       };
+      
+      // Add authentication token if available
+      if (this.authToken) {
+        command.auth = this.authToken;
+      }
       
       // Store callback to resolve the promise when response is received
       this.commandCallbacks.set(id, (response) => {
@@ -202,6 +285,9 @@ class WebSocketService {
           reject(new Error(response.error || 'Unknown error'));
         }
       });
+      
+      // Record command usage for rate limiting
+      this.recordCommandUsage(type);
       
       // Send command to server
       this.socket.send(JSON.stringify(command));
@@ -372,6 +458,8 @@ class WebSocketService {
     setTimeout(() => {
       if (this.socket && this.socket.url) {
         this.connect(this.socket.url);
+      } else {
+        this.connect();
       }
     }, this.reconnectDelay * this.reconnectAttempts);
   }

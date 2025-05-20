@@ -1,11 +1,13 @@
 
 #!/bin/bash
-# Installation script for the VR Command Center server
+# Enhanced installation script for the VR Command Center server
 
 # Exit on error
 set -e
 
-echo "=== VR Command Center Server Installation ==="
+echo "============================================"
+echo "VR Command Center Server Installation"
+echo "============================================"
 echo ""
 
 # Check Python version
@@ -23,6 +25,10 @@ else
     exit 1
 fi
 
+# Create necessary directories
+echo "Creating necessary directories..."
+mkdir -p logs data certificates
+
 # Create a virtual environment
 echo "Creating Python virtual environment..."
 python3 -m venv venv
@@ -37,9 +43,8 @@ pip install -r requirements.txt
 if [ ! -f .env ]; then
     echo "Creating default configuration..."
     cp .env.example .env
-    echo "Please update .env with your specific settings."
-else
-    echo ".env configuration already exists."
+    echo "** IMPORTANT **"
+    echo "Please update .env with secure values for VR_API_KEY and RFID_JWT_SECRET"
 fi
 
 # Check if games.json exists
@@ -51,8 +56,8 @@ if [ ! -f games.json ]; then
     {
       "id": "sample1",
       "title": "Sample VR Game 1",
-      "executable_path": "/path/to/sample1.exe",
-      "working_directory": "/path/to",
+      "executable_path": "/opt/vrgames/sample1/game",
+      "working_directory": "/opt/vrgames/sample1",
       "arguments": "",
       "description": "A sample VR game for testing",
       "image_url": "/images/sample1.jpg",
@@ -66,20 +71,42 @@ EOL
     echo "Please update games.json with your actual game installations."
 fi
 
-# Create logs directory
-mkdir -p logs
+# Initialize database
+echo "Initializing database..."
+python3 admin_utility.py --init-db
+
+# Generate self-signed certificates for TLS support
+echo "Do you want to generate self-signed TLS certificates? (Y/N)"
+read -r generate_certs
+if [[ "$generate_certs" =~ ^[Yy]$ ]]; then
+    echo "Generating self-signed certificates..."
+    pushd certificates > /dev/null
+    openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=localhost"
+    popd > /dev/null
+    echo "Certificates generated in the certificates directory"
+    echo "Update .env and set VR_ENABLE_TLS=true to use them"
+fi
+
+# Update service file permissions
+chmod 644 vr-server.service
 
 echo ""
-echo "=== Installation complete! ==="
+echo "============================================"
+echo "Installation complete!"
+echo "============================================"
 echo ""
 echo "To start the server manually:"
 echo "  source venv/bin/activate"
-echo "  python server.py"
+echo "  python3 server.py"
 echo ""
-echo "To install as a system service (requires sudo):"
+echo "To install as a system service:"
 echo "  sudo cp vr-server.service /etc/systemd/system/"
+echo "  sudo systemctl daemon-reload"
 echo "  sudo systemctl enable vr-server"
 echo "  sudo systemctl start vr-server"
 echo ""
-echo "Don't forget to update games.json with your actual VR game installations!"
+echo "Don't forget to:"
+echo "  1. Update games.json with your actual VR game installations"
+echo "  2. Configure security settings in .env (especially API keys)"
+echo "  3. Set up database backup procedures"
 echo ""

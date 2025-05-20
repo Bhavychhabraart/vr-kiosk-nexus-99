@@ -11,6 +11,7 @@ import websocketService, {
 interface CommandCenterOptions {
   onStatusChange?: (status: ServerStatus) => void;
   onRfidScan?: (rfidData: RfidCardData) => void;
+  onSystemAlert?: (alert: any) => void;
 }
 
 const useCommandCenter = (options: CommandCenterOptions = {}) => {
@@ -36,6 +37,17 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
     const unsubServerStatus = websocketService.onStatusUpdate((status) => {
       setServerStatus(status);
       options.onStatusChange?.(status);
+      
+      // Check for system alerts
+      if (status.alerts && status.alerts.length > 0) {
+        const newAlerts = status.alerts.filter(alert => 
+          alert.timestamp > Date.now() - 60000 // Show only alerts from the last minute
+        );
+        
+        if (newAlerts.length > 0) {
+          options.onSystemAlert?.(newAlerts[0]);
+        }
+      }
     });
     
     // Subscribe to RFID events
@@ -192,6 +204,73 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
       throw error;
     }
   }, []);
+  
+  // Register a new RFID tag
+  const registerRfid = useCallback(async (tagId: string, name?: string) => {
+    try {
+      const response = await websocketService.sendCommand(CommandType.REGISTER_RFID, { 
+        tagId,
+        name 
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error registering RFID:', error);
+      throw error;
+    }
+  }, []);
+  
+  // Deactivate an RFID tag
+  const deactivateRfid = useCallback(async (tagId: string) => {
+    try {
+      const response = await websocketService.sendCommand(CommandType.DEACTIVATE_RFID, { 
+        tagId 
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error deactivating RFID:', error);
+      throw error;
+    }
+  }, []);
+  
+  // Get RFID card history
+  const getRfidHistory = useCallback(async (tagId: string, limit: number = 10) => {
+    try {
+      const response = await websocketService.sendCommand(CommandType.GET_RFID_HISTORY, { 
+        tagId,
+        limit
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error getting RFID history:', error);
+      throw error;
+    }
+  }, []);
+  
+  // Set RFID game permissions
+  const setRfidGamePermission = useCallback(async (tagId: string, gameId: string, permissionType: string = "allow") => {
+    try {
+      const response = await websocketService.sendCommand(CommandType.SET_RFID_GAME_PERMISSION, { 
+        tagId,
+        gameId,
+        permissionType
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error setting RFID game permission:', error);
+      throw error;
+    }
+  }, []);
+
+  // Get system metrics and diagnostics
+  const getSystemDiagnostics = useCallback(async () => {
+    try {
+      const response = await websocketService.sendCommand(CommandType.GET_DIAGNOSTICS);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting system diagnostics:', error);
+      throw error;
+    }
+  }, []);
 
   return {
     connectionState,
@@ -204,7 +283,12 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
     getServerStatus,
     submitRating,
     scanRfid,
-    validateRfid
+    validateRfid,
+    registerRfid,
+    deactivateRfid,
+    getRfidHistory,
+    setRfidGamePermission,
+    getSystemDiagnostics
   };
 };
 

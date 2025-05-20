@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +19,8 @@ import {
   Pause,
   Play,
   X,
-  ArrowLeft
+  ArrowLeft,
+  Shield
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
@@ -48,8 +48,9 @@ const Session = () => {
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(0);
   const [submittingRating, setSubmittingRating] = useState(false);
+  const [rfidVerified, setRfidVerified] = useState(false);
   
-  // Connect to command center
+  // Connect to command center with enhanced error handling
   const { 
     connectionState, 
     serverStatus, 
@@ -58,12 +59,35 @@ const Session = () => {
     pauseSession, 
     resumeSession,
     submitRating,
+    validateRfid,
     isConnected
   } = useCommandCenter({
     onStatusChange: (status) => {
       // Update UI based on server status
       if (status.gameRunning && !gameStarted) {
         setGameStarted(true);
+      }
+      
+      // Update time remaining from the server if available
+      if (status.timeRemaining !== undefined) {
+        setTimeRemaining(status.timeRemaining);
+        setIsRunning(!status.isPaused);
+      }
+      
+      // Check for system alerts
+      if (status.alerts && status.alerts.length > 0) {
+        const criticalAlerts = status.alerts.filter(
+          alert => alert.type === 'critical' && 
+          new Date(alert.timestamp).getTime() > Date.now() - (30 * 1000)
+        );
+        
+        if (criticalAlerts.length > 0) {
+          toast({
+            title: "System Alert",
+            description: criticalAlerts[0].message,
+            variant: "destructive",
+          });
+        }
       }
     }
   });
@@ -82,6 +106,40 @@ const Session = () => {
     }
   }, [rfidTag, navigate, toast]);
   
+  // Verify RFID tag has permission to play the selected game
+  useEffect(() => {
+    const verifyRfidAccess = async () => {
+      if (isConnected && gameId && rfidTag && !rfidVerified) {
+        try {
+          const result = await validateRfid(rfidTag, gameId);
+          
+          if (!result.authorized) {
+            toast({
+              title: "Access Denied",
+              description: result.message || "Your RFID card doesn't have permission for this game",
+              variant: "destructive",
+            });
+            
+            // Redirect back to games page after delay
+            setTimeout(() => navigate("/games"), 2000);
+            return;
+          }
+          
+          setRfidVerified(true);
+        } catch (error) {
+          console.error("Error verifying RFID access:", error);
+          toast({
+            title: "Authorization Failed",
+            description: "Could not verify RFID permissions",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+    
+    verifyRfidAccess();
+  }, [isConnected, gameId, rfidTag, rfidVerified, validateRfid, navigate, toast]);
+  
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -92,9 +150,9 @@ const Session = () => {
   // Calculate progress percentage
   const progress = (timeRemaining / MOCK_SESSION_DURATION) * 100;
   
-  // Start the game when component mounts
+  // Start the game when component mounts and RFID is verified
   useEffect(() => {
-    if (isConnected && gameId && rfidTag && !gameStarted) {
+    if (isConnected && gameId && rfidTag && rfidVerified && !gameStarted) {
       launchGame(gameId, MOCK_SESSION_DURATION, rfidTag)
         .then(() => {
           setGameStarted(true);
@@ -112,9 +170,9 @@ const Session = () => {
           console.error("Error launching game:", error);
         });
     }
-  }, [isConnected, gameId, rfidTag, gameStarted, launchGame, toast]);
+  }, [isConnected, gameId, rfidTag, rfidVerified, gameStarted, launchGame, toast]);
   
-  // Timer effect
+  // Timer effect - now gets updates from server but falls back to local timer
   useEffect(() => {
     if (!isRunning || timeRemaining <= 0) return;
     
@@ -317,7 +375,8 @@ const Session = () => {
             
             {/* RFID Tag display */}
             {rfidTag && (
-              <div className="bg-vr-primary/10 text-vr-primary text-sm px-3 py-1 rounded-full mb-4">
+              <div className="bg-vr-primary/10 text-vr-primary text-sm px-3 py-1 rounded-full mb-4 flex items-center">
+                <Shield className="h-3 w-3 mr-1" />
                 RFID: {rfidTag}
               </div>
             )}
