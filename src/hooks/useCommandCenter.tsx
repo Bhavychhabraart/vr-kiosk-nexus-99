@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import websocketService, { 
@@ -40,9 +39,13 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
       
       // Check for system alerts
       if (status.alerts && status.alerts.length > 0) {
-        const newAlerts = status.alerts.filter(alert => 
-          alert.timestamp > Date.now() - 60000 // Show only alerts from the last minute
-        );
+        const newAlerts = status.alerts.filter(alert => {
+          // Convert timestamp to number if it's a string, then compare
+          const alertTime = typeof alert.timestamp === 'string' 
+            ? Date.parse(alert.timestamp) 
+            : alert.timestamp;
+          return alertTime > Date.now() - 60000; // Show only alerts from the last minute
+        });
         
         if (newAlerts.length > 0) {
           options.onSystemAlert?.(newAlerts[0]);
