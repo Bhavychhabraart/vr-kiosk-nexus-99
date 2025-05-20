@@ -3,86 +3,31 @@ import json
 import logging
 import os
 import subprocess
+import time
 from typing import Dict, Any, Tuple, Optional, List
 
 class GameManager:
     """Manages VR games and their processes"""
     
-    def __init__(self, config_path: str, logger):
+    def __init__(self, config_path: str, database, logger):
         self.logger = logger
         self.config_path = config_path
-        self.games: Dict[str, Dict[str, Any]] = {}
+        self.database = database
         self.current_game_id: Optional[str] = None
         self.current_game_process: Optional[subprocess.Popen] = None
+        self.games_cache: Dict[str, Dict[str, Any]] = {}
         
-        # Load game configurations
-        self.load_game_configs()
+        # Load game configurations from database
+        self.load_games()
     
-    def load_game_configs(self):
-        """Load game configurations from JSON file"""
+    def load_games(self):
+        """Load game configurations from database"""
         try:
-            if not os.path.exists(self.config_path):
-                self.logger.warning(f"Game config file not found: {self.config_path}")
-                self.logger.info("Creating default game configuration")
-                self.create_default_config()
-            
-            with open(self.config_path, 'r') as f:
-                config_data = json.load(f)
-            
-            if 'games' in config_data:
-                for game in config_data['games']:
-                    self.games[game['id']] = game
-                self.logger.info(f"Loaded {len(self.games)} games from config")
-            else:
-                self.logger.error("Invalid game configuration format")
+            games = self.database.get_games()
+            self.games_cache = {game['id']: game for game in games}
+            self.logger.info(f"Loaded {len(self.games_cache)} games from database")
         except Exception as e:
             self.logger.exception(f"Error loading game configurations: {e}")
-    
-    def create_default_config(self):
-        """Create a default game configuration file"""
-        default_config = {
-            "games": [
-                {
-                    "id": "1",
-                    "title": "Beat Saber",
-                    "executable_path": "C:\\VRGames\\BeatSaber\\Beat Saber.exe",
-                    "working_directory": "C:\\VRGames\\BeatSaber",
-                    "arguments": "--vrmode openvr",
-                    "description": "Rhythm game where you slash blocks with lightsabers",
-                    "image_url": "/games/beatsaber.jpg",
-                    "min_duration_seconds": 300,
-                    "max_duration_seconds": 1800
-                },
-                {
-                    "id": "2",
-                    "title": "Half-Life: Alyx",
-                    "executable_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Half-Life Alyx\\bin\\win64\\hlvr.exe",
-                    "working_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Half-Life Alyx",
-                    "arguments": "-novid -console",
-                    "description": "Return to Half-Life in this VR masterpiece by Valve",
-                    "image_url": "/games/alyx.jpg",
-                    "min_duration_seconds": 600,
-                    "max_duration_seconds": 3600
-                },
-                {
-                    "id": "3",
-                    "title": "VRChat",
-                    "executable_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\VRChat\\VRChat.exe",
-                    "working_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\VRChat",
-                    "arguments": "",
-                    "description": "Social VR platform to meet and interact with friends",
-                    "image_url": "/games/vrchat.jpg",
-                    "min_duration_seconds": 300,
-                    "max_duration_seconds": 7200
-                }
-            ]
-        }
-        
-        # Create directory if it doesn't exist
-        os.makedirs(os.path.dirname(os.path.abspath(self.config_path)), exist_ok=True)
-        
-        with open(self.config_path, 'w') as f:
-            json.dump(default_config, f, indent=2)
     
     def launch_game(self, game_id: str) -> Tuple[bool, Dict[str, Any]]:
         """Launch a game by ID"""
@@ -90,11 +35,14 @@ class GameManager:
         if self.is_game_running():
             self.end_game()
         
-        if game_id not in self.games:
+        game = self.database.get_game(game_id)
+        if not game:
             self.logger.error(f"Game ID {game_id} not found")
             return False, {}
         
-        game = self.games[game_id]
+        # Cache the game data
+        self.games_cache[game_id] = game
+        
         self.logger.info(f"Launching game: {game['title']}")
         
         try:
@@ -140,7 +88,7 @@ class GameManager:
         if not self.current_game_id:
             return False
             
-        game_title = self.games[self.current_game_id]['title']
+        game_title = self.games_cache.get(self.current_game_id, {}).get('title', 'Unknown Game')
         self.logger.info(f"Ending game: {game_title}")
         
         # Terminate the process if it exists
@@ -155,6 +103,10 @@ class GameManager:
                     # If it doesn't terminate, kill it
                     self.logger.warning("Game process did not terminate gracefully, killing it")
                     self.current_game_process.kill()
+                    try:
+                        self.current_game_process.wait(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        self.logger.error("Failed to kill game process")
             except Exception as e:
                 self.logger.exception(f"Error terminating game process: {e}")
         
@@ -184,10 +136,18 @@ class GameManager:
     
     def get_current_game_title(self) -> Optional[str]:
         """Get the title of the currently running game"""
-        if not self.is_game_running():
+        if not self.is_game_running() or not self.current_game_id:
             return None
-        return self.games[self.current_game_id]['title'] if self.current_game_id else None
+            
+        game = self.games_cache.get(self.current_game_id)
+        if not game:
+            # Try to load from database if not in cache
+            game = self.database.get_game(self.current_game_id)
+            if game:
+                self.games_cache[self.current_game_id] = game
+                
+        return game.get('title', 'Unknown Game') if game else None
     
     def get_available_games(self) -> List[Dict[str, Any]]:
         """Get all available games"""
-        return list(self.games.values())
+        return list(self.database.get_games())

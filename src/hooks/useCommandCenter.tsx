@@ -4,11 +4,13 @@ import { toast } from '@/components/ui/use-toast';
 import websocketService, { 
   ConnectionState, 
   CommandType, 
-  ServerStatus 
+  ServerStatus,
+  RfidCardData
 } from '@/services/websocket';
 
 interface CommandCenterOptions {
   onStatusChange?: (status: ServerStatus) => void;
+  onRfidScan?: (rfidData: RfidCardData) => void;
 }
 
 const useCommandCenter = (options: CommandCenterOptions = {}) => {
@@ -35,11 +37,17 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
       setServerStatus(status);
       options.onStatusChange?.(status);
     });
+    
+    // Subscribe to RFID events
+    const unsubRfidEvents = websocketService.onRfidEvent((rfidData) => {
+      options.onRfidScan?.(rfidData);
+    });
 
     // Cleanup function
     return () => {
       unsubConnectionState();
       unsubServerStatus();
+      unsubRfidEvents();
     };
   }, [options]);
 
@@ -51,7 +59,7 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
     try {
       const response = await websocketService.sendCommand(CommandType.LAUNCH_GAME, { 
         gameId, 
-        durationSeconds,
+        sessionDuration: durationSeconds,
         rfidTag 
       });
       
@@ -159,6 +167,31 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
       throw error;
     }
   }, []);
+  
+  // Scan an RFID tag
+  const scanRfid = useCallback(async (tagId: string) => {
+    try {
+      const response = await websocketService.sendCommand(CommandType.SCAN_RFID, { tagId });
+      return response.data as RfidCardData;
+    } catch (error) {
+      console.error('Error scanning RFID:', error);
+      throw error;
+    }
+  }, []);
+  
+  // Validate an RFID tag for a specific game
+  const validateRfid = useCallback(async (tagId: string, gameId: string) => {
+    try {
+      const response = await websocketService.sendCommand(CommandType.VALIDATE_RFID, { 
+        tagId, 
+        gameId 
+      });
+      return response.data as RfidCardData;
+    } catch (error) {
+      console.error('Error validating RFID:', error);
+      throw error;
+    }
+  }, []);
 
   return {
     connectionState,
@@ -170,6 +203,8 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
     resumeSession,
     getServerStatus,
     submitRating,
+    scanRfid,
+    validateRfid
   };
 };
 

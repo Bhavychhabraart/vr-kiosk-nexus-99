@@ -11,7 +11,7 @@ export enum ConnectionState {
   FAILED = 'failed',
 }
 
-// Command types for communication with C++ server
+// Command types for communication with Python server
 export enum CommandType {
   LAUNCH_GAME = 'launchGame',
   END_SESSION = 'endSession',
@@ -20,11 +20,11 @@ export enum CommandType {
   GET_STATUS = 'getStatus',
   HEARTBEAT = 'heartbeat',
   SUBMIT_RATING = 'submitRating',
-  SCAN_RFID = 'scanRfid',  // Command for RFID scanning
+  SCAN_RFID = 'scanRfid',       // Command for RFID scanning
   VALIDATE_RFID = 'validateRfid', // Command for RFID validation
 }
 
-// Response status from C++ server
+// Response status from Python server
 export enum ResponseStatus {
   SUCCESS = 'success',
   ERROR = 'error',
@@ -48,6 +48,16 @@ export interface CommandResponse {
   timestamp?: number;
 }
 
+// RFID Card data interface
+export interface RfidCardData {
+  tagId: string;
+  name?: string;
+  status: string;
+  valid: boolean;
+  authorized?: boolean;
+  message?: string;
+}
+
 // Server status interface
 export interface ServerStatus {
   connected: boolean;
@@ -58,6 +68,15 @@ export interface ServerStatus {
   diskSpace?: number;
   isPaused?: boolean;
   timeRemaining?: number;
+  serverUptime?: number;
+  connectedClients?: number;
+  alerts?: Array<{
+    type: string;
+    message: string;
+    value: number;
+    threshold: number;
+    timestamp: string;
+  }>;
 }
 
 // Default WebSocket settings
@@ -76,6 +95,7 @@ class WebSocketService {
   private commandCallbacks: Map<string, (response: CommandResponse) => void> = new Map();
   private connectionStateListeners: ((state: ConnectionState) => void)[] = [];
   private statusListeners: ((status: ServerStatus) => void)[] = [];
+  private rfidListeners: ((rfidData: RfidCardData) => void)[] = [];
   private heartbeatInterval: number | null = null;
   private serverStatus: ServerStatus = {
     connected: false,
@@ -109,7 +129,7 @@ class WebSocketService {
     }
   }
 
-  // Connect to the C++ WebSocket server
+  // Connect to the Python WebSocket server
   async connect(customUrl?: string): Promise<void> {
     // Load settings from database if not done already
     if (!this._initialized) {
@@ -158,7 +178,7 @@ class WebSocketService {
     this.updateConnectionState(ConnectionState.DISCONNECTED);
   }
   
-  // Send a command to the C++ server
+  // Send a command to the Python server
   public sendCommand(type: CommandType, params?: Record<string, any>): Promise<CommandResponse> {
     return new Promise((resolve, reject) => {
       if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
@@ -196,6 +216,28 @@ class WebSocketService {
     });
   }
   
+  // Scan RFID tag
+  public async scanRfid(tagId: string): Promise<RfidCardData> {
+    try {
+      const response = await this.sendCommand(CommandType.SCAN_RFID, { tagId });
+      return response.data as RfidCardData;
+    } catch (error) {
+      console.error('Error scanning RFID:', error);
+      throw error;
+    }
+  }
+  
+  // Validate RFID for a specific game
+  public async validateRfid(tagId: string, gameId: string): Promise<RfidCardData> {
+    try {
+      const response = await this.sendCommand(CommandType.VALIDATE_RFID, { tagId, gameId });
+      return response.data as RfidCardData;
+    } catch (error) {
+      console.error('Error validating RFID:', error);
+      throw error;
+    }
+  }
+  
   // Subscribe to connection state changes
   public onConnectionStateChange(listener: (state: ConnectionState) => void): () => void {
     this.connectionStateListeners.push(listener);
@@ -217,6 +259,16 @@ class WebSocketService {
     // Return unsubscribe function
     return () => {
       this.statusListeners = this.statusListeners.filter(l => l !== listener);
+    };
+  }
+  
+  // Subscribe to RFID events
+  public onRfidEvent(listener: (rfidData: RfidCardData) => void): () => void {
+    this.rfidListeners.push(listener);
+    
+    // Return unsubscribe function
+    return () => {
+      this.rfidListeners = this.rfidListeners.filter(l => l !== listener);
     };
   }
   
@@ -273,6 +325,13 @@ class WebSocketService {
       // Handle status updates
       if (response.data && response.data.status) {
         this.updateServerStatus(response.data.status);
+      }
+      
+      // Handle RFID events
+      if (response.data && 
+          (response.data.tagId || response.data.rfidTag) && 
+          (response.data.valid !== undefined || response.data.authorized !== undefined)) {
+        this.notifyRfidListeners(response.data);
       }
     } catch (error) {
       console.error('Error handling WebSocket message:', error);
@@ -333,6 +392,11 @@ class WebSocketService {
   private updateServerStatus(status: Partial<ServerStatus>): void {
     this.serverStatus = { ...this.serverStatus, ...status };
     this.statusListeners.forEach(listener => listener(this.serverStatus));
+  }
+  
+  // Notify RFID listeners of RFID events
+  private notifyRfidListeners(rfidData: RfidCardData): void {
+    this.rfidListeners.forEach(listener => listener(rfidData));
   }
   
   // Start heartbeat to keep connection alive
