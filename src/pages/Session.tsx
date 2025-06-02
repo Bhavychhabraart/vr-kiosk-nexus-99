@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -19,7 +18,8 @@ import {
   Pause,
   Play,
   X,
-  ArrowLeft
+  ArrowLeft,
+  Loader2
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
@@ -34,12 +34,16 @@ const Session = () => {
   
   const gameId = searchParams.get("gameId");
   const gameTitle = searchParams.get("title") || "VR Game";
+  const durationParam = searchParams.get("duration");
+  const selectedDuration = durationParam ? parseInt(durationParam) : 1800; // Default 30 minutes
   
-  const [timeRemaining, setTimeRemaining] = useState(0);
-  const [isRunning, setIsRunning] = useState(true);
+  const [timeRemaining, setTimeRemaining] = useState(selectedDuration);
+  const [isRunning, setIsRunning] = useState(false);
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
+  const [isLaunching, setIsLaunching] = useState(true);
+  const [launchError, setLaunchError] = useState<string | null>(null);
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(0);
   const [submittingRating, setSubmittingRating] = useState(false);
@@ -48,6 +52,7 @@ const Session = () => {
   const { 
     connectionState, 
     serverStatus, 
+    launchGame,
     endSession, 
     pauseSession, 
     resumeSession,
@@ -58,6 +63,12 @@ const Session = () => {
       // Update UI based on server status
       if (status.gameRunning && !gameStarted) {
         setGameStarted(true);
+        setIsRunning(true);
+        setIsLaunching(false);
+        toast({
+          title: "Game Launched Successfully",
+          description: `${gameTitle} is now running. Enjoy your session!`,
+        });
       }
       
       // Update time remaining from the server if available
@@ -84,7 +95,7 @@ const Session = () => {
     }
   });
   
-  // Check for game ID - redirect if missing
+  // Auto-launch game when component mounts
   useEffect(() => {
     if (!gameId) {
       toast({
@@ -92,10 +103,46 @@ const Session = () => {
         description: "No game selected. Please select a game first.",
         variant: "destructive",
       });
-      
       navigate("/games");
+      return;
     }
-  }, [gameId, navigate, toast]);
+
+    if (!isConnected) {
+      setLaunchError("VR system is not connected. Please contact staff.");
+      setIsLaunching(false);
+      return;
+    }
+
+    // Launch the game automatically
+    const performLaunch = async () => {
+      try {
+        console.log(`Launching game ${gameId} with duration ${selectedDuration} seconds`);
+        await launchGame(gameId, selectedDuration);
+        
+        // Game launch initiated - wait for server status to confirm
+        setTimeout(() => {
+          if (!gameStarted && isLaunching) {
+            setLaunchError("Game launch timeout. Please try again.");
+            setIsLaunching(false);
+          }
+        }, 10000); // 10 second timeout
+        
+      } catch (error) {
+        console.error("Failed to launch game:", error);
+        setLaunchError("Failed to start the game. Please try again.");
+        setIsLaunching(false);
+        toast({
+          title: "Launch Failed",
+          description: "Could not start the game. Please contact staff.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    if (isConnected && !gameStarted && !launchError) {
+      performLaunch();
+    }
+  }, [gameId, selectedDuration, isConnected, launchGame, gameStarted, launchError, navigate, toast, isLaunching]);
   
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
@@ -104,13 +151,12 @@ const Session = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
   
-  // Calculate progress percentage (using initial time from server)
-  const initialDuration = serverStatus.timeRemaining || timeRemaining || 300;
-  const progress = (timeRemaining / initialDuration) * 100;
+  // Calculate progress percentage
+  const progress = (timeRemaining / selectedDuration) * 100;
   
-  // Timer effect - gets updates from server but falls back to local timer
+  // Timer effect - only run when game is started and running
   useEffect(() => {
-    if (!isRunning || timeRemaining <= 0) return;
+    if (!isRunning || timeRemaining <= 0 || !gameStarted) return;
     
     const timer = setInterval(() => {
       setTimeRemaining((prev) => {
@@ -125,18 +171,18 @@ const Session = () => {
     }, 1000);
     
     return () => clearInterval(timer);
-  }, [isRunning, timeRemaining]);
+  }, [isRunning, timeRemaining, gameStarted]);
   
   // Warn user when 1 minute remains
   useEffect(() => {
-    if (timeRemaining === 60) {
+    if (timeRemaining === 60 && gameStarted) {
       toast({
         title: "1 minute remaining",
         description: "Your session will end soon.",
         variant: "default",
       });
     }
-  }, [timeRemaining, toast]);
+  }, [timeRemaining, toast, gameStarted]);
   
   const handlePauseResume = async () => {
     try {
@@ -234,6 +280,13 @@ const Session = () => {
     }
   };
   
+  const handleRetryLaunch = () => {
+    setLaunchError(null);
+    setIsLaunching(true);
+    // Trigger re-launch by navigating back and forth
+    window.location.reload();
+  };
+  
   // If showing rating screen
   if (showRating) {
     return (
@@ -270,6 +323,100 @@ const Session = () => {
           </Button>
         </motion.div>
       </motion.div>
+    );
+  }
+
+  // If launch failed, show error screen
+  if (launchError) {
+    return (
+      <MainLayout className="relative px-4 py-8 h-screen flex flex-col">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="absolute top-8 left-8"
+        >
+          <Button 
+            variant="ghost" 
+            className="text-vr-muted hover:text-vr-text flex items-center gap-2"
+            onClick={() => navigate("/games")}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Games
+          </Button>
+        </motion.div>
+        
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", damping: 15 }}
+            className="vr-card max-w-lg w-full backdrop-blur-md text-center"
+          >
+            <AlertCircle className="h-16 w-16 text-vr-accent mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-4">Launch Failed</h2>
+            <p className="text-vr-muted mb-8">{launchError}</p>
+            
+            <div className="flex gap-4 justify-center">
+              <Button
+                onClick={handleRetryLaunch}
+                className="bg-vr-primary hover:bg-vr-primary/80"
+              >
+                Try Again
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/games")}
+                className="border-vr-primary/50"
+              >
+                Back to Games
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // If launching, show loading screen
+  if (isLaunching) {
+    return (
+      <MainLayout className="relative px-4 py-8 h-screen flex flex-col">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="absolute top-8 left-8 flex items-center gap-4"
+        >
+          <Button 
+            variant="ghost" 
+            className="text-vr-muted hover:text-vr-text flex items-center gap-2"
+            onClick={() => navigate("/games")}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Cancel Launch
+          </Button>
+          <CommandCenterStatus showLabel={true} />
+        </motion.div>
+        
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", damping: 15 }}
+            className="vr-card max-w-lg w-full backdrop-blur-md text-center"
+          >
+            <Loader2 className="h-16 w-16 text-vr-primary mx-auto mb-4 animate-spin" />
+            <h2 className="text-2xl font-bold mb-4">Launching {gameTitle}</h2>
+            <p className="text-vr-muted mb-8">
+              Initializing VR environment and starting game session...
+            </p>
+            <div className="text-sm text-vr-muted">
+              Duration: {Math.floor(selectedDuration / 60)} minutes
+            </div>
+          </motion.div>
+        </div>
+      </MainLayout>
     );
   }
   

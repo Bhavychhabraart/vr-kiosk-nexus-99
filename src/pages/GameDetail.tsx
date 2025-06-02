@@ -1,9 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Clock,
   Star,
@@ -25,6 +26,8 @@ const GameDetail = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [trailerOpen, setTrailerOpen] = useState(searchParams.get("showTrailer") === "true");
+  const [durationDialogOpen, setDurationDialogOpen] = useState(false);
+  const [selectedDuration, setSelectedDuration] = useState("1800"); // Default 30 minutes
   const [isLoading, setIsLoading] = useState(true);
   const [game, setGame] = useState<GameDetails | null>(null);
   
@@ -82,7 +85,7 @@ const GameDetail = () => {
     setSearchParams(searchParams);
   };
 
-  // Handle playing the game
+  // Handle playing the game - now opens duration selector
   const handlePlayGame = () => {
     if (!id || !game) {
       toast({
@@ -93,15 +96,37 @@ const GameDetail = () => {
       return;
     }
 
+    setDurationDialogOpen(true);
+  };
+
+  // Handle starting the game with selected duration
+  const handleStartGame = () => {
+    if (!id || !game) {
+      toast({
+        title: "Error",
+        description: "Game information not available.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setDurationDialogOpen(false);
+
     toast({
       title: "Starting game...",
       description: `Launching ${game.title}. Please put on your VR headset.`,
     });
     
-    // Navigate directly to the session page
+    // Navigate to the session page with duration
     navigate(
-      `/session?gameId=${id}&title=${encodeURIComponent(game.title)}`
+      `/session?gameId=${id}&title=${encodeURIComponent(game.title)}&duration=${selectedDuration}`
     );
+  };
+
+  // Format seconds to minutes
+  const formatDuration = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    return `${minutes} min`;
   };
 
   if (isLoading) {
@@ -129,6 +154,13 @@ const GameDetail = () => {
   }
 
   const hasTrailer = !!game.trailerUrl;
+
+  // Duration options in seconds
+  const durationOptions = [
+    { value: "900", label: "15 minutes", description: "Quick session" },
+    { value: "1800", label: "30 minutes", description: "Standard session" },
+    { value: "3600", label: "60 minutes", description: "Extended session" },
+  ];
 
   return (
     <MainLayout className="relative">
@@ -307,6 +339,49 @@ const GameDetail = () => {
           </div>
         </div>
       </div>
+
+      {/* Duration Selection Dialog */}
+      <Dialog open={durationDialogOpen} onOpenChange={setDurationDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-vr-dark border border-vr-primary/30">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Choose Session Duration</DialogTitle>
+            <DialogDescription>
+              Select how long you want to play {game.title}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <RadioGroup value={selectedDuration} onValueChange={setSelectedDuration}>
+              {durationOptions.map((option) => (
+                <div key={option.value} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-vr-primary/10 transition-colors">
+                  <RadioGroupItem value={option.value} id={option.value} />
+                  <Label htmlFor={option.value} className="flex-1 cursor-pointer">
+                    <div className="font-medium">{option.label}</div>
+                    <div className="text-sm text-vr-muted">{option.description}</div>
+                  </Label>
+                  <Clock className="h-4 w-4 text-vr-muted" />
+                </div>
+              ))}
+            </RadioGroup>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDurationDialogOpen(false)}
+              className="border-vr-primary/50"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleStartGame}
+              className="bg-vr-secondary text-vr-dark hover:bg-vr-secondary/90"
+            >
+              Start Game ({formatDuration(parseInt(selectedDuration))})
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Trailer Dialog */}
       <Dialog open={trailerOpen} onOpenChange={setTrailerOpen}>
