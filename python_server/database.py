@@ -95,12 +95,12 @@ class Database:
             conn.commit()
             self.logger.info("Database schema initialized successfully")
             
-            # Import default games if the games table is empty
-            cursor.execute("SELECT COUNT(*) FROM games")
-            count = cursor.fetchone()[0]
-            
-            if count == 0 and os.path.exists(os.environ.get("VR_GAMES_CONFIG", "games.json")):
-                self._import_games_from_json(os.environ.get("VR_GAMES_CONFIG", "games.json"))
+            # Always reimport games from JSON to ensure they're up to date
+            games_config_path = os.environ.get("VR_GAMES_CONFIG", "games.json")
+            if os.path.exists(games_config_path):
+                self._import_games_from_json(games_config_path)
+            else:
+                self.logger.warning(f"Games config file not found: {games_config_path}")
                 
         except sqlite3.Error as e:
             self.logger.error(f"Database initialization error: {e}")
@@ -115,6 +115,9 @@ class Database:
             if 'games' in config_data:
                 conn = self._get_connection()
                 cursor = conn.cursor()
+                
+                # Clear existing games to ensure fresh import
+                cursor.execute("DELETE FROM games")
                 
                 for game in config_data['games']:
                     cursor.execute(
@@ -143,6 +146,8 @@ class Database:
                 
         except (json.JSONDecodeError, FileNotFoundError, KeyError) as e:
             self.logger.error(f"Error importing games from JSON: {e}")
+    
+    # ... keep existing code (close, get_games, get_game, start_session, end_session, validate_rfid, get_setting, set_setting methods)
     
     def close(self):
         """Close the database connection"""

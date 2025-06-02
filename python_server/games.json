@@ -2,37 +2,136 @@
 {
   "games": [
     {
-      "id": "1",
-      "title": "Beat Saber",
-      "executable_path": "C:\\VRGames\\BeatSaber\\Beat Saber.exe",
-      "working_directory": "C:\\VRGames\\BeatSaber",
-      "arguments": "--vrmode openvr",
-      "description": "Rhythm game where you slash blocks with lightsabers",
-      "image_url": "/games/beatsaber.jpg",
+      "id": "f",
+      "title": "Fruit Ninja VR",
+      "executable_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\FruitNinjaVR\\FruitNinja.exe",
+      "working_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\FruitNinjaVR",
+      "arguments": "",
+      "description": "Slice and dice your way through waves of fruit in this immersive VR experience",
+      "image_url": "/games/fruitninja.jpg",
       "min_duration_seconds": 300,
       "max_duration_seconds": 1800
     },
     {
-      "id": "2",
-      "title": "Half-Life: Alyx",
-      "executable_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Half-Life Alyx\\bin\\win64\\hlvr.exe",
-      "working_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Half-Life Alyx",
-      "arguments": "-novid -console",
-      "description": "Return to Half-Life in this VR masterpiece by Valve",
-      "image_url": "/games/alyx.jpg",
+      "id": "c",
+      "title": "Crisis VRigade 2",
+      "executable_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Crisis VRigade 2\\Crisis VRigade 2.exe",
+      "working_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Crisis VRigade 2",
+      "arguments": "",
+      "description": "Fast-paced VR action shooter with intense tactical gameplay",
+      "image_url": "/games/crisis-vrigade-2.jpg",
+      "min_duration_seconds": 600,
+      "max_duration_seconds": 2400
+    },
+    {
+      "id": "s",
+      "title": "Subside Demo",
+      "executable_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Subside Demo\\Subside.exe",
+      "working_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Subside Demo",
+      "arguments": "",
+      "description": "Underwater VR adventure with stunning visuals and exploration",
+      "image_url": "/games/subside.jpg",
+      "min_duration_seconds": 300,
+      "max_duration_seconds": 1200
+    },
+    {
+      "id": "p",
+      "title": "Richie's Plank Experience",
+      "executable_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Richie's Plank Experience\\RichiesPlankExperience.exe",
+      "working_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Richie's Plank Experience",
+      "arguments": "",
+      "description": "Test your fear of heights in this thrilling VR plank walking experience",
+      "image_url": "/games/richies-plank.jpg",
+      "min_duration_seconds": 300,
+      "max_duration_seconds": 900
+    },
+    {
+      "id": "i",
+      "title": "iBCricket",
+      "executable_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\iBCricket\\iBCricket.exe",
+      "working_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\iBCricket",
+      "arguments": "",
+      "description": "Virtual reality cricket simulation with realistic gameplay",
+      "image_url": "/games/ibcricket.jpg",
       "min_duration_seconds": 600,
       "max_duration_seconds": 3600
     },
     {
-      "id": "3",
-      "title": "VRChat",
-      "executable_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\VRChat\\VRChat.exe",
-      "working_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\VRChat",
+      "id": "a",
+      "title": "Arizona Sunshine",
+      "executable_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\ArizonaSunshine\\ArizonaSunshine.exe",
+      "working_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\ArizonaSunshine",
       "arguments": "",
-      "description": "Social VR platform to meet and interact with friends",
-      "image_url": "/games/vrchat.jpg",
+      "description": "Post-apocalyptic VR zombie shooter set in the Arizona desert",
+      "image_url": "/games/arizona-sunshine.jpg",
+      "min_duration_seconds": 900,
+      "max_duration_seconds": 3600
+    },
+    {
+      "id": "u",
+      "title": "Undead Citadel Demo",
+      "executable_path": "C:\\Users\\Admin\\Pictures\\Undead Citadel Demo.bat",
+      "working_directory": "C:\\Users\\Admin\\Pictures",
+      "arguments": "",
+      "description": "Medieval VR combat against hordes of undead enemies",
+      "image_url": "/games/undead-citadel.jpg",
       "min_duration_seconds": 300,
-      "max_duration_seconds": 7200
+      "max_duration_seconds": 1200
+    },
+    {
+      "id": "e",
+      "title": "Elven Assassin",
+      "executable_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Elven Assassin\\Elven Assassin.exe",
+      "working_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Elven Assassin",
+      "arguments": "",
+      "description": "Fantasy archery VR game with magical combat and epic battles",
+      "image_url": "/games/elven-assassin.jpg",
+      "min_duration_seconds": 600,
+      "max_duration_seconds": 2400
+    },
+    {
+      "id": "r",
+      "title": "RollerCoaster Legends",
+      "executable_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\RollerCoaster Legends\\RCLegends.exe",
+      "working_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\RollerCoaster Legends",
+      "arguments": "",
+      "description": "Thrilling VR roller coaster experience with multiple themed rides",
+      "image_url": "/games/rollercoaster-legends.jpg",
+      "min_duration_seconds": 300,
+      "max_duration_seconds": 1800
+    },
+    {
+      "id": "v",
+      "title": "All-In-One Sports VR",
+      "executable_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\All-In-One Sports VR\\AllInOneSports.exe",
+      "working_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\All-In-One Sports VR",
+      "arguments": "",
+      "description": "Multiple VR sports games in one package - bowling, darts, archery and more",
+      "image_url": "/games/all-in-one-sports.jpg",
+      "min_duration_seconds": 600,
+      "max_duration_seconds": 3600
+    },
+    {
+      "id": "g",
+      "title": "Creed: Rise to Glory",
+      "executable_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Creed Rise to Glory\\Creed.exe",
+      "working_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Creed Rise to Glory",
+      "arguments": "",
+      "description": "Step into the ring as Adonis Creed in this intense VR boxing experience",
+      "image_url": "/games/creed.jpg",
+      "min_duration_seconds": 600,
+      "max_duration_seconds": 2400
+    },
+    {
+      "id": "w",
+      "title": "Beat Saber",
+      "executable_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Beat Saber\\Beat Saber.exe",
+      "working_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Beat Saber",
+      "arguments": "",
+      "description": "Rhythm VR game where you slash blocks with lightsabers to the beat",
+      "image_url": "/games/beatsaber.jpg",
+      "min_duration_seconds": 300,
+      "max_duration_seconds": 1800
     }
   ]
 }

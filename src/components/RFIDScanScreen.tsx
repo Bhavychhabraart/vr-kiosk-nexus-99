@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -265,15 +266,29 @@ const RFIDScanScreen = ({
             Back
           </Button>
           
-          {scanStatus !== 'scanning' && scanStatus !== 'success' && scanStatus !== 'hardware-error' && (
-            <Button
-              variant="default"
-              className="bg-vr-secondary hover:bg-vr-secondary/90 text-vr-dark"
-              onClick={handleStartScan}
-            >
-              Scan Card
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {/* Always show Simulate RFID button as an alternative option */}
+            {scanStatus !== 'scanning' && scanStatus !== 'success' && (
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={handleSimulateRFID}
+              >
+                <Smartphone className="h-4 w-4" />
+                Simulate
+              </Button>
+            )}
+            
+            {scanStatus !== 'scanning' && scanStatus !== 'success' && scanStatus !== 'hardware-error' && (
+              <Button
+                variant="default"
+                className="bg-vr-secondary hover:bg-vr-secondary/90 text-vr-dark"
+                onClick={handleStartScan}
+              >
+                Scan Card
+              </Button>
+            )}
+          </div>
         </div>
       </motion.div>
     </motion.div>
