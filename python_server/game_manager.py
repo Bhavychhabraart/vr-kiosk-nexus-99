@@ -4,6 +4,7 @@ import logging
 import os
 import subprocess
 import time
+import threading
 from typing import Dict, Any, Tuple, Optional, List
 
 class GameManager:
@@ -16,9 +17,16 @@ class GameManager:
         self.current_game_id: Optional[str] = None
         self.current_game_process: Optional[subprocess.Popen] = None
         self.games_cache: Dict[str, Dict[str, Any]] = {}
+        self.status_callback: Optional[callable] = None
+        self.process_monitor_thread: Optional[threading.Thread] = None
+        self.process_monitor_running = False
         
         # Load game configurations from database
         self.load_games()
+    
+    def set_status_callback(self, callback):
+        """Set callback for status updates"""
+        self.status_callback = callback
     
     def load_games(self):
         """Load game configurations from database"""
@@ -46,8 +54,6 @@ class GameManager:
         self.logger.info(f"Launching game: {game['title']}")
         
         try:
-            # In a production environment, you'd launch the actual game
-            # For testing or simulation, we'll just record that a game is running
             executable = game.get('executable_path', '')
             working_dir = game.get('working_directory', '')
             arguments = game.get('arguments', '')
@@ -63,25 +69,81 @@ class GameManager:
                 self.current_game_process = subprocess.Popen(
                     command,
                     cwd=working_dir if working_dir else None,
-                    shell=True,  # Using shell for Windows compatibility
+                    shell=True,
                     stdin=subprocess.DEVNULL,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
-                    start_new_session=True  # Detach from parent process
+                    start_new_session=True
                 )
                 self.logger.info(f"Game process started with PID: {self.current_game_process.pid}")
+                
+                # Start monitoring the process
+                self.current_game_id = game_id
+                self._start_process_monitor()
+                
+                # Notify clients immediately
+                if self.status_callback:
+                    self.status_callback()
+                
+                return True, game
             else:
-                # For testing when executable doesn't exist
+                # For testing when executable doesn't exist - enter demo mode
                 self.logger.warning(f"Game executable not found: {executable}")
-                self.logger.info("Running in simulation mode")
-                # We'll still mark the game as running for testing
-            
-            self.current_game_id = game_id
-            return True, game
+                self.logger.info("Entering demo mode - session will continue without actual game")
+                
+                self.current_game_id = game_id
+                # Notify clients of demo mode
+                if self.status_callback:
+                    self.status_callback()
+                
+                return True, {**game, 'demo_mode': True}
             
         except Exception as e:
             self.logger.exception(f"Error launching game {game_id}: {e}")
             return False, {}
+    
+    def _start_process_monitor(self):
+        """Start monitoring the game process in a separate thread"""
+        if self.process_monitor_thread and self.process_monitor_thread.is_alive():
+            self.process_monitor_running = False
+            self.process_monitor_thread.join(timeout=1)
+        
+        self.process_monitor_running = True
+        self.process_monitor_thread = threading.Thread(target=self._monitor_process, daemon=True)
+        self.process_monitor_thread.start()
+    
+    def _monitor_process(self):
+        """Monitor the game process and notify on exit"""
+        while self.process_monitor_running and self.current_game_process:
+            try:
+                # Check if process is still running
+                return_code = self.current_game_process.poll()
+                
+                if return_code is not None:
+                    # Process has exited
+                    self.logger.info(f"Game process exited with code {return_code}")
+                    
+                    # Check for common VR runtime errors
+                    if return_code == 53:
+                        self.logger.warning("Exit code 53: VR runtime not available (SteamVR may not be running)")
+                    
+                    # Clean up
+                    self.current_game_process = None
+                    
+                    # Notify clients of process exit
+                    if self.status_callback:
+                        self.status_callback()
+                    
+                    break
+                
+                # Sleep for a short interval before checking again
+                time.sleep(0.5)
+                
+            except Exception as e:
+                self.logger.exception(f"Error monitoring game process: {e}")
+                break
+        
+        self.process_monitor_running = False
     
     def end_game(self) -> bool:
         """End the current game"""
@@ -90,6 +152,9 @@ class GameManager:
             
         game_title = self.games_cache.get(self.current_game_id, {}).get('title', 'Unknown Game')
         self.logger.info(f"Ending game: {game_title}")
+        
+        # Stop process monitoring
+        self.process_monitor_running = False
         
         # Terminate the process if it exists
         if self.current_game_process:
@@ -113,6 +178,11 @@ class GameManager:
         # Reset game state
         self.current_game_id = None
         self.current_game_process = None
+        
+        # Notify clients
+        if self.status_callback:
+            self.status_callback()
+        
         return True
     
     def is_game_running(self) -> bool:
@@ -125,10 +195,16 @@ class GameManager:
                 # Process has exited, clean up
                 self.logger.info(f"Game process exited with code {return_code}")
                 self.current_game_process = None
-                self.current_game_id = None
+                if not self.current_game_id:  # Don't clear if we're in demo mode
+                    self.current_game_id = None
                 return False
         
+        # Return True if we have a game ID (could be demo mode or actual process)
         return self.current_game_id is not None
+    
+    def is_demo_mode(self) -> bool:
+        """Check if we're running in demo mode (game ID set but no process)"""
+        return self.current_game_id is not None and self.current_game_process is None
     
     def get_current_game_id(self) -> Optional[str]:
         """Get the ID of the currently running game"""
@@ -147,6 +223,16 @@ class GameManager:
                 self.games_cache[self.current_game_id] = game
                 
         return game.get('title', 'Unknown Game') if game else None
+    
+    def get_status(self) -> Dict[str, Any]:
+        """Get current game manager status"""
+        return {
+            "running": self.is_game_running(),
+            "demo_mode": self.is_demo_mode(),
+            "current_game": self.get_current_game_title(),
+            "game_id": self.current_game_id,
+            "process_running": self.current_game_process is not None and self.current_game_process.poll() is None
+        }
     
     def get_available_games(self) -> List[Dict[str, Any]]:
         """Get all available games"""

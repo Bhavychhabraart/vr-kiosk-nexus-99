@@ -19,7 +19,8 @@ import {
   Play,
   X,
   ArrowLeft,
-  Loader2
+  Loader2,
+  Monitor
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
@@ -47,6 +48,8 @@ const Session = () => {
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(0);
   const [submittingRating, setSubmittingRating] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
+  const [launchAttempted, setLaunchAttempted] = useState(false);
   
   // Connect to command center
   const { 
@@ -60,14 +63,37 @@ const Session = () => {
     isConnected
   } = useCommandCenter({
     onStatusChange: (status) => {
-      // Update UI based on server status
-      if (status.gameRunning && !gameStarted) {
+      console.log('Status update received:', status);
+      
+      // Check for demo mode
+      if (status.demoMode && !gameStarted) {
+        setDemoMode(true);
         setGameStarted(true);
         setIsRunning(true);
         setIsLaunching(false);
         toast({
+          title: "Demo Mode Active",
+          description: `${gameTitle} session started in demo mode. VR runtime not available.`,
+          variant: "default",
+        });
+      }
+      // Check for actual game running
+      else if (status.gameRunning && status.processRunning && !gameStarted) {
+        setGameStarted(true);
+        setIsRunning(true);
+        setIsLaunching(false);
+        setDemoMode(false);
+        toast({
           title: "Game Launched Successfully",
           description: `${gameTitle} is now running. Enjoy your session!`,
+        });
+      }
+      // Check if game process exited but session continues
+      else if (status.gameRunning && !status.processRunning && gameStarted && !demoMode) {
+        toast({
+          title: "Game Process Exited",
+          description: "Game closed but session timer continues. You can end the session or restart the game.",
+          variant: "default",
         });
       }
       
@@ -77,7 +103,18 @@ const Session = () => {
         setIsRunning(!status.isPaused);
       }
       
-      // Check for system alerts
+      // Check for VR runtime alerts
+      if (status.alerts && status.alerts.length > 0) {
+        const vrAlerts = status.alerts.filter(
+          alert => alert.message.includes('VR runtime') || alert.message.includes('SteamVR')
+        );
+        
+        if (vrAlerts.length > 0 && !demoMode) {
+          console.log('VR runtime alert detected');
+        }
+      }
+      
+      // Check for critical system alerts
       if (status.alerts && status.alerts.length > 0) {
         const criticalAlerts = status.alerts.filter(
           alert => alert.type === 'critical' && 
@@ -113,19 +150,25 @@ const Session = () => {
       return;
     }
 
+    // Only launch once
+    if (launchAttempted) {
+      return;
+    }
+
     // Launch the game automatically
     const performLaunch = async () => {
       try {
+        setLaunchAttempted(true);
         console.log(`Launching game ${gameId} with duration ${selectedDuration} seconds`);
         await launchGame(gameId, selectedDuration);
         
-        // Game launch initiated - wait for server status to confirm
+        // Set a timeout to detect if launch failed
         setTimeout(() => {
-          if (!gameStarted && isLaunching) {
-            setLaunchError("Game launch timeout. Please try again.");
+          if (!gameStarted && !demoMode && isLaunching) {
+            setLaunchError("Game launch timeout. The VR system may not be properly configured.");
             setIsLaunching(false);
           }
-        }, 10000); // 10 second timeout
+        }, 15000); // 15 second timeout
         
       } catch (error) {
         console.error("Failed to launch game:", error);
@@ -139,10 +182,10 @@ const Session = () => {
       }
     };
 
-    if (isConnected && !gameStarted && !launchError) {
+    if (isConnected && !launchAttempted) {
       performLaunch();
     }
-  }, [gameId, selectedDuration, isConnected, launchGame, gameStarted, launchError, navigate, toast, isLaunching]);
+  }, [gameId, selectedDuration, isConnected, launchGame, gameStarted, demoMode, navigate, toast, isLaunching, launchAttempted]);
   
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
@@ -414,6 +457,9 @@ const Session = () => {
             <div className="text-sm text-vr-muted">
               Duration: {Math.floor(selectedDuration / 60)} minutes
             </div>
+            <div className="text-xs text-vr-muted/70 mt-4">
+              If VR runtime is not available, session will continue in demo mode
+            </div>
           </motion.div>
         </div>
       </MainLayout>
@@ -447,8 +493,18 @@ const Session = () => {
           className="vr-card max-w-lg w-full backdrop-blur-md"
         >
           <div className="flex flex-col items-center text-center mb-10">
-            <h1 className="text-3xl font-bold mb-2">{gameTitle}</h1>
-            <p className="text-vr-muted mb-6">Session in progress</p>
+            <div className="flex items-center gap-2 mb-2">
+              <h1 className="text-3xl font-bold">{gameTitle}</h1>
+              {demoMode && (
+                <div className="flex items-center gap-1 px-2 py-1 bg-vr-accent/20 rounded-full">
+                  <Monitor className="h-4 w-4 text-vr-accent" />
+                  <span className="text-xs text-vr-accent font-medium">DEMO</span>
+                </div>
+              )}
+            </div>
+            <p className="text-vr-muted mb-6">
+              {demoMode ? "Demo session in progress" : "Session in progress"}
+            </p>
             
             <div className="w-full mb-6">
               <motion.div 
@@ -513,8 +569,19 @@ const Session = () => {
           <div className="space-y-4 text-center">
             <div className="flex items-center justify-center gap-2 text-vr-muted">
               <Clock className="h-5 w-5" />
-              <span>Please wear your VR headset to continue playing</span>
+              <span>
+                {demoMode 
+                  ? "Demo mode - VR headset not required" 
+                  : "Please wear your VR headset to continue playing"
+                }
+              </span>
             </div>
+            {demoMode && (
+              <div className="text-xs text-vr-muted/70 bg-vr-accent/10 p-3 rounded-lg">
+                Running in demo mode because VR runtime is not available. 
+                Session timer and controls work normally for testing purposes.
+              </div>
+            )}
           </div>
         </motion.div>
       </div>

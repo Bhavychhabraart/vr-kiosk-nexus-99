@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 import asyncio
 import json
@@ -52,6 +51,10 @@ class WebSocketServer:
         self.system_monitor = SystemMonitor(logger)
         self.game_manager = GameManager(GAMES_CONFIG_PATH, self.database, logger)
         self.session_manager = SessionManager(logger, self.broadcast_status)
+        
+        # Set up game manager status callback
+        self.game_manager.set_status_callback(self.broadcast_status)
+        
         self.command_handler = CommandHandler(
             self.game_manager, 
             self.session_manager, 
@@ -176,6 +179,8 @@ class WebSocketServer:
         }
         message = json.dumps(status_data)
         
+        logger.debug(f"Broadcasting status: {status_data['data']['status']}")
+        
         # Send to all clients
         for client in self.clients.copy():  # Use copy to avoid modification during iteration
             try:
@@ -264,10 +269,14 @@ class WebSocketServer:
 
     def get_server_status(self) -> Dict[str, Any]:
         """Get the current server status"""
-        return {
+        game_status = self.game_manager.get_status()
+        
+        status = {
             "connected": True,
             "activeGame": self.game_manager.get_current_game_title(),
-            "gameRunning": self.game_manager.is_game_running(),
+            "gameRunning": game_status.get("running", False),
+            "demoMode": game_status.get("demo_mode", False),
+            "processRunning": game_status.get("process_running", False),
             "isPaused": self.session_manager.is_paused(),
             "timeRemaining": self.session_manager.get_time_remaining(),
             "cpuUsage": self.system_monitor.get_cpu_usage(),
@@ -277,6 +286,17 @@ class WebSocketServer:
             "connectedClients": len(self.clients),
             "alerts": self.system_monitor.get_recent_alerts(3)  # Get last 3 alerts
         }
+        
+        # Add VR runtime status if game failed to start
+        if game_status.get("demo_mode"):
+            status["vrRuntimeStatus"] = "not_available"
+            status["alerts"] = status.get("alerts", []) + [{
+                "type": "warning",
+                "message": "VR runtime not available - running in demo mode",
+                "timestamp": datetime.now().isoformat()
+            }]
+        
+        return status
 
     def generate_id(self) -> str:
         """Generate a unique ID for messages"""

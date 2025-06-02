@@ -54,6 +54,9 @@ export interface ServerStatus {
   connected: boolean;
   activeGame?: string;
   gameRunning: boolean;
+  demoMode?: boolean;
+  processRunning?: boolean;
+  vrRuntimeStatus?: string;
   cpuUsage?: number;
   memoryUsage?: number;
   diskSpace?: number;
@@ -64,8 +67,8 @@ export interface ServerStatus {
   alerts?: Array<{
     type: string;
     message: string;
-    value: number;
-    threshold: number;
+    value?: number;
+    threshold?: number;
     timestamp: string;
   }>;
 }
@@ -381,7 +384,22 @@ class WebSocketService {
   }
   
   private updateServerStatus(status: Partial<ServerStatus>): void {
+    const previousStatus = { ...this.serverStatus };
     this.serverStatus = { ...this.serverStatus, ...status };
+    
+    // Log significant status changes for debugging
+    if (previousStatus.gameRunning !== status.gameRunning) {
+      console.log(`Game running status changed: ${previousStatus.gameRunning} -> ${status.gameRunning}`);
+    }
+    
+    if (previousStatus.demoMode !== status.demoMode) {
+      console.log(`Demo mode status changed: ${previousStatus.demoMode} -> ${status.demoMode}`);
+    }
+    
+    if (previousStatus.processRunning !== status.processRunning) {
+      console.log(`Process running status changed: ${previousStatus.processRunning} -> ${status.processRunning}`);
+    }
+    
     this.statusListeners.forEach(listener => listener(this.serverStatus));
   }
   
