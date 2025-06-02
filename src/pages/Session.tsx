@@ -19,17 +19,13 @@ import {
   Pause,
   Play,
   X,
-  ArrowLeft,
-  Shield
+  ArrowLeft
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
 import CommandCenterStatus from "@/components/CommandCenterStatus";
 import useCommandCenter from "@/hooks/useCommandCenter";
 import { RatingInput } from "@/components/ui/rating-input";
-
-// Mock session duration in seconds (5 minutes for demo)
-const MOCK_SESSION_DURATION = 300;
 
 const Session = () => {
   const navigate = useNavigate();
@@ -38,9 +34,8 @@ const Session = () => {
   
   const gameId = searchParams.get("gameId");
   const gameTitle = searchParams.get("title") || "VR Game";
-  const rfidTag = searchParams.get("rfidTag");
   
-  const [timeRemaining, setTimeRemaining] = useState(MOCK_SESSION_DURATION);
+  const [timeRemaining, setTimeRemaining] = useState(0);
   const [isRunning, setIsRunning] = useState(true);
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
@@ -48,18 +43,15 @@ const Session = () => {
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(0);
   const [submittingRating, setSubmittingRating] = useState(false);
-  const [rfidVerified, setRfidVerified] = useState(false);
   
-  // Connect to command center with enhanced error handling
+  // Connect to command center
   const { 
     connectionState, 
     serverStatus, 
-    launchGame, 
     endSession, 
     pauseSession, 
     resumeSession,
     submitRating,
-    validateRfid,
     isConnected
   } = useCommandCenter({
     onStatusChange: (status) => {
@@ -92,53 +84,18 @@ const Session = () => {
     }
   });
   
-  // Check for RFID tag - redirect if missing
+  // Check for game ID - redirect if missing
   useEffect(() => {
-    if (!rfidTag) {
+    if (!gameId) {
       toast({
-        title: "Authentication Required",
-        description: "Please scan your RFID card first",
+        title: "Invalid Session",
+        description: "No game selected. Please select a game first.",
         variant: "destructive",
       });
       
-      // Redirect back to games page
       navigate("/games");
     }
-  }, [rfidTag, navigate, toast]);
-  
-  // Verify RFID tag has permission to play the selected game
-  useEffect(() => {
-    const verifyRfidAccess = async () => {
-      if (isConnected && gameId && rfidTag && !rfidVerified) {
-        try {
-          const result = await validateRfid(rfidTag, gameId);
-          
-          if (!result.authorized) {
-            toast({
-              title: "Access Denied",
-              description: result.message || "Your RFID card doesn't have permission for this game",
-              variant: "destructive",
-            });
-            
-            // Redirect back to games page after delay
-            setTimeout(() => navigate("/games"), 2000);
-            return;
-          }
-          
-          setRfidVerified(true);
-        } catch (error) {
-          console.error("Error verifying RFID access:", error);
-          toast({
-            title: "Authorization Failed",
-            description: "Could not verify RFID permissions",
-            variant: "destructive",
-          });
-        }
-      }
-    };
-    
-    verifyRfidAccess();
-  }, [isConnected, gameId, rfidTag, rfidVerified, validateRfid, navigate, toast]);
+  }, [gameId, navigate, toast]);
   
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
@@ -147,32 +104,11 @@ const Session = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
   
-  // Calculate progress percentage
-  const progress = (timeRemaining / MOCK_SESSION_DURATION) * 100;
+  // Calculate progress percentage (using initial time from server)
+  const initialDuration = serverStatus.timeRemaining || timeRemaining || 300;
+  const progress = (timeRemaining / initialDuration) * 100;
   
-  // Start the game when component mounts and RFID is verified
-  useEffect(() => {
-    if (isConnected && gameId && rfidTag && rfidVerified && !gameStarted) {
-      launchGame(gameId, MOCK_SESSION_DURATION, rfidTag)
-        .then(() => {
-          setGameStarted(true);
-          toast({
-            title: "Game launched",
-            description: "Your session has started",
-          });
-        })
-        .catch(error => {
-          toast({
-            title: "Failed to launch game",
-            description: "Please try again or contact staff",
-            variant: "destructive",
-          });
-          console.error("Error launching game:", error);
-        });
-    }
-  }, [isConnected, gameId, rfidTag, rfidVerified, gameStarted, launchGame, toast]);
-  
-  // Timer effect - now gets updates from server but falls back to local timer
+  // Timer effect - gets updates from server but falls back to local timer
   useEffect(() => {
     if (!isRunning || timeRemaining <= 0) return;
     
@@ -188,7 +124,6 @@ const Session = () => {
       });
     }, 1000);
     
-    // Cleanup
     return () => clearInterval(timer);
   }, [isRunning, timeRemaining]);
   
@@ -234,9 +169,7 @@ const Session = () => {
     setShowEndDialog(false);
     
     try {
-      // Send command to end session
       await endSession();
-      
       setShowRating(true);
     } catch (error) {
       console.error("Error ending session:", error);
@@ -256,7 +189,6 @@ const Session = () => {
     setShowExitDialog(false);
     
     try {
-      // Send command to end session
       await endSession();
       
       toast({
@@ -281,8 +213,7 @@ const Session = () => {
     setSubmittingRating(true);
     
     try {
-      // Submit rating including RFID tag
-      await submitRating(gameId, rating, rfidTag || undefined);
+      await submitRating(gameId, rating);
       
       toast({
         title: "Thanks for your feedback!",
@@ -361,7 +292,6 @@ const Session = () => {
         <CommandCenterStatus showLabel={true} />
       </motion.div>
       
-      {/* Session information */}
       <div className="flex-1 flex flex-col items-center justify-center">
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
@@ -373,15 +303,6 @@ const Session = () => {
             <h1 className="text-3xl font-bold mb-2">{gameTitle}</h1>
             <p className="text-vr-muted mb-6">Session in progress</p>
             
-            {/* RFID Tag display */}
-            {rfidTag && (
-              <div className="bg-vr-primary/10 text-vr-primary text-sm px-3 py-1 rounded-full mb-4 flex items-center">
-                <Shield className="h-3 w-3 mr-1" />
-                RFID: {rfidTag}
-              </div>
-            )}
-            
-            {/* Timer display */}
             <div className="w-full mb-6">
               <motion.div 
                 className={`text-6xl font-bold mb-4 ${

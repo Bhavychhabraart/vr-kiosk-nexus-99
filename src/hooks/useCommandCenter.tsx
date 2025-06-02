@@ -1,15 +1,14 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import websocketService, { 
   ConnectionState, 
   CommandType, 
-  ServerStatus,
-  RfidCardData
+  ServerStatus
 } from '@/services/websocket';
 
 interface CommandCenterOptions {
   onStatusChange?: (status: ServerStatus) => void;
-  onRfidScan?: (rfidData: RfidCardData) => void;
   onSystemAlert?: (alert: any) => void;
 }
 
@@ -52,17 +51,11 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
         }
       }
     });
-    
-    // Subscribe to RFID events
-    const unsubRfidEvents = websocketService.onRfidEvent((rfidData) => {
-      options.onRfidScan?.(rfidData);
-    });
 
     // Cleanup function
     return () => {
       unsubConnectionState();
       unsubServerStatus();
-      unsubRfidEvents();
     };
   }, [options]);
 
@@ -70,12 +63,11 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
   const isConnected = connectionState === ConnectionState.CONNECTED;
 
   // Launch a game
-  const launchGame = useCallback(async (gameId: string, durationSeconds: number, rfidTag?: string) => {
+  const launchGame = useCallback(async (gameId: string, durationSeconds: number) => {
     try {
       const response = await websocketService.sendCommand(CommandType.LAUNCH_GAME, { 
         gameId, 
-        sessionDuration: durationSeconds,
-        rfidTag 
+        sessionDuration: durationSeconds
       });
       
       // Store session start in database
@@ -83,11 +75,9 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
         const sessionData = {
           game_id: gameId,
           duration_seconds: durationSeconds,
-          rfid_tag: rfidTag,
           status: 'active',
         };
         
-        // Implementation would typically store this in a database
         console.log('Starting new session:', sessionData);
       } catch (err) {
         console.error('Error recording session start:', err);
@@ -107,7 +97,6 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
       
       // Log session end in database
       try {
-        // Implementation would typically update the session in the database
         console.log('Ending session');
       } catch (err) {
         console.error('Error recording session end:', err);
@@ -151,13 +140,12 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
   }, []);
 
   // Submit a game rating
-  const submitRating = useCallback(async (gameId: string, rating: number, rfidTag?: string) => {
+  const submitRating = useCallback(async (gameId: string, rating: number) => {
     try {
       // Send rating to the server
       await websocketService.sendCommand(CommandType.SUBMIT_RATING, { 
         gameId, 
-        rating,
-        rfidTag 
+        rating
       });
       
       // Also store it in our database
@@ -165,12 +153,10 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
         const ratingData = {
           game_id: gameId,
           rating: rating,
-          rfid_tag: rfidTag,
           end_time: new Date().toISOString(),
           status: 'completed'
         };
         
-        // Implementation would typically store this in a database
         console.log('Submitting rating:', ratingData);
       } catch (err) {
         console.error('Error recording rating:', err);
@@ -179,87 +165,6 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
       return true;
     } catch (error) {
       console.error('Error submitting rating:', error);
-      throw error;
-    }
-  }, []);
-  
-  // Scan an RFID tag
-  const scanRfid = useCallback(async (tagId: string) => {
-    try {
-      const response = await websocketService.sendCommand(CommandType.SCAN_RFID, { tagId });
-      return response.data as RfidCardData;
-    } catch (error) {
-      console.error('Error scanning RFID:', error);
-      throw error;
-    }
-  }, []);
-  
-  // Validate an RFID tag for a specific game
-  const validateRfid = useCallback(async (tagId: string, gameId: string) => {
-    try {
-      const response = await websocketService.sendCommand(CommandType.VALIDATE_RFID, { 
-        tagId, 
-        gameId 
-      });
-      return response.data as RfidCardData;
-    } catch (error) {
-      console.error('Error validating RFID:', error);
-      throw error;
-    }
-  }, []);
-  
-  // Register a new RFID tag
-  const registerRfid = useCallback(async (tagId: string, name?: string) => {
-    try {
-      const response = await websocketService.sendCommand(CommandType.REGISTER_RFID, { 
-        tagId,
-        name 
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error registering RFID:', error);
-      throw error;
-    }
-  }, []);
-  
-  // Deactivate an RFID tag
-  const deactivateRfid = useCallback(async (tagId: string) => {
-    try {
-      const response = await websocketService.sendCommand(CommandType.DEACTIVATE_RFID, { 
-        tagId 
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error deactivating RFID:', error);
-      throw error;
-    }
-  }, []);
-  
-  // Get RFID card history
-  const getRfidHistory = useCallback(async (tagId: string, limit: number = 10) => {
-    try {
-      const response = await websocketService.sendCommand(CommandType.GET_RFID_HISTORY, { 
-        tagId,
-        limit
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error getting RFID history:', error);
-      throw error;
-    }
-  }, []);
-  
-  // Set RFID game permissions
-  const setRfidGamePermission = useCallback(async (tagId: string, gameId: string, permissionType: string = "allow") => {
-    try {
-      const response = await websocketService.sendCommand(CommandType.SET_RFID_GAME_PERMISSION, { 
-        tagId,
-        gameId,
-        permissionType
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error setting RFID game permission:', error);
       throw error;
     }
   }, []);
@@ -285,12 +190,6 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
     resumeSession,
     getServerStatus,
     submitRating,
-    scanRfid,
-    validateRfid,
-    registerRfid,
-    deactivateRfid,
-    getRfidHistory,
-    setRfidGamePermission,
     getSystemDiagnostics
   };
 };

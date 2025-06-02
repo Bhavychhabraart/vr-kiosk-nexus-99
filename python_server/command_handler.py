@@ -17,8 +17,7 @@ class CommandType(str, Enum):
     GET_STATUS = "getStatus"
     HEARTBEAT = "heartbeat"
     SUBMIT_RATING = "submitRating"
-    SCAN_RFID = "scanRfid"
-    VALIDATE_RFID = "validateRfid"
+    GET_DIAGNOSTICS = "getDiagnostics"
 
 class ResponseStatus(str, Enum):
     SUCCESS = "success"
@@ -53,10 +52,8 @@ class CommandHandler:
                 return await self.handle_heartbeat(websocket, command_id)
             elif command_type == CommandType.SUBMIT_RATING:
                 return await self.handle_submit_rating(websocket, params, command_id)
-            elif command_type == CommandType.SCAN_RFID:
-                return await self.handle_scan_rfid(websocket, params, command_id)
-            elif command_type == CommandType.VALIDATE_RFID:
-                return await self.handle_validate_rfid(websocket, params, command_id)
+            elif command_type == CommandType.GET_DIAGNOSTICS:
+                return await self.handle_get_diagnostics(websocket, command_id)
             else:
                 return self.create_error_response(
                     command_id, f"Unknown command type: {command_type}"
@@ -72,7 +69,6 @@ class CommandHandler:
             
         game_id = params.get('gameId')
         session_duration = params.get('sessionDuration')
-        rfid_tag = params.get('rfidTag')
         
         if not game_id:
             return self.create_error_response(command_id, "Missing gameId parameter")
@@ -85,12 +81,6 @@ class CommandHandler:
         except (TypeError, ValueError) as e:
             return self.create_error_response(command_id, f"Invalid session duration: {str(e)}")
         
-        # Validate RFID if provided
-        if rfid_tag:
-            rfid_data = self.database.validate_rfid(rfid_tag)
-            if not rfid_data:
-                return self.create_error_response(command_id, f"Invalid or inactive RFID tag: {rfid_tag}")
-            
         try:
             # Get game data
             game = self.database.get_game(game_id)
@@ -119,8 +109,7 @@ class CommandHandler:
             # Record in database
             self.current_session_id = self.database.start_session(
                 game_id, 
-                session_duration,
-                rfid_tag
+                session_duration
             )
             
             return {
@@ -131,7 +120,6 @@ class CommandHandler:
                     "gameTitle": game.get('title'),
                     "sessionId": self.current_session_id,
                     "sessionDuration": session_duration,
-                    "rfidTag": rfid_tag,
                     "message": f"Game {game.get('title')} launched successfully"
                 },
                 "timestamp": int(datetime.now().timestamp() * 1000)
@@ -142,35 +130,25 @@ class CommandHandler:
     
     async def handle_end_session(self, websocket, command_id):
         """End the current game session"""
-        if not self.game_manager.is_game_running():
-            return self.create_error_response(command_id, "No active game session")
-            
         try:
-            game_id = self.game_manager.get_current_game_id()
-            time_remaining = self.session_manager.get_time_remaining()
+            # End the current game
+            success = self.game_manager.end_current_game()
+            if not success:
+                self.logger.warning("No active game to end")
             
-            # Stop the timer
+            # Stop the session timer
             self.session_manager.stop_timer()
             
-            # End the game
-            self.game_manager.end_game()
-            
-            # Update the database if we have a current session
+            # Update database record
             if self.current_session_id:
                 self.database.end_session(self.current_session_id)
-                session_id = self.current_session_id
                 self.current_session_id = None
-            else:
-                session_id = None
             
             return {
                 "id": command_id,
                 "status": ResponseStatus.SUCCESS,
                 "data": {
-                    "gameId": game_id,
-                    "sessionId": session_id,
-                    "timeRemaining": time_remaining,
-                    "message": "Game session ended successfully"
+                    "message": "Session ended successfully"
                 },
                 "timestamp": int(datetime.now().timestamp() * 1000)
             }
@@ -179,26 +157,17 @@ class CommandHandler:
             return self.create_error_response(command_id, f"End session error: {str(e)}")
     
     async def handle_pause_session(self, websocket, command_id):
-        """Pause the current game session"""
-        if not self.game_manager.is_game_running():
-            return self.create_error_response(command_id, "No active game session")
-            
-        if self.session_manager.is_paused():
-            return self.create_error_response(command_id, "Session is already paused")
-            
+        """Pause the current session"""
         try:
             success = self.session_manager.pause_timer()
-            
             if not success:
-                return self.create_error_response(command_id, "Failed to pause session")
+                return self.create_error_response(command_id, "No active session to pause")
             
             return {
                 "id": command_id,
                 "status": ResponseStatus.SUCCESS,
                 "data": {
-                    "paused": True,
-                    "timeRemaining": self.session_manager.get_time_remaining(),
-                    "message": "Session paused"
+                    "message": "Session paused successfully"
                 },
                 "timestamp": int(datetime.now().timestamp() * 1000)
             }
@@ -207,26 +176,17 @@ class CommandHandler:
             return self.create_error_response(command_id, f"Pause error: {str(e)}")
     
     async def handle_resume_session(self, websocket, command_id):
-        """Resume the current game session"""
-        if not self.game_manager.is_game_running():
-            return self.create_error_response(command_id, "No active game session")
-            
-        if not self.session_manager.is_paused():
-            return self.create_error_response(command_id, "Session is not paused")
-            
+        """Resume the current session"""
         try:
             success = self.session_manager.resume_timer()
-            
             if not success:
-                return self.create_error_response(command_id, "Failed to resume session")
+                return self.create_error_response(command_id, "No paused session to resume")
             
             return {
                 "id": command_id,
                 "status": ResponseStatus.SUCCESS,
                 "data": {
-                    "paused": False,
-                    "timeRemaining": self.session_manager.get_time_remaining(),
-                    "message": "Session resumed"
+                    "message": "Session resumed successfully"
                 },
                 "timestamp": int(datetime.now().timestamp() * 1000)
             }
@@ -235,22 +195,24 @@ class CommandHandler:
             return self.create_error_response(command_id, f"Resume error: {str(e)}")
     
     async def handle_get_status(self, websocket, command_id):
-        """Get the current system status"""
+        """Get current system status"""
         try:
-            active_game_id = self.game_manager.get_current_game_id()
-            active_game_title = self.game_manager.get_current_game_title()
+            game_status = self.game_manager.get_status()
+            session_status = self.session_manager.get_status()
+            system_metrics = self.system_monitor.get_metrics()
             
             status = {
                 "connected": True,
-                "gameRunning": self.game_manager.is_game_running(),
-                "activeGame": active_game_id,
-                "activeGameTitle": active_game_title,
-                "isPaused": self.session_manager.is_paused(),
-                "timeRemaining": self.session_manager.get_time_remaining(),
-                "cpuUsage": self.system_monitor.get_cpu_usage(),
-                "memoryUsage": self.system_monitor.get_memory_usage(),
-                "diskSpace": self.system_monitor.get_disk_space(),
-                "sessionId": self.current_session_id
+                "gameRunning": game_status.get("running", False),
+                "activeGame": game_status.get("current_game"),
+                "isPaused": session_status.get("paused", False),
+                "timeRemaining": session_status.get("time_remaining", 0),
+                "cpuUsage": system_metrics.get("cpu_percent", 0),
+                "memoryUsage": system_metrics.get("memory_percent", 0),
+                "diskSpace": system_metrics.get("disk_percent", 0),
+                "serverUptime": system_metrics.get("uptime", 0),
+                "connectedClients": len(websocket.clients) if hasattr(websocket, 'clients') else 1,
+                "alerts": system_metrics.get("alerts", [])
             }
             
             return {
@@ -266,164 +228,71 @@ class CommandHandler:
             return self.create_error_response(command_id, f"Status error: {str(e)}")
     
     async def handle_heartbeat(self, websocket, command_id):
-        """Handle heartbeat from client"""
+        """Handle heartbeat ping"""
         return {
             "id": command_id,
             "status": ResponseStatus.SUCCESS,
             "data": {
+                "message": "pong",
                 "timestamp": int(datetime.now().timestamp() * 1000)
             },
             "timestamp": int(datetime.now().timestamp() * 1000)
         }
     
     async def handle_submit_rating(self, websocket, params, command_id):
-        """Handle game rating submission"""
+        """Submit a game rating"""
         if not params:
             return self.create_error_response(command_id, "Missing parameters")
-            
+        
         game_id = params.get('gameId')
         rating = params.get('rating')
-        rfid_tag = params.get('rfidTag')
         
-        if not game_id:
-            return self.create_error_response(command_id, "Missing gameId parameter")
-            
+        if not game_id or rating is None:
+            return self.create_error_response(command_id, "Missing gameId or rating")
+        
         try:
             rating = int(rating)
-            if not (1 <= rating <= 5):
+            if rating < 1 or rating > 5:
                 return self.create_error_response(command_id, "Rating must be between 1 and 5")
         except (TypeError, ValueError):
             return self.create_error_response(command_id, "Invalid rating value")
-            
+        
         try:
-            # Update rating in database if we have a current session
+            # Record rating in database
             if self.current_session_id:
                 self.database.end_session(self.current_session_id, rating)
-                session_id = self.current_session_id
-                self.current_session_id = None
-                
-                # Log the successful rating
-                self.logger.info(f"Rating of {rating} submitted for session {session_id}, game {game_id}")
-                
-                return {
-                    "id": command_id,
-                    "status": ResponseStatus.SUCCESS,
-                    "data": {
-                        "gameId": game_id,
-                        "rating": rating,
-                        "sessionId": session_id,
-                        "rfidTag": rfid_tag,
-                        "message": "Rating submitted successfully"
-                    },
-                    "timestamp": int(datetime.now().timestamp() * 1000)
-                }
-            else:
-                # No active session, just report success but log a warning
-                self.logger.warning(f"Rating of {rating} submitted for game {game_id} but no active session found")
-                
-                return {
-                    "id": command_id,
-                    "status": ResponseStatus.SUCCESS,
-                    "data": {
-                        "gameId": game_id,
-                        "rating": rating,
-                        "message": "Rating submitted but no active session found"
-                    },
-                    "timestamp": int(datetime.now().timestamp() * 1000)
-                }
-                
-        except Exception as e:
-            self.logger.exception(f"Error submitting rating: {e}")
-            return self.create_error_response(command_id, f"Rating error: {str(e)}")
-    
-    async def handle_scan_rfid(self, websocket, params, command_id):
-        """Handle RFID card scan event"""
-        if not params:
-            return self.create_error_response(command_id, "Missing parameters")
-            
-        tag_id = params.get('tagId')
-        
-        if not tag_id:
-            return self.create_error_response(command_id, "Missing tagId parameter")
-        
-        try:
-            # Validate the RFID tag
-            rfid_data = self.database.validate_rfid(tag_id)
-            
-            if rfid_data:
-                return {
-                    "id": command_id,
-                    "status": ResponseStatus.SUCCESS,
-                    "data": {
-                        "tagId": tag_id,
-                        "name": rfid_data.get('name'),
-                        "status": rfid_data.get('status'),
-                        "valid": True,
-                        "message": f"Valid RFID tag: {tag_id}"
-                    },
-                    "timestamp": int(datetime.now().timestamp() * 1000)
-                }
-            else:
-                # Tag not found or not active
-                return {
-                    "id": command_id,
-                    "status": ResponseStatus.SUCCESS,
-                    "data": {
-                        "tagId": tag_id,
-                        "valid": False,
-                        "message": f"Invalid or unknown RFID tag: {tag_id}"
-                    },
-                    "timestamp": int(datetime.now().timestamp() * 1000)
-                }
-        except Exception as e:
-            self.logger.exception(f"Error scanning RFID: {e}")
-            return self.create_error_response(command_id, f"RFID scan error: {str(e)}")
-    
-    async def handle_validate_rfid(self, websocket, params, command_id):
-        """Validate an RFID tag for access"""
-        if not params:
-            return self.create_error_response(command_id, "Missing parameters")
-            
-        tag_id = params.get('tagId')
-        game_id = params.get('gameId')
-        
-        if not tag_id:
-            return self.create_error_response(command_id, "Missing tagId parameter")
-        
-        try:
-            # Validate the RFID tag
-            rfid_data = self.database.validate_rfid(tag_id)
-            
-            if not rfid_data:
-                return {
-                    "id": command_id,
-                    "status": ResponseStatus.ERROR,
-                    "error": f"Invalid or unknown RFID tag: {tag_id}",
-                    "timestamp": int(datetime.now().timestamp() * 1000)
-                }
-            
-            # For now, any valid card can access any game
-            # In a real system, you'd check permissions here
             
             return {
                 "id": command_id,
                 "status": ResponseStatus.SUCCESS,
                 "data": {
-                    "tagId": tag_id,
-                    "name": rfid_data.get('name'),
+                    "message": "Rating submitted successfully",
                     "gameId": game_id,
-                    "authorized": True,
-                    "message": "RFID validated successfully"
+                    "rating": rating
                 },
                 "timestamp": int(datetime.now().timestamp() * 1000)
             }
-            
         except Exception as e:
-            self.logger.exception(f"Error validating RFID: {e}")
-            return self.create_error_response(command_id, f"RFID validation error: {str(e)}")
+            self.logger.exception(f"Error submitting rating: {e}")
+            return self.create_error_response(command_id, f"Rating error: {str(e)}")
     
-    def create_error_response(self, command_id, error_message):
-        """Create an error response"""
+    async def handle_get_diagnostics(self, websocket, command_id):
+        """Get system diagnostics"""
+        try:
+            diagnostics = self.system_monitor.get_detailed_metrics()
+            
+            return {
+                "id": command_id,
+                "status": ResponseStatus.SUCCESS,
+                "data": diagnostics,
+                "timestamp": int(datetime.now().timestamp() * 1000)
+            }
+        except Exception as e:
+            self.logger.exception(f"Error getting diagnostics: {e}")
+            return self.create_error_response(command_id, f"Diagnostics error: {str(e)}")
+    
+    def create_error_response(self, command_id: str, error_message: str) -> dict:
+        """Create a standardized error response"""
         return {
             "id": command_id,
             "status": ResponseStatus.ERROR,
