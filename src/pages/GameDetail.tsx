@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -17,7 +18,6 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useGames } from "@/hooks/useGames";
-import RFIDScanScreen from "@/components/RFIDScanScreen";
 
 const GameDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,7 +25,6 @@ const GameDetail = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [trailerOpen, setTrailerOpen] = useState(searchParams.get("showTrailer") === "true");
-  const [rfidScanOpen, setRfidScanOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [game, setGame] = useState<GameDetails | null>(null);
   
@@ -85,27 +84,24 @@ const GameDetail = () => {
 
   // Handle playing the game
   const handlePlayGame = () => {
-    setRfidScanOpen(true);
-  };
-  
-  // Handle RFID scan success
-  const handleRfidScanSuccess = (rfidTag: string) => {
-    setRfidScanOpen(false);
-    
+    if (!id || !game) {
+      toast({
+        title: "Error",
+        description: "Game information not available.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     toast({
       title: "Starting game...",
-      description: `Launching ${game?.title}. Please put on your VR headset.`,
+      description: `Launching ${game.title}. Please put on your VR headset.`,
     });
     
-    // Navigate to the session page with RFID tag
+    // Navigate directly to the session page
     navigate(
-      `/session?gameId=${id}&title=${encodeURIComponent(game?.title || "VR Game")}&rfidTag=${rfidTag}`
+      `/session?gameId=${id}&title=${encodeURIComponent(game.title)}`
     );
-  };
-  
-  // Handle RFID scan close
-  const handleRfidScanClose = () => {
-    setRfidScanOpen(false);
   };
 
   if (isLoading) {
@@ -348,16 +344,6 @@ const GameDetail = () => {
           </div>
         </DialogContent>
       </Dialog>
-      
-      {/* RFID Scan Screen */}
-      {rfidScanOpen && id && (
-        <RFIDScanScreen
-          gameId={id}
-          gameTitle={game?.title || "VR Game"}
-          onClose={handleRfidScanClose}
-          onSuccess={handleRfidScanSuccess}
-        />
-      )}
     </MainLayout>
   );
 };
