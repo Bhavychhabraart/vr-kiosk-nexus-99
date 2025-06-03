@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Games from "./pages/Games";
 import GameDetail from "./pages/GameDetail";
+import RFIDAuth from "./pages/RFIDAuth";
 import Session from "./pages/Session";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/games" element={<Games />} />
             <Route path="/games/:id" element={<GameDetail />} />
+            <Route path="/rfid-auth" element={<RFIDAuth />} />
             <Route path="/session" element={<Session />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />

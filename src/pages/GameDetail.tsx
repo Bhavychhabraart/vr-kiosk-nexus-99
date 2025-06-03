@@ -99,7 +99,7 @@ const GameDetail = () => {
     setDurationDialogOpen(true);
   };
 
-  // Handle starting the game with selected duration
+  // Handle starting the game with selected duration - now redirects to RFID authentication
   const handleStartGame = () => {
     if (!id || !game) {
       toast({
@@ -113,13 +113,13 @@ const GameDetail = () => {
     setDurationDialogOpen(false);
 
     toast({
-      title: "Starting game...",
-      description: `Launching ${game.title}. Please put on your VR headset.`,
+      title: "Redirecting to RFID authentication",
+      description: "Please scan your RFID card to start the session.",
     });
     
-    // Navigate to the session page with duration
+    // Navigate to RFID authentication page instead of directly to session
     navigate(
-      `/session?gameId=${id}&title=${encodeURIComponent(game.title)}&duration=${selectedDuration}`
+      `/rfid-auth?gameId=${id}&title=${encodeURIComponent(game.title)}&duration=${selectedDuration}`
     );
   };
 
@@ -377,7 +377,7 @@ const GameDetail = () => {
               onClick={handleStartGame}
               className="bg-vr-secondary text-vr-dark hover:bg-vr-secondary/90"
             >
-              Start Game ({formatDuration(parseInt(selectedDuration))})
+              Continue to RFID ({formatDuration(parseInt(selectedDuration))})
             </Button>
           </DialogFooter>
         </DialogContent>

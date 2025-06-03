@@ -20,7 +20,8 @@ import {
   X,
   ArrowLeft,
   Loader2,
-  Monitor
+  Monitor,
+  CreditCard
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
@@ -36,6 +37,8 @@ const Session = () => {
   const gameId = searchParams.get("gameId");
   const gameTitle = searchParams.get("title") || "VR Game";
   const durationParam = searchParams.get("duration");
+  const sessionId = searchParams.get("sessionId");
+  const rfidTag = searchParams.get("rfidTag");
   const selectedDuration = durationParam ? parseInt(durationParam) : 1800; // Default 30 minutes
   
   const [timeRemaining, setTimeRemaining] = useState(selectedDuration);
@@ -50,6 +53,7 @@ const Session = () => {
   const [submittingRating, setSubmittingRating] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
   const [launchAttempted, setLaunchAttempted] = useState(false);
+  const [cardInfo, setCardInfo] = useState<any>(null);
   
   // Add ref to store timeout ID
   const launchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -158,6 +162,23 @@ const Session = () => {
     }
   });
   
+  // Load RFID card info on mount
+  useEffect(() => {
+    const loadCardInfo = async () => {
+      if (rfidTag) {
+        try {
+          const { rfidService } = await import("@/services/rfidService");
+          const card = await rfidService.getCardInfo(rfidTag);
+          setCardInfo(card);
+        } catch (error) {
+          console.error("Error loading card info:", error);
+        }
+      }
+    };
+    
+    loadCardInfo();
+  }, [rfidTag]);
+  
   // Auto-launch game when component mounts
   useEffect(() => {
     if (!gameId) {
@@ -167,6 +188,16 @@ const Session = () => {
         variant: "destructive",
       });
       navigate("/games");
+      return;
+    }
+
+    if (!sessionId || !rfidTag) {
+      toast({
+        title: "Invalid Session",
+        description: "RFID authentication required. Please scan your card.",
+        variant: "destructive",
+      });
+      navigate(`/games/${gameId}`);
       return;
     }
 
@@ -185,7 +216,7 @@ const Session = () => {
     const performLaunch = async () => {
       try {
         setLaunchAttempted(true);
-        console.log(`Launching game ${gameId} with duration ${selectedDuration} seconds`);
+        console.log(`Launching game ${gameId} with duration ${selectedDuration} seconds for RFID ${rfidTag}`);
         await launchGame(gameId, selectedDuration);
         
         // Set a timeout to detect if launch failed - store the timeout reference
@@ -221,7 +252,7 @@ const Session = () => {
         launchTimeoutRef.current = null;
       }
     };
-  }, [gameId, selectedDuration, isConnected, launchGame, navigate, toast, launchAttempted, isLaunching, gameStarted]);
+  }, [gameId, selectedDuration, isConnected, launchGame, navigate, toast, launchAttempted, isLaunching, gameStarted, sessionId, rfidTag]);
   
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
@@ -295,6 +326,13 @@ const Session = () => {
     
     try {
       await endSession();
+      
+      // Also end the RFID session in our database
+      if (sessionId) {
+        const { rfidService } = await import("@/services/rfidService");
+        await rfidService.endSession(sessionId);
+      }
+      
       setShowRating(true);
     } catch (error) {
       console.error("Error ending session:", error);
@@ -315,6 +353,12 @@ const Session = () => {
     
     try {
       await endSession();
+      
+      // Also end the RFID session in our database
+      if (sessionId) {
+        const { rfidService } = await import("@/services/rfidService");
+        await rfidService.endSession(sessionId);
+      }
       
       toast({
         title: "Exiting game",
@@ -339,6 +383,12 @@ const Session = () => {
     
     try {
       await submitRating(gameId, rating);
+      
+      // Also update the RFID session rating
+      if (sessionId) {
+        const { rfidService } = await import("@/services/rfidService");
+        await rfidService.endSession(sessionId, rating);
+      }
       
       toast({
         title: "Thanks for your feedback!",
@@ -541,6 +591,18 @@ const Session = () => {
             <p className="text-vr-muted mb-6">
               {demoMode ? "Demo session in progress" : "Session in progress"}
             </p>
+
+            {/* RFID Card Info */}
+            {cardInfo && (
+              <div className="bg-vr-primary/10 p-3 rounded-lg mb-4 w-full">
+                <div className="flex items-center gap-2 justify-center">
+                  <CreditCard className="h-4 w-4 text-vr-primary" />
+                  <span className="text-sm text-vr-text">
+                    Card: {cardInfo.name || cardInfo.tag_id.substring(0, 8)}...
+                  </span>
+                </div>
+              </div>
+            )}
             
             <div className="w-full mb-6">
               <motion.div 
@@ -616,6 +678,11 @@ const Session = () => {
               <div className="text-xs text-vr-muted/70 bg-vr-accent/10 p-3 rounded-lg">
                 Running in demo mode because VR runtime is not available. 
                 Session timer and controls work normally for testing purposes.
+              </div>
+            )}
+            {rfidTag && (
+              <div className="text-xs text-vr-muted/70 bg-vr-primary/10 p-3 rounded-lg">
+                This session is linked to your RFID card and will be counted in your usage history.
               </div>
             )}
           </div>
