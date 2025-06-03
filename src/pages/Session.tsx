@@ -65,42 +65,59 @@ const Session = () => {
     onStatusChange: (status) => {
       console.log('Status update received:', status);
       
-      // Check for demo mode
-      if (status.demoMode && !gameStarted) {
-        setDemoMode(true);
-        setGameStarted(true);
-        setIsRunning(true);
-        setIsLaunching(false);
-        toast({
-          title: "Demo Mode Active",
-          description: `${gameTitle} session started in demo mode. VR runtime not available.`,
-          variant: "default",
-        });
-      }
-      // Check for actual game running
-      else if (status.gameRunning && status.processRunning && !gameStarted) {
-        setGameStarted(true);
-        setIsRunning(true);
-        setIsLaunching(false);
-        setDemoMode(false);
-        toast({
-          title: "Game Launched Successfully",
-          description: `${gameTitle} is now running. Enjoy your session!`,
-        });
-      }
-      // Check if game process exited but session continues
-      else if (status.gameRunning && !status.processRunning && gameStarted && !demoMode) {
-        toast({
-          title: "Game Process Exited",
-          description: "Game closed but session timer continues. You can end the session or restart the game.",
-          variant: "default",
-        });
-      }
-      
-      // Update time remaining from the server if available
+      // Always sync time remaining and pause state from server
       if (status.timeRemaining !== undefined) {
         setTimeRemaining(status.timeRemaining);
         setIsRunning(!status.isPaused);
+      }
+      
+      // Check if game session is active (simplified logic)
+      if (status.gameRunning && !gameStarted) {
+        console.log('Game session detected as active');
+        setGameStarted(true);
+        setIsRunning(!status.isPaused);
+        setIsLaunching(false);
+        
+        // Check for demo mode
+        if (status.demoMode) {
+          setDemoMode(true);
+          toast({
+            title: "Demo Mode Active",
+            description: `${gameTitle} session started in demo mode. VR runtime not available.`,
+            variant: "default",
+          });
+        } else {
+          setDemoMode(false);
+          toast({
+            title: "Game Session Started",
+            description: `${gameTitle} session is now active. ${status.processRunning ? 'Game is running.' : 'Game process has exited but session continues.'}`,
+          });
+        }
+      }
+      
+      // Handle process state changes for already started games
+      if (status.gameRunning && gameStarted) {
+        // Update demo mode status
+        if (status.demoMode !== demoMode) {
+          setDemoMode(status.demoMode || false);
+        }
+        
+        // Notify if game process exits during session
+        if (!status.processRunning && !demoMode && status.processRunning !== undefined) {
+          toast({
+            title: "Game Process Exited",
+            description: "Game closed but session timer continues. You can end the session or the game may restart automatically.",
+            variant: "default",
+          });
+        }
+      }
+      
+      // Check for session end
+      if (!status.gameRunning && gameStarted) {
+        console.log('Game session ended by server');
+        setGameStarted(false);
+        setIsRunning(false);
+        setShowRating(true);
       }
       
       // Check for VR runtime alerts
@@ -185,7 +202,7 @@ const Session = () => {
     if (isConnected && !launchAttempted) {
       performLaunch();
     }
-  }, [gameId, selectedDuration, isConnected, launchGame, gameStarted, demoMode, navigate, toast, isLaunching, launchAttempted]);
+  }, [gameId, selectedDuration, isConnected, launchGame, navigate, toast, launchAttempted]);
   
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
