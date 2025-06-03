@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,9 @@ const Session = () => {
   const [demoMode, setDemoMode] = useState(false);
   const [launchAttempted, setLaunchAttempted] = useState(false);
   
+  // Add ref to store timeout ID
+  const launchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Connect to command center
   const { 
     connectionState, 
@@ -77,6 +80,12 @@ const Session = () => {
         setGameStarted(true);
         setIsRunning(!status.isPaused);
         setIsLaunching(false);
+        
+        // Clear the launch timeout since game started successfully
+        if (launchTimeoutRef.current) {
+          clearTimeout(launchTimeoutRef.current);
+          launchTimeoutRef.current = null;
+        }
         
         // Check for demo mode
         if (status.demoMode) {
@@ -179,9 +188,11 @@ const Session = () => {
         console.log(`Launching game ${gameId} with duration ${selectedDuration} seconds`);
         await launchGame(gameId, selectedDuration);
         
-        // Set a timeout to detect if launch failed
-        setTimeout(() => {
-          if (!gameStarted && !demoMode && isLaunching) {
+        // Set a timeout to detect if launch failed - store the timeout reference
+        launchTimeoutRef.current = setTimeout(() => {
+          // Only show error if we're still launching and no game has started
+          if (isLaunching && !gameStarted) {
+            console.log('Launch timeout triggered - no successful game start detected');
             setLaunchError("Game launch timeout. The VR system may not be properly configured.");
             setIsLaunching(false);
           }
@@ -202,7 +213,15 @@ const Session = () => {
     if (isConnected && !launchAttempted) {
       performLaunch();
     }
-  }, [gameId, selectedDuration, isConnected, launchGame, navigate, toast, launchAttempted]);
+
+    // Cleanup function to clear timeout when component unmounts
+    return () => {
+      if (launchTimeoutRef.current) {
+        clearTimeout(launchTimeoutRef.current);
+        launchTimeoutRef.current = null;
+      }
+    };
+  }, [gameId, selectedDuration, isConnected, launchGame, navigate, toast, launchAttempted, isLaunching, gameStarted]);
   
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
