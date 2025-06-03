@@ -11,11 +11,10 @@ import {
   Play,
   X,
   ChevronLeft,
-  Timer,
   Users,
-  Cpu,
   LayoutGrid,
-  Film
+  Film,
+  IndianRupee
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useGames } from "@/hooks/useGames";
@@ -27,7 +26,7 @@ const GameDetail = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [trailerOpen, setTrailerOpen] = useState(searchParams.get("showTrailer") === "true");
   const [durationDialogOpen, setDurationDialogOpen] = useState(false);
-  const [selectedDuration, setSelectedDuration] = useState("1800"); // Default 30 minutes
+  const [selectedDuration, setSelectedDuration] = useState("600"); // Default 10 minutes
   const [isLoading, setIsLoading] = useState(true);
   const [game, setGame] = useState<GameDetails | null>(null);
   
@@ -155,12 +154,18 @@ const GameDetail = () => {
 
   const hasTrailer = !!game.trailerUrl;
 
-  // Duration options in seconds
+  // Duration options in seconds with pricing in INR
   const durationOptions = [
-    { value: "900", label: "15 minutes", description: "Quick session" },
-    { value: "1800", label: "30 minutes", description: "Standard session" },
-    { value: "3600", label: "60 minutes", description: "Extended session" },
+    { value: "300", label: "5 minutes", description: "Quick session", price: 100 },
+    { value: "600", label: "10 minutes", description: "Standard session", price: 150 },
+    { value: "900", label: "15 minutes", description: "Extended session", price: 200 },
+    { value: "1200", label: "20 minutes", description: "Premium session", price: 220 },
   ];
+
+  const getSelectedPrice = () => {
+    const selected = durationOptions.find(option => option.value === selectedDuration);
+    return selected ? selected.price : 150;
+  };
 
   return (
     <MainLayout className="relative">
@@ -253,90 +258,47 @@ const GameDetail = () => {
         </div>
       </div>
 
-      {/* Game Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column - Description */}
-        <div className="vr-card lg:col-span-2">
+      {/* Game Content - Now using single column layout */}
+      <div className="space-y-8">
+        {/* Game Description and Info */}
+        <div className="vr-card">
           <h2 className="text-2xl font-bold mb-4">About this game</h2>
           <p className="text-vr-muted mb-6">{game.description}</p>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <InfoCard icon={<Clock className="h-5 w-5 text-vr-primary" />} title="Duration" value={game.duration} />
             <InfoCard icon={<Star className="h-5 w-5 text-vr-secondary" />} title="Rating" value={game.rating.toString()} />
             <InfoCard icon={<Users className="h-5 w-5 text-vr-accent" />} title="Players" value={game.players} />
             <InfoCard icon={<LayoutGrid className="h-5 w-5 text-green-400" />} title="Age Rating" value={game.ageRating} />
           </div>
-          
-          <div className="mt-8">
-            <h3 className="text-xl font-bold mb-3">Screenshots</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {game.screenshots.map((screenshot, index) => (
-                <div 
-                  key={index}
-                  className="aspect-video rounded-lg overflow-hidden"
-                >
-                  <img 
-                    src={screenshot} 
-                    alt={`${game.title} screenshot ${index + 1}`}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
         
-        {/* Right Column - System Requirements */}
-        <div className="flex flex-col gap-6">
-          <div className="vr-card">
-            <div className="flex items-center gap-2 mb-4">
-              <Cpu className="h-5 w-5 text-vr-secondary" />
-              <h2 className="text-xl font-bold">System Requirements</h2>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-vr-muted text-sm mb-1">Headset</h3>
-                <p>{game.systemRequirements.headset}</p>
-              </div>
-              <div>
-                <h3 className="text-vr-muted text-sm mb-1">Processor</h3>
-                <p>{game.systemRequirements.processor}</p>
-              </div>
-              <div>
-                <h3 className="text-vr-muted text-sm mb-1">Graphics</h3>
-                <p>{game.systemRequirements.graphics}</p>
-              </div>
-              <div>
-                <h3 className="text-vr-muted text-sm mb-1">Memory</h3>
-                <p>{game.systemRequirements.memory}</p>
-              </div>
-            </div>
+        {/* Session Pricing */}
+        <div className="vr-card">
+          <div className="flex items-center gap-2 mb-4">
+            <IndianRupee className="h-5 w-5 text-vr-secondary" />
+            <h2 className="text-xl font-bold">Session Pricing</h2>
           </div>
           
-          <div className="vr-card">
-            <div className="flex items-center gap-2 mb-4">
-              <Timer className="h-5 w-5 text-vr-secondary" />
-              <h2 className="text-xl font-bold">Session Info</h2>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-vr-muted text-sm mb-1">Standard Session</h3>
-                <p>30 minutes - $15.00</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {durationOptions.map((option) => (
+              <div key={option.value} className="bg-vr-dark/50 border border-vr-primary/20 p-4 rounded-lg text-center">
+                <h3 className="font-semibold text-vr-text">{option.label}</h3>
+                <p className="text-sm text-vr-muted mb-2">{option.description}</p>
+                <div className="flex items-center justify-center gap-1 text-vr-secondary font-bold text-lg">
+                  <IndianRupee className="h-4 w-4" />
+                  <span>{option.price}</span>
+                </div>
               </div>
-              <div>
-                <h3 className="text-vr-muted text-sm mb-1">Extended Session</h3>
-                <p>60 minutes - $25.00</p>
-              </div>
-              <Button
-                className="w-full vr-button-secondary mt-4"
-                onClick={handlePlayGame}
-              >
-                Start Session
-              </Button>
-            </div>
+            ))}
           </div>
+          
+          <Button
+            className="w-full vr-button-secondary mt-6"
+            onClick={handlePlayGame}
+          >
+            Start Session
+          </Button>
         </div>
       </div>
 
@@ -356,10 +318,17 @@ const GameDetail = () => {
                 <div key={option.value} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-vr-primary/10 transition-colors">
                   <RadioGroupItem value={option.value} id={option.value} />
                   <Label htmlFor={option.value} className="flex-1 cursor-pointer">
-                    <div className="font-medium">{option.label}</div>
-                    <div className="text-sm text-vr-muted">{option.description}</div>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <div className="font-medium">{option.label}</div>
+                        <div className="text-sm text-vr-muted">{option.description}</div>
+                      </div>
+                      <div className="flex items-center gap-1 text-vr-secondary font-semibold">
+                        <IndianRupee className="h-4 w-4" />
+                        <span>{option.price}</span>
+                      </div>
+                    </div>
                   </Label>
-                  <Clock className="h-4 w-4 text-vr-muted" />
                 </div>
               ))}
             </RadioGroup>
@@ -377,7 +346,7 @@ const GameDetail = () => {
               onClick={handleStartGame}
               className="bg-vr-secondary text-vr-dark hover:bg-vr-secondary/90"
             >
-              Continue to RFID ({formatDuration(parseInt(selectedDuration))})
+              Continue to RFID (₹{getSelectedPrice()})
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -454,22 +423,11 @@ const getEnhancedGameDetails = (game: any): GameDetails => {
     description: game.description || "No description available for this game.",
     coverImage: game.image_url || "https://images.unsplash.com/photo-1559363367-ee2b206e73ea?q=80&w=1600&auto=format&fit=crop",
     trailerUrl: game.trailer_url || "",
-    screenshots: [
-      "https://images.unsplash.com/photo-1593508512255-86ab42a8e620?q=80&w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?q=80&w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1626379961798-54b76fb1a8da?q=80&w=800&auto=format&fit=crop",
-    ],
     categories: categories,
     rating: 4.5, // Default rating
-    duration: "10-30 min",
+    duration: "5-20 min",
     players: "Single Player",
     ageRating: "E for Everyone",
-    systemRequirements: {
-      headset: "Oculus Quest 2 or higher",
-      processor: "Intel i5-7500 / AMD Ryzen 5 1600",
-      graphics: "GTX 1060 / AMD Radeon RX 580",
-      memory: "8 GB RAM"
-    }
   };
 };
 
@@ -480,18 +438,11 @@ interface GameDetails {
   description: string;
   coverImage: string;
   trailerUrl?: string;
-  screenshots: string[];
   categories: string[];
   rating: number;
   duration: string;
   players: string;
   ageRating: string;
-  systemRequirements: {
-    headset: string;
-    processor: string;
-    graphics: string;
-    memory: string;
-  };
 }
 
 // Mock function to get game by ID
@@ -503,22 +454,11 @@ function getMockGameById(id: number): GameDetails | null {
       description: "Beat Saber is a VR rhythm game where your goal is to slash the beats which fit perfectly into precisely handcrafted music. Every beat indicates which saber you need to use and the direction you need to match. All the music is composed to perfectly fit the handmade levels. Our goal is to make players almost dance while cutting the cubes and avoiding obstacles.",
       coverImage: "https://images.unsplash.com/photo-1559363367-ee2b206e73ea?q=80&w=1600&auto=format&fit=crop",
       trailerUrl: "https://www.youtube.com/embed/vL39Sg2AqWg",
-      screenshots: [
-        "https://images.unsplash.com/photo-1593508512255-86ab42a8e620?q=80&w=800&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?q=80&w=800&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1626379961798-54b76fb1a8da?q=80&w=800&auto=format&fit=crop",
-      ],
       categories: ["Rhythm", "Action", "Music"],
       rating: 4.9,
-      duration: "5-30 min",
+      duration: "5-20 min",
       players: "Single Player",
       ageRating: "E for Everyone",
-      systemRequirements: {
-        headset: "Oculus Quest 2 or higher",
-        processor: "Intel i5-7500 / AMD Ryzen 5 1600",
-        graphics: "GTX 1060 / AMD Radeon RX 580",
-        memory: "8 GB RAM"
-      }
     },
     2: {
       id: "2",
@@ -526,22 +466,11 @@ function getMockGameById(id: number): GameDetails | null {
       description: "Half-Life: Alyx is Valve's VR return to the Half-Life series. It's the story of an impossible fight against a vicious alien race known as the Combine, set between the events of Half-Life and Half-Life 2. Playing as Alyx Vance, you are humanity's only chance for survival.",
       coverImage: "https://images.unsplash.com/photo-1593508512255-86ab42a8e620?q=80&w=1600&auto=format&fit=crop",
       trailerUrl: "https://www.youtube.com/embed/O2W0N3uKXmo",
-      screenshots: [
-        "https://images.unsplash.com/photo-1559363367-ee2b206e73ea?q=80&w=800&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?q=80&w=800&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1626379961798-54b76fb1a8da?q=80&w=800&auto=format&fit=crop",
-      ],
       categories: ["Adventure", "Shooter", "Action"],
       rating: 4.8,
-      duration: "10-15 hours",
+      duration: "5-20 min",
       players: "Single Player",
       ageRating: "M for Mature",
-      systemRequirements: {
-        headset: "Valve Index, HTC Vive, Oculus Rift",
-        processor: "Intel i5-7500 / AMD Ryzen 5 1600",
-        graphics: "GTX 1060 / AMD Radeon RX 580",
-        memory: "12 GB RAM"
-      }
     },
     3: {
       id: "3",
@@ -549,22 +478,11 @@ function getMockGameById(id: number): GameDetails | null {
       description: "SUPERHOT VR is a virtual reality first-person shooter video game. Time in the game progresses only when the player moves, allowing for a unique gameplay experience where players can plan their actions in slow-motion. The game features multiple locations and gives players access to a variety of weapons.",
       coverImage: "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?q=80&w=1600&auto=format&fit=crop",
       trailerUrl: "https://www.youtube.com/embed/pzG7Wc6mbwE",
-      screenshots: [
-        "https://images.unsplash.com/photo-1559363367-ee2b206e73ea?q=80&w=800&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1593508512255-86ab42a8e620?q=80&w=800&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1626379961798-54b76fb1a8da?q=80&w=800&auto=format&fit=crop",
-      ],
       categories: ["Action", "Strategy", "Shooter"],
       rating: 4.7,
-      duration: "2-3 hours",
+      duration: "5-20 min",
       players: "Single Player",
       ageRating: "T for Teen",
-      systemRequirements: {
-        headset: "Oculus Quest, Valve Index, HTC Vive",
-        processor: "Intel i5-4590 / AMD Ryzen 3 1200",
-        graphics: "GTX 970 / AMD Radeon R9 290",
-        memory: "8 GB RAM"
-      }
     }
   };
 

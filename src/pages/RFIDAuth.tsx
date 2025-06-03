@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -18,7 +17,8 @@ import {
   Loader2,
   CheckCircle,
   AlertTriangle,
-  Gamepad2
+  Gamepad2,
+  IndianRupee
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
@@ -31,7 +31,7 @@ const RFIDAuth = () => {
   
   const gameId = searchParams.get("gameId");
   const gameTitle = searchParams.get("title") || "VR Game";
-  const duration = searchParams.get("duration") || "1800";
+  const duration = searchParams.get("duration") || "600";
   
   const [rfidInput, setRfidInput] = useState("");
   const [isValidating, setIsValidating] = useState(false);
@@ -152,6 +152,18 @@ const RFIDAuth = () => {
     return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
   };
 
+  const getPrice = (seconds: number) => {
+    const prices: Record<number, number> = {
+      300: 100,   // 5 minutes
+      600: 150,   // 10 minutes
+      900: 200,   // 15 minutes
+      1200: 220,  // 20 minutes
+    };
+    return prices[seconds] || 150;
+  };
+
+  const sessionPrice = getPrice(parseInt(duration));
+
   return (
     <MainLayout className="relative px-4 py-8 min-h-screen flex flex-col">
       <motion.div
@@ -216,9 +228,15 @@ const RFIDAuth = () => {
                 <>
                   <div className="space-y-4">
                     <div className="text-center">
-                      <div className="flex items-center gap-2 justify-center text-vr-muted mb-4">
-                        <Gamepad2 className="h-4 w-4" />
-                        <span>Session Duration: {formatDuration(parseInt(duration))}</span>
+                      <div className="bg-vr-primary/10 p-4 rounded-lg mb-4">
+                        <div className="flex items-center gap-2 justify-center text-vr-muted mb-2">
+                          <Gamepad2 className="h-4 w-4" />
+                          <span>Session: {formatDuration(parseInt(duration))}</span>
+                        </div>
+                        <div className="flex items-center gap-1 justify-center text-vr-secondary font-bold text-lg">
+                          <IndianRupee className="h-5 w-5" />
+                          <span>{sessionPrice}</span>
+                        </div>
                       </div>
                     </div>
 
