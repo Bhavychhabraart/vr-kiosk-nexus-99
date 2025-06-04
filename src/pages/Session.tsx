@@ -1,33 +1,24 @@
-import { useState, useEffect, useRef } from "react";
+
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { GameLaunchStatus } from "@/components/ui/game-launch-status";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  AlertCircle,
-  Clock,
-  Pause,
   Play,
-  X,
-  ArrowLeft,
-  Loader2,
-  Monitor,
-  CreditCard
+  Pause,
+  Square,
+  Clock,
+  Star,
+  Settings,
+  AlertTriangle,
+  CheckCircle
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
-import CommandCenterStatus from "@/components/CommandCenterStatus";
 import useCommandCenter from "@/hooks/useCommandCenter";
-import { RatingInput } from "@/components/ui/rating-input";
 
 const Session = () => {
   const navigate = useNavigate();
@@ -36,714 +27,278 @@ const Session = () => {
   
   const gameId = searchParams.get("gameId");
   const gameTitle = searchParams.get("title") || "VR Game";
-  const durationParam = searchParams.get("duration");
-  const sessionId = searchParams.get("sessionId");
+  const duration = parseInt(searchParams.get("duration") || "1800");
   const rfidTag = searchParams.get("rfidTag");
-  const selectedDuration = durationParam ? parseInt(durationParam) : 1800; // Default 30 minutes
   
-  const [timeRemaining, setTimeRemaining] = useState(selectedDuration);
-  const [isRunning, setIsRunning] = useState(false);
-  const [showEndDialog, setShowEndDialog] = useState(false);
-  const [showExitDialog, setShowExitDialog] = useState(false);
-  const [gameStarted, setGameStarted] = useState(false);
-  const [isLaunching, setIsLaunching] = useState(true);
+  const [sessionStarted, setSessionStarted] = useState(false);
   const [launchError, setLaunchError] = useState<string | null>(null);
-  const [showRating, setShowRating] = useState(false);
-  const [rating, setRating] = useState(0);
-  const [submittingRating, setSubmittingRating] = useState(false);
-  const [demoMode, setDemoMode] = useState(false);
-  const [launchAttempted, setLaunchAttempted] = useState(false);
-  const [cardInfo, setCardInfo] = useState<any>(null);
   
-  // Add ref to store timeout ID
-  const launchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Connect to command center
-  const { 
-    connectionState, 
-    serverStatus, 
+  const {
+    serverStatus,
+    isConnected,
+    isLaunching,
     launchGame,
-    endSession, 
-    pauseSession, 
-    resumeSession,
-    submitRating,
-    isConnected
+    endSession,
+    pauseSession,
+    resumeSession
   } = useCommandCenter({
     onStatusChange: (status) => {
-      console.log('Status update received:', status);
-      
-      // Always sync time remaining and pause state from server
-      if (status.timeRemaining !== undefined) {
-        setTimeRemaining(status.timeRemaining);
-        setIsRunning(!status.isPaused);
-      }
-      
-      // Check if game session is active (simplified logic)
-      if (status.gameRunning && !gameStarted) {
-        console.log('Game session detected as active');
-        setGameStarted(true);
-        setIsRunning(!status.isPaused);
-        setIsLaunching(false);
-        
-        // Clear the launch timeout since game started successfully
-        if (launchTimeoutRef.current) {
-          clearTimeout(launchTimeoutRef.current);
-          launchTimeoutRef.current = null;
-        }
-        
-        // Check for demo mode
-        if (status.demoMode) {
-          setDemoMode(true);
-          toast({
-            title: "Demo Mode Active",
-            description: `${gameTitle} session started in demo mode. VR runtime not available.`,
-            variant: "default",
-          });
-        } else {
-          setDemoMode(false);
-          toast({
-            title: "Game Session Started",
-            description: `${gameTitle} session is now active. ${status.processRunning ? 'Game is running.' : 'Game process has exited but session continues.'}`,
-          });
-        }
-      }
-      
-      // Handle process state changes for already started games
-      if (status.gameRunning && gameStarted) {
-        // Update demo mode status
-        if (status.demoMode !== demoMode) {
-          setDemoMode(status.demoMode || false);
-        }
-        
-        // Notify if game process exits during session
-        if (!status.processRunning && !demoMode && status.processRunning !== undefined) {
-          toast({
-            title: "Game Process Exited",
-            description: "Game closed but session timer continues. You can end the session or the game may restart automatically.",
-            variant: "default",
-          });
-        }
-      }
-      
-      // Check for session end
-      if (!status.gameRunning && gameStarted) {
-        console.log('Game session ended by server');
-        setGameStarted(false);
-        setIsRunning(false);
-        setShowRating(true);
-      }
-      
-      // Check for VR runtime alerts
-      if (status.alerts && status.alerts.length > 0) {
-        const vrAlerts = status.alerts.filter(
-          alert => alert.message.includes('VR runtime') || alert.message.includes('SteamVR')
-        );
-        
-        if (vrAlerts.length > 0 && !demoMode) {
-          console.log('VR runtime alert detected');
-        }
-      }
-      
-      // Check for critical system alerts
-      if (status.alerts && status.alerts.length > 0) {
-        const criticalAlerts = status.alerts.filter(
-          alert => alert.type === 'critical' && 
-          new Date(alert.timestamp).getTime() > Date.now() - (30 * 1000)
-        );
-        
-        if (criticalAlerts.length > 0) {
-          toast({
-            title: "System Alert",
-            description: criticalAlerts[0].message,
-            variant: "destructive",
-          });
-        }
-      }
+      console.log('Session status update:', status);
     }
   });
-  
-  // Load RFID card info on mount
-  useEffect(() => {
-    const loadCardInfo = async () => {
-      if (rfidTag) {
-        try {
-          const { rfidService } = await import("@/services/rfidService");
-          const card = await rfidService.getCardInfo(rfidTag);
-          setCardInfo(card);
-        } catch (error) {
-          console.error("Error loading card info:", error);
-        }
-      }
-    };
-    
-    loadCardInfo();
-  }, [rfidTag]);
-  
-  // Auto-launch game when component mounts
+
   useEffect(() => {
     if (!gameId) {
       toast({
         title: "Invalid Session",
-        description: "No game selected. Please select a game first.",
+        description: "No game selected. Redirecting to games list.",
         variant: "destructive",
       });
       navigate("/games");
       return;
     }
 
-    if (!sessionId || !rfidTag) {
-      toast({
-        title: "Invalid Session",
-        description: "RFID authentication required. Please scan your card.",
-        variant: "destructive",
-      });
-      navigate(`/games/${gameId}`);
-      return;
+    // Auto-start the game session when component mounts
+    if (!sessionStarted && isConnected && !isLaunching && !serverStatus.gameRunning) {
+      handleStartSession();
     }
+  }, [gameId, isConnected, sessionStarted, isLaunching, serverStatus.gameRunning]);
 
-    if (!isConnected) {
-      setLaunchError("VR system is not connected. Please contact staff.");
-      setIsLaunching(false);
-      return;
+  const handleStartSession = async () => {
+    if (!gameId) return;
+    
+    try {
+      setLaunchError(null);
+      await launchGame(gameId, duration);
+      setSessionStarted(true);
+    } catch (error) {
+      console.error('Failed to start session:', error);
+      setLaunchError(error instanceof Error ? error.message : 'Failed to start session');
     }
+  };
 
-    // Only launch once
-    if (launchAttempted) {
-      return;
-    }
-
-    // Launch the game automatically
-    const performLaunch = async () => {
-      try {
-        setLaunchAttempted(true);
-        console.log(`Launching game ${gameId} with duration ${selectedDuration} seconds for RFID ${rfidTag}`);
-        await launchGame(gameId, selectedDuration);
-        
-        // Set a timeout to detect if launch failed - store the timeout reference
-        launchTimeoutRef.current = setTimeout(() => {
-          // Only show error if we're still launching and no game has started
-          if (isLaunching && !gameStarted) {
-            console.log('Launch timeout triggered - no successful game start detected');
-            setLaunchError("Game launch timeout. The VR system may not be properly configured.");
-            setIsLaunching(false);
-          }
-        }, 15000); // 15 second timeout
-        
-      } catch (error) {
-        console.error("Failed to launch game:", error);
-        setLaunchError("Failed to start the game. Please try again.");
-        setIsLaunching(false);
-        toast({
-          title: "Launch Failed",
-          description: "Could not start the game. Please contact staff.",
-          variant: "destructive",
-        });
+  const handlePauseResume = async () => {
+    try {
+      if (serverStatus.isPaused) {
+        await resumeSession();
+      } else {
+        await pauseSession();
       }
-    };
-
-    if (isConnected && !launchAttempted) {
-      performLaunch();
+    } catch (error) {
+      console.error('Failed to toggle pause:', error);
     }
+  };
 
-    // Cleanup function to clear timeout when component unmounts
-    return () => {
-      if (launchTimeoutRef.current) {
-        clearTimeout(launchTimeoutRef.current);
-        launchTimeoutRef.current = null;
-      }
-    };
-  }, [gameId, selectedDuration, isConnected, launchGame, navigate, toast, launchAttempted, isLaunching, gameStarted, sessionId, rfidTag]);
-  
-  // Format time as MM:SS
+  const handleEndSession = async () => {
+    try {
+      await endSession();
+      navigate("/games");
+    } catch (error) {
+      console.error('Failed to end session:', error);
+    }
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
-  
-  // Calculate progress percentage
-  const progress = (timeRemaining / selectedDuration) * 100;
-  
-  // Timer effect - only run when game is started and running
-  useEffect(() => {
-    if (!isRunning || timeRemaining <= 0 || !gameStarted) return;
-    
-    const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          setIsRunning(false);
-          setShowRating(true);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    
-    return () => clearInterval(timer);
-  }, [isRunning, timeRemaining, gameStarted]);
-  
-  // Warn user when 1 minute remains
-  useEffect(() => {
-    if (timeRemaining === 60 && gameStarted) {
-      toast({
-        title: "1 minute remaining",
-        description: "Your session will end soon.",
-        variant: "default",
-      });
-    }
-  }, [timeRemaining, toast, gameStarted]);
-  
-  const handlePauseResume = async () => {
-    try {
-      if (isRunning) {
-        await pauseSession();
-        setIsRunning(false);
-        toast({
-          title: "Session paused",
-          description: "Timer has been paused.",
-        });
-      } else {
-        await resumeSession();
-        setIsRunning(true);
-        toast({
-          title: "Session resumed",
-          description: "Timer has been resumed.",
-        });
-      }
-    } catch (error) {
-      console.error("Error toggling pause/resume:", error);
-      toast({
-        title: "Action failed",
-        description: "Failed to pause/resume session. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  const handleEndSession = async () => {
-    setShowEndDialog(false);
-    
-    try {
-      await endSession();
-      
-      // Also end the RFID session in our database
-      if (sessionId) {
-        const { rfidService } = await import("@/services/rfidService");
-        await rfidService.endSession(sessionId);
-      }
-      
-      setShowRating(true);
-    } catch (error) {
-      console.error("Error ending session:", error);
-      toast({
-        title: "Error ending session",
-        description: "Please try again or contact staff.",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  const handleExitPrompt = () => {
-    setShowExitDialog(true);
-  };
-  
-  const handleExit = async () => {
-    setShowExitDialog(false);
-    
-    try {
-      await endSession();
-      
-      // Also end the RFID session in our database
-      if (sessionId) {
-        const { rfidService } = await import("@/services/rfidService");
-        await rfidService.endSession(sessionId);
-      }
-      
-      toast({
-        title: "Exiting game",
-        description: "Returning to home screen.",
-      });
-      
-      setShowRating(true);
-    } catch (error) {
-      console.error("Error exiting session:", error);
-      toast({
-        title: "Error exiting",
-        description: "Please try again or contact staff.",
-        variant: "destructive",
-      });
-    }
+
+  const getSessionStatus = () => {
+    if (launchError) return "error";
+    if (isLaunching) return "launching";
+    if (serverStatus.gameRunning) return "running";
+    if (serverStatus.isPaused) return "paused";
+    return "preparing";
   };
 
-  const handleRatingSubmit = async () => {
-    if (!gameId || rating === 0) return;
-    
-    setSubmittingRating(true);
-    
-    try {
-      await submitRating(gameId, rating);
-      
-      // Also update the RFID session rating
-      if (sessionId) {
-        const { rfidService } = await import("@/services/rfidService");
-        await rfidService.endSession(sessionId, rating);
-      }
-      
-      toast({
-        title: "Thanks for your feedback!",
-        description: "Your rating has been recorded.",
-      });
+  const sessionStatus = getSessionStatus();
 
-      setTimeout(() => {
-        navigate("/");
-      }, 1000);
-    } catch (error) {
-      console.error("Error submitting rating:", error);
-      toast({
-        title: "Rating submission failed",
-        description: "Could not save your rating. Please try again.",
-        variant: "destructive",
-      });
-      setSubmittingRating(false);
-    }
-  };
-  
-  const handleRetryLaunch = () => {
-    setLaunchError(null);
-    setIsLaunching(true);
-    // Trigger re-launch by navigating back and forth
-    window.location.reload();
-  };
-  
-  // If showing rating screen
-  if (showRating) {
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="min-h-screen flex flex-col items-center justify-center relative bg-vr-dark"
-      >
-        <ParticlesBackground />
-        
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", damping: 15 }}
-          className="vr-card max-w-md w-full z-10 p-8"
-        >
-          <h2 className="text-2xl font-bold mb-2 text-center">How was your experience?</h2>
-          <p className="text-vr-muted text-center mb-8">Rate your session playing {gameTitle}</p>
-          
-          <div className="flex justify-center mb-8">
-            <RatingInput 
-              size="lg" 
-              onChange={setRating} 
-              initialRating={rating}
-            />
-          </div>
-          
-          <Button 
-            onClick={handleRatingSubmit}
-            className="w-full py-6 bg-vr-secondary text-vr-dark hover:bg-vr-secondary/90"
-            disabled={rating === 0 || submittingRating}
-          >
-            {submittingRating ? "Submitting..." : "Submit Rating"}
-          </Button>
-        </motion.div>
-      </motion.div>
-    );
-  }
-
-  // If launch failed, show error screen
-  if (launchError) {
-    return (
-      <MainLayout className="relative px-4 py-8 h-screen flex flex-col">
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="absolute top-8 left-8"
-        >
-          <Button 
-            variant="ghost" 
-            className="text-vr-muted hover:text-vr-text flex items-center gap-2"
-            onClick={() => navigate("/games")}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Games
-          </Button>
-        </motion.div>
-        
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", damping: 15 }}
-            className="vr-card max-w-lg w-full backdrop-blur-md text-center"
-          >
-            <AlertCircle className="h-16 w-16 text-vr-accent mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-4">Launch Failed</h2>
-            <p className="text-vr-muted mb-8">{launchError}</p>
-            
-            <div className="flex gap-4 justify-center">
-              <Button
-                onClick={handleRetryLaunch}
-                className="bg-vr-primary hover:bg-vr-primary/80"
-              >
-                Try Again
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => navigate("/games")}
-                className="border-vr-primary/50"
-              >
-                Back to Games
-              </Button>
-            </div>
-          </motion.div>
-        </div>
-      </MainLayout>
-    );
-  }
-
-  // If launching, show loading screen
-  if (isLaunching) {
-    return (
-      <MainLayout className="relative px-4 py-8 h-screen flex flex-col">
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="absolute top-8 left-8 flex items-center gap-4"
-        >
-          <Button 
-            variant="ghost" 
-            className="text-vr-muted hover:text-vr-text flex items-center gap-2"
-            onClick={() => navigate("/games")}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Cancel Launch
-          </Button>
-          <CommandCenterStatus showLabel={true} />
-        </motion.div>
-        
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", damping: 15 }}
-            className="vr-card max-w-lg w-full backdrop-blur-md text-center"
-          >
-            <Loader2 className="h-16 w-16 text-vr-primary mx-auto mb-4 animate-spin" />
-            <h2 className="text-2xl font-bold mb-4">Launching {gameTitle}</h2>
-            <p className="text-vr-muted mb-8">
-              Initializing VR environment and starting game session...
-            </p>
-            <div className="text-sm text-vr-muted">
-              Duration: {Math.floor(selectedDuration / 60)} minutes
-            </div>
-            <div className="text-xs text-vr-muted/70 mt-4">
-              If VR runtime is not available, session will continue in demo mode
-            </div>
-          </motion.div>
-        </div>
-      </MainLayout>
-    );
-  }
-  
   return (
-    <MainLayout className="relative px-4 py-8 h-screen flex flex-col">
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="absolute top-8 left-8 flex items-center gap-4"
-      >
-        <Button 
-          variant="ghost" 
-          className="text-vr-muted hover:text-vr-text flex items-center gap-2"
-          onClick={handleExitPrompt}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Exit Game
-        </Button>
-        <CommandCenterStatus showLabel={true} />
-      </motion.div>
-      
-      <div className="flex-1 flex flex-col items-center justify-center">
+    <MainLayout className="relative">
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        {/* Session Header */}
         <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", damping: 15 }}
-          className="vr-card max-w-lg w-full backdrop-blur-md"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center"
         >
-          <div className="flex flex-col items-center text-center mb-10">
-            <div className="flex items-center gap-2 mb-2">
-              <h1 className="text-3xl font-bold">{gameTitle}</h1>
-              {demoMode && (
-                <div className="flex items-center gap-1 px-2 py-1 bg-vr-accent/20 rounded-full">
-                  <Monitor className="h-4 w-4 text-vr-accent" />
-                  <span className="text-xs text-vr-accent font-medium">DEMO</span>
-                </div>
-              )}
-            </div>
-            <p className="text-vr-muted mb-6">
-              {demoMode ? "Demo session in progress" : "Session in progress"}
-            </p>
+          <h1 className="text-3xl font-bold mb-2">VR Session</h1>
+          <p className="text-vr-muted">
+            {gameTitle} • {Math.floor(duration / 60)} minutes
+          </p>
+        </motion.div>
 
-            {/* RFID Card Info */}
-            {cardInfo && (
-              <div className="bg-vr-primary/10 p-3 rounded-lg mb-4 w-full">
-                <div className="flex items-center gap-2 justify-center">
-                  <CreditCard className="h-4 w-4 text-vr-primary" />
-                  <span className="text-sm text-vr-text">
-                    Card: {cardInfo.name || cardInfo.tag_id.substring(0, 8)}...
+        {/* Session Status Card */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="vr-card">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Session Status</span>
+                <Badge variant={
+                  sessionStatus === "running" ? "default" :
+                  sessionStatus === "launching" ? "secondary" :
+                  sessionStatus === "error" ? "destructive" :
+                  "outline"
+                }>
+                  {sessionStatus === "running" && <CheckCircle className="h-3 w-3 mr-1" />}
+                  {sessionStatus === "launching" && <Play className="h-3 w-3 mr-1" />}
+                  {sessionStatus === "error" && <AlertTriangle className="h-3 w-3 mr-1" />}
+                  {sessionStatus.charAt(0).toUpperCase() + sessionStatus.slice(1)}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Connection Status */}
+              <div className="flex items-center justify-between p-3 bg-vr-dark/30 rounded-lg">
+                <span className="text-sm">VR System Connection</span>
+                <Badge variant={isConnected ? "default" : "destructive"}>
+                  {isConnected ? "Connected" : "Disconnected"}
+                </Badge>
+              </div>
+
+              {/* Game Status */}
+              <div className="flex items-center justify-between p-3 bg-vr-dark/30 rounded-lg">
+                <span className="text-sm">Game Status</span>
+                <span className="text-sm font-medium">
+                  {serverStatus.gameRunning ? "Running" : 
+                   isLaunching ? "Starting..." : 
+                   "Not Running"}
+                </span>
+              </div>
+
+              {/* Timer */}
+              {(serverStatus.gameRunning || serverStatus.isPaused) && (
+                <div className="flex items-center justify-center p-6 bg-vr-primary/10 rounded-lg">
+                  <Clock className="h-6 w-6 text-vr-primary mr-2" />
+                  <span className="text-2xl font-mono font-bold">
+                    {formatTime(serverStatus.timeRemaining || 0)}
                   </span>
                 </div>
-              </div>
-            )}
-            
-            <div className="w-full mb-6">
-              <motion.div 
-                className={`text-6xl font-bold mb-4 ${
-                  timeRemaining < 60 ? 'text-vr-accent animate-pulse' : 'text-vr-text'
-                }`}
-                animate={{ scale: [1, 1.03, 1], opacity: [1, 1, 1] }}
-                transition={{ 
-                  duration: 1, 
-                  repeat: Infinity, 
-                  ease: "easeInOut",
-                  repeatType: "reverse"
-                }}
-              >
-                {formatTime(timeRemaining)}
-              </motion.div>
-              
-              <div className="relative h-4 w-full bg-vr-dark/50 rounded-full overflow-hidden">
-                <motion.div 
-                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-vr-secondary to-vr-primary rounded-full"
-                  initial={{ width: `${progress}%` }}
-                  animate={{ width: `${progress}%` }}
-                  transition={{ type: "spring", damping: 20 }}
-                />
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-center gap-3 mt-6">
-              <Button
-                className={`px-6 py-6 flex items-center gap-2 ${
-                  isRunning 
-                    ? "bg-vr-accent hover:bg-vr-accent/80" 
-                    : "bg-vr-primary hover:bg-vr-primary/80"
-                }`}
-                onClick={handlePauseResume}
-                disabled={!isConnected || !gameStarted}
-              >
-                {isRunning ? (
-                  <>
-                    <Pause className="h-5 w-5" />
-                    <span className="text-lg">Pause Session</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-5 w-5" />
-                    <span className="text-lg">Resume Session</span>
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                className="border-vr-primary/50 text-vr-text hover:bg-vr-primary/20 px-6 py-6"
-                onClick={handleExitPrompt}
-                disabled={!isConnected}
-              >
-                <X className="h-5 w-5 mr-2" />
-                <span className="text-lg">End Session</span>
-              </Button>
-            </div>
-          </div>
+              )}
 
-          <div className="space-y-4 text-center">
-            <div className="flex items-center justify-center gap-2 text-vr-muted">
-              <Clock className="h-5 w-5" />
-              <span>
-                {demoMode 
-                  ? "Demo mode - VR headset not required" 
-                  : "Please wear your VR headset to continue playing"
-                }
-              </span>
-            </div>
-            {demoMode && (
-              <div className="text-xs text-vr-muted/70 bg-vr-accent/10 p-3 rounded-lg">
-                Running in demo mode because VR runtime is not available. 
-                Session timer and controls work normally for testing purposes.
+              {/* Control Buttons */}
+              <div className="flex gap-3 justify-center">
+                {serverStatus.gameRunning && (
+                  <Button
+                    onClick={handlePauseResume}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    {serverStatus.isPaused ? (
+                      <>
+                        <Play className="h-4 w-4" />
+                        Resume
+                      </>
+                    ) : (
+                      <>
+                        <Pause className="h-4 w-4" />
+                        Pause
+                      </>
+                    )}
+                  </Button>
+                )}
+                
+                <Button
+                  onClick={handleEndSession}
+                  variant="destructive"
+                  className="flex items-center gap-2"
+                  disabled={isLaunching}
+                >
+                  <Square className="h-4 w-4" />
+                  End Session
+                </Button>
               </div>
-            )}
-            {rfidTag && (
-              <div className="text-xs text-vr-muted/70 bg-vr-primary/10 p-3 rounded-lg">
-                This session is linked to your RFID card and will be counted in your usage history.
+
+              {/* Error Message */}
+              {launchError && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-red-800">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span className="font-medium">Launch Error</span>
+                  </div>
+                  <p className="text-sm text-red-700 mt-1">{launchError}</p>
+                  <Button
+                    onClick={handleStartSession}
+                    size="sm"
+                    className="mt-3"
+                    disabled={isLaunching}
+                  >
+                    Retry Launch
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Session Info */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+        >
+          <Card className="vr-card">
+            <CardHeader>
+              <CardTitle className="text-lg">Session Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-vr-muted">Game</span>
+                <span className="font-medium">{gameTitle}</span>
               </div>
-            )}
-          </div>
+              <div className="flex justify-between">
+                <span className="text-vr-muted">Duration</span>
+                <span className="font-medium">{Math.floor(duration / 60)} minutes</span>
+              </div>
+              {rfidTag && (
+                <div className="flex justify-between">
+                  <span className="text-vr-muted">RFID Card</span>
+                  <span className="font-medium font-mono text-xs">
+                    {rfidTag.substring(0, 12)}...
+                  </span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="vr-card">
+            <CardHeader>
+              <CardTitle className="text-lg">System Status</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-vr-muted">CPU Usage</span>
+                <span className="font-medium">{serverStatus.cpuUsage || 0}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-vr-muted">Memory Usage</span>
+                <span className="font-medium">{serverStatus.memoryUsage || 0}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-vr-muted">Active Game</span>
+                <span className="font-medium">
+                  {serverStatus.activeGame || "None"}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
         </motion.div>
       </div>
 
-      {/* Exit confirmation dialog */}
-      <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
-        <AlertDialogContent className="bg-vr-dark border-vr-primary/30">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-vr-accent" />
-              End Current Session?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to end your session? Any remaining time will be lost.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel 
-              className="border-vr-primary/30 hover:bg-vr-dark/60 hover:text-vr-text"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleExit}
-              className="bg-vr-accent hover:bg-vr-accent/80"
-            >
-              End Session
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Launch Status Overlay */}
+      <GameLaunchStatus
+        isLaunching={isLaunching}
+        gameRunning={serverStatus.gameRunning}
+        gameTitle={gameTitle}
+        error={launchError || undefined}
+      />
     </MainLayout>
-  );
-};
-
-// Particle background component
-const ParticlesBackground = () => {
-  return (
-    <div className="absolute inset-0 overflow-hidden">
-      {[...Array(20)].map((_, i) => (
-        <div 
-          key={i}
-          className="particle"
-          style={{
-            position: 'absolute',
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            width: `${Math.random() * 4 + 1}px`,
-            height: `${Math.random() * 4 + 1}px`,
-            background: `rgba(0, 234, 255, ${Math.random() * 0.5 + 0.1})`,
-            borderRadius: '50%',
-            boxShadow: '0 0 10px rgba(0, 234, 255, 0.5)',
-            animation: `float ${Math.random() * 10 + 10}s linear infinite`,
-            animationDelay: `${Math.random() * 5}s`,
-          }}
-        />
-      ))}
-      <div className="absolute inset-0 bg-gradient-radial from-vr-primary/5 to-transparent" />
-    </div>
   );
 };
 

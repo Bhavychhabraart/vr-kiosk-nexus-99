@@ -29,6 +29,7 @@ export enum ResponseStatus {
   SUCCESS = 'success',
   ERROR = 'error',
   PARTIAL = 'partial',
+  LAUNCHING = 'launching',
 }
 
 // Command interface
@@ -47,6 +48,7 @@ export interface CommandResponse {
   data?: any;
   error?: string;
   timestamp?: number;
+  progress?: number;
 }
 
 // Server status interface
@@ -54,6 +56,7 @@ export interface ServerStatus {
   connected: boolean;
   activeGame?: string;
   gameRunning: boolean;
+  gameLaunching?: boolean;
   demoMode?: boolean;
   processRunning?: boolean;
   vrRuntimeStatus?: string;
@@ -80,16 +83,34 @@ const defaultSettings: WebSocketSettings = {
   reconnectDelay: 2000,
 };
 
+// Command timeout configurations (in milliseconds)
+const COMMAND_TIMEOUTS = {
+  [CommandType.LAUNCH_GAME]: 45000, // 45 seconds for game launch
+  [CommandType.END_SESSION]: 15000, // 15 seconds for ending session
+  [CommandType.PAUSE_SESSION]: 5000,
+  [CommandType.RESUME_SESSION]: 5000,
+  [CommandType.GET_STATUS]: 5000,
+  [CommandType.HEARTBEAT]: 10000,
+  [CommandType.SUBMIT_RATING]: 10000,
+  [CommandType.GET_DIAGNOSTICS]: 15000,
+};
+
 class WebSocketService {
   private socket: WebSocket | null = null;
   private connectionState: ConnectionState = ConnectionState.DISCONNECTED;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 2000;
-  private commandCallbacks: Map<string, (response: CommandResponse) => void> = new Map();
+  private commandCallbacks: Map<string, {
+    resolve: (response: CommandResponse) => void;
+    reject: (error: Error) => void;
+    timeout: number;
+  }> = new Map();
   private connectionStateListeners: ((state: ConnectionState) => void)[] = [];
   private statusListeners: ((status: ServerStatus) => void)[] = [];
   private heartbeatInterval: number | null = null;
+  private heartbeatTimeout: number | null = null;
+  private lastHeartbeatTime = 0;
   private commandRateLimiter: Map<CommandType, number> = new Map();
   private commandRateLimits: Map<CommandType, { max: number, window: number }> = new Map();
   private serverStatus: ServerStatus = {
@@ -99,6 +120,9 @@ class WebSocketService {
   private settings: WebSocketSettings = { ...defaultSettings };
   private _initialized = false;
   private authToken: string | null = null;
+  private connectionHealthCheck: number | null = null;
+  private commandQueue: Command[] = [];
+  private isProcessingQueue = false;
 
   constructor() {
     this.setDefaultRateLimits();
@@ -110,6 +134,7 @@ class WebSocketService {
     
     this.commandRateLimits.set(CommandType.HEARTBEAT, { max: 6, window: 60000 });
     this.commandRateLimits.set(CommandType.GET_STATUS, { max: 30, window: 60000 });
+    this.commandRateLimits.set(CommandType.LAUNCH_GAME, { max: 3, window: 60000 }); // Limit game launches
     
     Object.values(CommandType).forEach(cmd => {
       if (!this.commandRateLimits.has(cmd as CommandType)) {
@@ -167,6 +192,7 @@ class WebSocketService {
     const now = Date.now();
     this.commandRateLimiter.set(commandType, now);
     
+    // Cleanup old entries
     for (const [cmd, time] of this.commandRateLimiter.entries()) {
       const limit = this.commandRateLimits.get(cmd);
       if (limit && now - time > limit.window) {
@@ -208,6 +234,11 @@ class WebSocketService {
   }
   
   public disconnect(): void {
+    this.cleanup();
+    this.updateConnectionState(ConnectionState.DISCONNECTED);
+  }
+
+  private cleanup(): void {
     if (this.socket) {
       this.socket.close();
       this.socket = null;
@@ -217,13 +248,43 @@ class WebSocketService {
       window.clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
     }
-    
-    this.updateConnectionState(ConnectionState.DISCONNECTED);
+
+    if (this.heartbeatTimeout) {
+      window.clearTimeout(this.heartbeatTimeout);
+      this.heartbeatTimeout = null;
+    }
+
+    if (this.connectionHealthCheck) {
+      window.clearInterval(this.connectionHealthCheck);
+      this.connectionHealthCheck = null;
+    }
+
+    // Reject all pending commands
+    this.commandCallbacks.forEach(({ reject, timeout }) => {
+      window.clearTimeout(timeout);
+      reject(new Error('Connection closed'));
+    });
+    this.commandCallbacks.clear();
   }
   
   public sendCommand(type: CommandType, params?: Record<string, any>): Promise<CommandResponse> {
     return new Promise((resolve, reject) => {
       if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+        // Queue the command if we're reconnecting
+        if (this.connectionState === ConnectionState.RECONNECTING) {
+          const command: Command = {
+            id: this.generateCommandId(),
+            type,
+            params,
+            timestamp: Date.now(),
+          };
+          this.commandQueue.push(command);
+          
+          // Store the callback for when we process the queue
+          this.commandCallbacks.set(command.id, { resolve, reject, timeout: 0 });
+          return;
+        }
+        
         reject(new Error('WebSocket is not connected'));
         return;
       }
@@ -244,25 +305,33 @@ class WebSocketService {
       if (this.authToken) {
         command.auth = this.authToken;
       }
-      
-      this.commandCallbacks.set(id, (response) => {
-        if (response.status === ResponseStatus.SUCCESS) {
-          resolve(response);
-        } else {
-          reject(new Error(response.error || 'Unknown error'));
-        }
-      });
-      
-      this.recordCommandUsage(type);
-      
-      this.socket.send(JSON.stringify(command));
-      
-      setTimeout(() => {
+
+      // Set up timeout based on command type
+      const timeoutDuration = COMMAND_TIMEOUTS[type] || 10000;
+      const timeoutId = window.setTimeout(() => {
         if (this.commandCallbacks.has(id)) {
           this.commandCallbacks.delete(id);
-          reject(new Error('Command timed out'));
+          reject(new Error(`Command timed out after ${timeoutDuration}ms`));
         }
-      }, 10000);
+      }, timeoutDuration);
+      
+      this.commandCallbacks.set(id, { resolve, reject, timeout: timeoutId });
+      this.recordCommandUsage(type);
+      
+      // Add progress feedback for game launch
+      if (type === CommandType.LAUNCH_GAME) {
+        this.updateServerStatus({
+          ...this.serverStatus,
+          gameLaunching: true,
+        });
+        
+        toast({
+          title: "Launching Game",
+          description: "Starting VR game, this may take a moment...",
+        });
+      }
+      
+      this.socket.send(JSON.stringify(command));
     });
   }
   
@@ -293,12 +362,23 @@ class WebSocketService {
   }
   
   private handleOpen = () => {
+    console.log('WebSocket connection opened');
     this.reconnectAttempts = 0;
     this.updateConnectionState(ConnectionState.CONNECTED);
     this.startHeartbeat();
+    this.startConnectionHealthCheck();
+    this.processCommandQueue();
     
+    // Get initial status with retry
     this.sendCommand(CommandType.GET_STATUS)
-      .catch(error => console.error('Failed to get initial status:', error));
+      .catch(error => {
+        console.error('Failed to get initial status:', error);
+        // Retry after 2 seconds
+        setTimeout(() => {
+          this.sendCommand(CommandType.GET_STATUS)
+            .catch(e => console.error('Second attempt to get status failed:', e));
+        }, 2000);
+      });
     
     toast({
       title: "Connected to VR System",
@@ -307,10 +387,8 @@ class WebSocketService {
   };
   
   private handleClose = (event: CloseEvent) => {
-    if (this.heartbeatInterval) {
-      window.clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = null;
-    }
+    console.log('WebSocket connection closed:', event.code, event.reason);
+    this.cleanup();
     
     if (this.connectionState !== ConnectionState.DISCONNECTED) {
       this.attemptReconnect();
@@ -320,15 +398,44 @@ class WebSocketService {
   private handleMessage = (event: MessageEvent) => {
     try {
       const response: CommandResponse = JSON.parse(event.data);
+      console.log('Status update received:', response.data);
       
       if (response.id && this.commandCallbacks.has(response.id)) {
-        const callback = this.commandCallbacks.get(response.id)!;
-        callback(response);
+        const { resolve, reject, timeout } = this.commandCallbacks.get(response.id)!;
+        window.clearTimeout(timeout);
+        
+        if (response.status === ResponseStatus.SUCCESS || response.status === ResponseStatus.LAUNCHING) {
+          // Handle launching status for game commands
+          if (response.status === ResponseStatus.LAUNCHING) {
+            this.updateServerStatus({
+              ...this.serverStatus,
+              gameLaunching: true,
+            });
+            
+            toast({
+              title: "Game Starting",
+              description: "VR game is starting up...",
+            });
+            
+            // Don't resolve yet, wait for the final success response
+            return;
+          }
+          
+          resolve(response);
+        } else {
+          reject(new Error(response.error || 'Unknown error'));
+        }
         this.commandCallbacks.delete(response.id);
       }
       
+      // Update server status from any response
       if (response.data && response.data.status) {
         this.updateServerStatus(response.data.status);
+      }
+      
+      // Update heartbeat tracking
+      if (response.data && response.data.timestamp) {
+        this.lastHeartbeatTime = Date.now();
       }
     } catch (error) {
       console.error('Error handling WebSocket message:', error);
@@ -340,7 +447,7 @@ class WebSocketService {
     toast({
       variant: "destructive",
       title: "Communication Error",
-      description: "VR system communication error. Please try reconnecting or contact support.",
+      description: "VR system communication error. Attempting to reconnect...",
     });
   };
   
@@ -350,7 +457,7 @@ class WebSocketService {
       toast({
         variant: "destructive",
         title: "Reconnection Failed",
-        description: "Maximum reconnect attempts reached. Please restart the application.",
+        description: "Maximum reconnect attempts reached. Please check VR system status.",
       });
       return;
     }
@@ -370,7 +477,7 @@ class WebSocketService {
       } else {
         this.connect();
       }
-    }, this.reconnectDelay * this.reconnectAttempts);
+    }, this.reconnectDelay * Math.min(this.reconnectAttempts, 3)); // Cap backoff
   }
   
   private updateConnectionState(state: ConnectionState): void {
@@ -390,6 +497,19 @@ class WebSocketService {
     // Log significant status changes for debugging
     if (previousStatus.gameRunning !== status.gameRunning) {
       console.log(`Game running status changed: ${previousStatus.gameRunning} -> ${status.gameRunning}`);
+      
+      // Clear launching state when game actually starts running
+      if (status.gameRunning && this.serverStatus.gameLaunching) {
+        this.serverStatus.gameLaunching = false;
+        toast({
+          title: "Game Launched Successfully",
+          description: "VR game is now running",
+        });
+      }
+    }
+    
+    if (previousStatus.gameLaunching !== status.gameLaunching) {
+      console.log(`Game launching status changed: ${previousStatus.gameLaunching} -> ${status.gameLaunching}`);
     }
     
     if (previousStatus.demoMode !== status.demoMode) {
@@ -408,12 +528,64 @@ class WebSocketService {
       window.clearInterval(this.heartbeatInterval);
     }
     
+    this.lastHeartbeatTime = Date.now();
+    
     this.heartbeatInterval = window.setInterval(() => {
       if (this.socket && this.socket.readyState === WebSocket.OPEN) {
         this.sendCommand(CommandType.HEARTBEAT)
-          .catch(error => console.error('Heartbeat error:', error));
+          .then(() => {
+            // Heartbeat successful
+            if (this.heartbeatTimeout) {
+              window.clearTimeout(this.heartbeatTimeout);
+            }
+          })
+          .catch(error => {
+            console.error('Heartbeat error:', error);
+            // Don't immediately disconnect on heartbeat failure
+            // Let the connection health check handle it
+          });
       }
-    }, 30000);
+    }, 30000); // Send heartbeat every 30 seconds
+  }
+
+  private startConnectionHealthCheck(): void {
+    if (this.connectionHealthCheck) {
+      window.clearInterval(this.connectionHealthCheck);
+    }
+
+    this.connectionHealthCheck = window.setInterval(() => {
+      const now = Date.now();
+      const timeSinceLastHeartbeat = now - this.lastHeartbeatTime;
+      
+      // If we haven't heard from the server in 2 minutes, consider connection unhealthy
+      if (timeSinceLastHeartbeat > 120000) {
+        console.warn('Connection appears unhealthy, triggering reconnect');
+        this.handleClose(new CloseEvent('close', { code: 1006, reason: 'Connection timeout' }));
+      }
+    }, 60000); // Check every minute
+  }
+
+  private processCommandQueue(): void {
+    if (this.isProcessingQueue || this.commandQueue.length === 0) {
+      return;
+    }
+
+    this.isProcessingQueue = true;
+    const queueToProcess = [...this.commandQueue];
+    this.commandQueue = [];
+
+    console.log(`Processing ${queueToProcess.length} queued commands`);
+
+    queueToProcess.forEach(command => {
+      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+        this.socket.send(JSON.stringify(command));
+      } else {
+        // Re-queue if connection is lost again
+        this.commandQueue.push(command);
+      }
+    });
+
+    this.isProcessingQueue = false;
   }
   
   private generateCommandId(): string {

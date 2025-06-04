@@ -19,6 +19,7 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
   const [serverStatus, setServerStatus] = useState<ServerStatus>(
     websocketService.getServerStatus()
   );
+  const [isLaunching, setIsLaunching] = useState(false);
 
   useEffect(() => {
     // Connect to the WebSocket server when the component mounts
@@ -28,12 +29,14 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
     const unsubConnectionState = websocketService.onConnectionStateChange(
       (state) => {
         setConnectionState(state);
+        console.log('Connection state changed:', state);
       }
     );
 
     // Subscribe to server status updates
     const unsubServerStatus = websocketService.onStatusUpdate((status) => {
       setServerStatus(status);
+      setIsLaunching(status.gameLaunching || false);
       options.onStatusChange?.(status);
       
       // Check for system alerts
@@ -62,9 +65,13 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
   // Check if connected
   const isConnected = connectionState === ConnectionState.CONNECTED;
 
-  // Launch a game
+  // Launch a game with enhanced error handling and progress tracking
   const launchGame = useCallback(async (gameId: string, durationSeconds: number) => {
     try {
+      setIsLaunching(true);
+      
+      console.log(`Launching game ${gameId} for ${durationSeconds} seconds`);
+      
       const response = await websocketService.sendCommand(CommandType.LAUNCH_GAME, { 
         gameId, 
         sessionDuration: durationSeconds
@@ -83,9 +90,35 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
         console.error('Error recording session start:', err);
       }
       
+      // Show success toast
+      toast({
+        title: "Game Launched Successfully",
+        description: `${response.data?.gameTitle || 'Game'} is now running`,
+      });
+      
       return response;
     } catch (error) {
       console.error('Error launching game:', error);
+      setIsLaunching(false);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to launch game';
+      if (error instanceof Error) {
+        if (error.message.includes('timeout')) {
+          errorMessage = 'Game launch is taking longer than expected. The VR system may be busy or require attention.';
+        } else if (error.message.includes('VR runtime')) {
+          errorMessage = 'VR runtime is not available. Please ensure SteamVR or your VR software is running.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      toast({
+        variant: "destructive",
+        title: "Launch Failed",
+        description: errorMessage,
+      });
+      
       throw error;
     }
   }, []);
@@ -102,9 +135,21 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
         console.error('Error recording session end:', err);
       }
       
+      toast({
+        title: "Session Ended",
+        description: "VR session has been terminated successfully",
+      });
+      
       return response;
     } catch (error) {
       console.error('Error ending session:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "End Session Failed",
+        description: "Failed to end the VR session properly",
+      });
+      
       throw error;
     }
   }, []);
@@ -112,9 +157,23 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
   // Pause the current session
   const pauseSession = useCallback(async () => {
     try {
-      return await websocketService.sendCommand(CommandType.PAUSE_SESSION);
+      const response = await websocketService.sendCommand(CommandType.PAUSE_SESSION);
+      
+      toast({
+        title: "Session Paused",
+        description: "VR session has been paused",
+      });
+      
+      return response;
     } catch (error) {
       console.error('Error pausing session:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "Pause Failed",
+        description: "Failed to pause the VR session",
+      });
+      
       throw error;
     }
   }, []);
@@ -122,9 +181,23 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
   // Resume the current session
   const resumeSession = useCallback(async () => {
     try {
-      return await websocketService.sendCommand(CommandType.RESUME_SESSION);
+      const response = await websocketService.sendCommand(CommandType.RESUME_SESSION);
+      
+      toast({
+        title: "Session Resumed",
+        description: "VR session has been resumed",
+      });
+      
+      return response;
     } catch (error) {
       console.error('Error resuming session:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "Resume Failed",
+        description: "Failed to resume the VR session",
+      });
+      
       throw error;
     }
   }, []);
@@ -162,9 +235,21 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
         console.error('Error recording rating:', err);
       }
       
+      toast({
+        title: "Rating Submitted",
+        description: `Thank you for rating this game ${rating}/5 stars!`,
+      });
+      
       return true;
     } catch (error) {
       console.error('Error submitting rating:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "Rating Failed",
+        description: "Failed to submit your rating",
+      });
+      
       throw error;
     }
   }, []);
@@ -184,6 +269,7 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
     connectionState,
     serverStatus,
     isConnected,
+    isLaunching,
     launchGame,
     endSession,
     pauseSession,
