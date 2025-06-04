@@ -1,217 +1,245 @@
 
-import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
-  TrendingUp, 
-  Users, 
-  Clock, 
-  Calendar,
-  Activity,
-  Target
-} from "lucide-react";
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  BarChart,
-  Bar
-} from "recharts";
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { format } from "date-fns";
+import { RefreshCw, TrendingUp, Clock, Users, DollarSign } from "lucide-react";
+import { useSessionAnalytics } from "@/hooks/useSessionAnalytics";
 
-interface MachineAnalyticsTabProps {
-  venueId: string;
-}
+const MachineAnalyticsTab = () => {
+  const { sessions, stats, isLoading, refetchSessions } = useSessionAnalytics();
 
-const MachineAnalyticsTab = ({ venueId }: MachineAnalyticsTabProps) => {
-  // Mock data for now - in real implementation, this would be fetched based on venueId
-  const mockSessionData = [
-    { date: '2024-01-01', sessions: 12, revenue: 2400, avgDuration: 18 },
-    { date: '2024-01-02', sessions: 8, revenue: 1600, avgDuration: 16 },
-    { date: '2024-01-03', sessions: 15, revenue: 3000, avgDuration: 20 },
-    { date: '2024-01-04', sessions: 10, revenue: 2000, avgDuration: 17 },
-    { date: '2024-01-05', sessions: 18, revenue: 3600, avgDuration: 22 },
-    { date: '2024-01-06', sessions: 14, revenue: 2800, avgDuration: 19 },
-    { date: '2024-01-07', sessions: 16, revenue: 3200, avgDuration: 21 }
-  ];
-
-  const mockHourlyData = [
-    { hour: '10:00', sessions: 2 },
-    { hour: '11:00', sessions: 4 },
-    { hour: '12:00', sessions: 6 },
-    { hour: '13:00', sessions: 8 },
-    { hour: '14:00', sessions: 12 },
-    { hour: '15:00', sessions: 15 },
-    { hour: '16:00', sessions: 18 },
-    { hour: '17:00', sessions: 14 },
-    { hour: '18:00', sessions: 10 },
-    { hour: '19:00', sessions: 8 },
-    { hour: '20:00', sessions: 6 },
-    { hour: '21:00', sessions: 4 }
-  ];
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-4 gap-4">
+          <Skeleton className="h-[120px]" />
+          <Skeleton className="h-[120px]" />
+          <Skeleton className="h-[120px]" />
+          <Skeleton className="h-[120px]" />
+        </div>
+        <Skeleton className="h-[400px] w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Machine Analytics</h2>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refetchSessions()}
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Refresh Data
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Sessions</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Today's Sessions
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">16</div>
-            <p className="text-xs text-muted-foreground">
-              +12% from yesterday
+            <div className="text-3xl font-bold">{stats?.totalSessions || 0}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Sessions completed today
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Session Duration</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              Today's Revenue
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">19m</div>
-            <p className="text-xs text-muted-foreground">
-              +2m from yesterday
+            <div className="text-3xl font-bold">₹{stats?.totalRevenue || 0}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Revenue generated today
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Machine Uptime</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Avg Duration
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">99.2%</div>
-            <p className="text-xs text-muted-foreground">
-              Excellent performance
+            <div className="text-3xl font-bold">
+              {Math.floor((stats?.avgDuration || 0) / 60)}m
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Average session length
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Weekly Target</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Machine Status
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">87%</div>
-            <p className="text-xs text-muted-foreground">
-              93/107 sessions
+            <div className="text-3xl font-bold text-green-600">Online</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              System operational
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Daily Sessions Trend */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Daily Sessions</CardTitle>
-            <CardDescription>
-              Session count and revenue for the last 7 days
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={mockSessionData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="date" 
-                  tickFormatter={(value) => new Date(value).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
-                />
-                <YAxis />
-                <Tooltip 
-                  labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                  formatter={(value, name) => [
-                    name === 'revenue' ? `₹${value}` : value,
-                    name === 'revenue' ? 'Revenue' : 'Sessions'
-                  ]}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="sessions" 
-                  stroke="#00eaff" 
-                  strokeWidth={2}
-                  dot={{ fill: "#00eaff" }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke="#ff6b35" 
-                  strokeWidth={2}
-                  dot={{ fill: "#ff6b35" }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Hourly Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Hourly Distribution</CardTitle>
-            <CardDescription>
-              Peak hours for session activity today
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={mockHourlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="hour" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="sessions" fill="#00eaff" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Performance Summary */}
+      {/* Recent Sessions Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Performance Summary</CardTitle>
+          <CardTitle>Recent Sessions</CardTitle>
           <CardDescription>
-            Key insights for this machine's performance
+            Latest VR gaming sessions on this machine
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <h3 className="font-semibold text-sm text-muted-foreground">Peak Hours</h3>
-              <div className="space-y-1">
-                <Badge variant="secondary">3:00 PM - 6:00 PM</Badge>
-                <p className="text-xs text-muted-foreground">Highest activity period</p>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <h3 className="font-semibold text-sm text-muted-foreground">Popular Days</h3>
-              <div className="space-y-1">
-                <Badge variant="secondary">Weekends</Badge>
-                <p className="text-xs text-muted-foreground">Saturday & Sunday peaks</p>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <h3 className="font-semibold text-sm text-muted-foreground">Avg Revenue/Session</h3>
-              <div className="space-y-1">
-                <Badge variant="secondary">₹200</Badge>
-                <p className="text-xs text-muted-foreground">Above industry average</p>
-              </div>
-            </div>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Session ID</TableHead>
+                <TableHead>Game</TableHead>
+                <TableHead>Start Time</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead>Payment Method</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sessions && sessions.length > 0 ? (
+                sessions.slice(0, 20).map((session) => (
+                  <TableRow key={session.id}>
+                    <TableCell className="font-mono text-xs">
+                      {session.session_id || session.id.split('-')[0]}
+                    </TableCell>
+                    <TableCell className="font-medium">{session.game_title}</TableCell>
+                    <TableCell>{format(new Date(session.start_time), 'MMM d, HH:mm:ss')}</TableCell>
+                    <TableCell>
+                      {session.duration_seconds 
+                        ? `${Math.floor(session.duration_seconds / 60)}m ${session.duration_seconds % 60}s`
+                        : 'In progress'
+                      }
+                    </TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        session.payment_method === 'rfid' 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-purple-100 text-purple-800'
+                      }`}>
+                        {session.payment_method?.toUpperCase() || 'N/A'}
+                      </span>
+                    </TableCell>
+                    <TableCell>₹{session.amount_paid || 0}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        session.status === 'completed' 
+                          ? 'bg-green-100 text-green-800' 
+                          : session.status === 'active'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {session.status}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    No sessions found. Start a VR session to see analytics data.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
+
+      {/* Session History by Game */}
+      {sessions && sessions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Game Performance</CardTitle>
+            <CardDescription>
+              Session statistics by game
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Game</TableHead>
+                  <TableHead className="text-right">Total Sessions</TableHead>
+                  <TableHead className="text-right">Total Revenue</TableHead>
+                  <TableHead className="text-right">Avg Duration</TableHead>
+                  <TableHead className="text-right">Last Played</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Object.entries(
+                  sessions.reduce((acc, session) => {
+                    const gameTitle = session.game_title || 'Unknown Game';
+                    if (!acc[gameTitle]) {
+                      acc[gameTitle] = {
+                        sessions: 0,
+                        revenue: 0,
+                        totalDuration: 0,
+                        lastPlayed: session.start_time
+                      };
+                    }
+                    acc[gameTitle].sessions += 1;
+                    acc[gameTitle].revenue += session.amount_paid || 0;
+                    acc[gameTitle].totalDuration += session.duration_seconds || 0;
+                    if (new Date(session.start_time) > new Date(acc[gameTitle].lastPlayed)) {
+                      acc[gameTitle].lastPlayed = session.start_time;
+                    }
+                    return acc;
+                  }, {} as Record<string, any>)
+                ).map(([game, stats]) => (
+                  <TableRow key={game}>
+                    <TableCell className="font-medium">{game}</TableCell>
+                    <TableCell className="text-right">{stats.sessions}</TableCell>
+                    <TableCell className="text-right">₹{stats.revenue}</TableCell>
+                    <TableCell className="text-right">
+                      {Math.floor(stats.totalDuration / stats.sessions / 60)}m
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {format(new Date(stats.lastPlayed), 'MMM d, HH:mm')}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

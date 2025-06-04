@@ -1,9 +1,6 @@
-
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { format, subDays, startOfDay, startOfWeek, startOfMonth, startOfYear, 
          differenceInDays, isWithinInterval, subWeeks, subMonths, subYears } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
 import { 
   ChartContainer, 
   ChartTooltip, 
@@ -51,54 +48,19 @@ import {
   ChevronLeft, 
   ChevronRight, 
   BarChart3, 
-  PieChart
+  PieChart,
+  RefreshCw
 } from "lucide-react";
+import { useSessionAnalytics } from "@/hooks/useSessionAnalytics";
 
 type TimeFrame = "daily" | "weekly" | "monthly" | "yearly";
-type SessionData = {
-  id: string;
-  start_time: string;
-  end_time: string | null;
-  game_id: string | null;
-  rfid_tag: string | null;
-  duration_seconds: number | null;
-  game_title?: string;
-};
 
 const AnalyticsTab = () => {
   const [timeFrame, setTimeFrame] = useState<TimeFrame>("daily");
   const [periodOffset, setPeriodOffset] = useState(0);
   
-  // Fetch session history data
-  const { data: sessions, isLoading } = useQuery({
-    queryKey: ['sessionHistory'],
-    queryFn: async () => {
-      // Fetch all sessions from session_history table
-      const { data, error } = await supabase
-        .from('session_history')
-        .select(`
-          id, 
-          start_time, 
-          end_time, 
-          game_id, 
-          rfid_tag, 
-          duration_seconds,
-          games:game_id (title)
-        `)
-        .order('start_time', { ascending: false });
-        
-      if (error) {
-        console.error('Error fetching session history:', error);
-        throw new Error(error.message);
-      }
-      
-      // Transform the data to include game title
-      return (data || []).map((session): SessionData => ({
-        ...session,
-        game_title: session.games?.title || 'Unknown Game'
-      }));
-    },
-  });
+  // Use shared analytics hook
+  const { sessions, stats, isLoading, refetchSessions } = useSessionAnalytics();
   
   // Calculate date ranges based on selected time frame and period offset
   const dateRange = useMemo(() => {
@@ -127,7 +89,7 @@ const AnalyticsTab = () => {
         startDate = startOfMonth(subMonths(now, periodOffset));
         endDate = new Date(startDate);
         endDate.setMonth(endDate.getMonth() + 1);
-        endDate.setDate(0); // Last day of month
+        endDate.setDate(0);
         endDate.setHours(23, 59, 59, 999);
         label = format(startDate, "MMMM yyyy");
         break;
@@ -136,7 +98,7 @@ const AnalyticsTab = () => {
         startDate = startOfYear(subYears(now, periodOffset));
         endDate = new Date(startDate);
         endDate.setFullYear(endDate.getFullYear() + 1);
-        endDate.setDate(0); // Last day of year
+        endDate.setDate(0);
         endDate.setHours(23, 59, 59, 999);
         label = format(startDate, "yyyy");
         break;
@@ -243,7 +205,7 @@ const AnalyticsTab = () => {
   }, [sessions, timeFrame, dateRange]);
   
   // Calculate summary statistics
-  const stats = useMemo(() => {
+  const summaryStats = useMemo(() => {
     const { startDate, endDate } = dateRange;
     
     if (!sessions) {
@@ -333,32 +295,43 @@ const AnalyticsTab = () => {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold">Session Analytics</h2>
-          <Tabs
-            value={timeFrame}
-            onValueChange={(v) => {
-              setTimeFrame(v as TimeFrame);
-              setPeriodOffset(0); // Reset period offset when changing time frame
-            }}
-          >
-            <TabsList>
-              <TabsTrigger value="daily" className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
-                Daily
-              </TabsTrigger>
-              <TabsTrigger value="weekly" className="flex items-center gap-1">
-                <CalendarDays className="h-4 w-4" />
-                Weekly
-              </TabsTrigger>
-              <TabsTrigger value="monthly" className="flex items-center gap-1">
-                <CalendarIcon className="h-4 w-4" />
-                Monthly
-              </TabsTrigger>
-              <TabsTrigger value="yearly" className="flex items-center gap-1">
-                <BarChart3 className="h-4 w-4" />
-                Yearly
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetchSessions()}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+            <Tabs
+              value={timeFrame}
+              onValueChange={(v) => {
+                setTimeFrame(v as TimeFrame);
+                setPeriodOffset(0);
+              }}
+            >
+              <TabsList>
+                <TabsTrigger value="daily" className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  Daily
+                </TabsTrigger>
+                <TabsTrigger value="weekly" className="flex items-center gap-1">
+                  <CalendarDays className="h-4 w-4" />
+                  Weekly
+                </TabsTrigger>
+                <TabsTrigger value="monthly" className="flex items-center gap-1">
+                  <CalendarIcon className="h-4 w-4" />
+                  Monthly
+                </TabsTrigger>
+                <TabsTrigger value="yearly" className="flex items-center gap-1">
+                  <BarChart3 className="h-4 w-4" />
+                  Yearly
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </div>
         
         <div className="flex items-center justify-between mb-4">
@@ -402,10 +375,10 @@ const AnalyticsTab = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {stats.totalSessions}
+              {summaryStats.totalSessions}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Each RFID tap = 1 session
+              Each session tracked
             </p>
           </CardContent>
         </Card>
@@ -418,7 +391,7 @@ const AnalyticsTab = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {Math.floor(stats.totalDuration / 60)} min
+              {Math.floor(summaryStats.totalDuration / 60)} min
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Total gameplay minutes
@@ -434,7 +407,7 @@ const AnalyticsTab = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {Math.floor(stats.avgSessionDuration / 60)} min
+              {Math.floor(summaryStats.avgSessionDuration / 60)} min
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Average minutes per session
@@ -537,8 +510,8 @@ const AnalyticsTab = () => {
             </TableHeader>
             <TableBody>
               {gameStats.length > 0 ? (
-                gameStats.map((stat) => (
-                  <TableRow key={stat.game}>
+                gameStats.map((stat, index) => (
+                  <TableRow key={index}>
                     <TableCell className="font-medium">{stat.game}</TableCell>
                     <TableCell className="text-right">{stat.sessions}</TableCell>
                     <TableCell className="text-right">{stat.minutes}</TableCell>
@@ -547,7 +520,62 @@ const AnalyticsTab = () => {
               ) : (
                 <TableRow>
                   <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
-                    No game data available for this period
+                    No session data available for this period
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+      
+      {/* Recent Sessions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Sessions</CardTitle>
+          <CardDescription>
+            Latest gaming sessions
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Game</TableHead>
+                <TableHead>Start Time</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Payment</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sessions && sessions.length > 0 ? (
+                sessions.slice(0, 10).map((session) => (
+                  <TableRow key={session.id}>
+                    <TableCell className="font-medium">{session.game_title}</TableCell>
+                    <TableCell>{format(new Date(session.start_time), 'MMM d, HH:mm')}</TableCell>
+                    <TableCell>
+                      {session.duration_seconds 
+                        ? `${Math.floor(session.duration_seconds / 60)}m ${session.duration_seconds % 60}s`
+                        : 'In progress'
+                      }
+                    </TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        session.status === 'completed' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {session.status}
+                      </span>
+                    </TableCell>
+                    <TableCell>₹{session.amount_paid || 0}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                    No sessions found
                   </TableCell>
                 </TableRow>
               )}
