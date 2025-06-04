@@ -1,227 +1,196 @@
 
 import asyncio
+import logging
 import time
-import threading
-from typing import Dict, Any, Optional, Callable
-from datetime import datetime, timedelta
-import uuid
+from typing import Optional, Callable, Dict, Any
+from datetime import datetime
 
 class SessionManager:
-    """Manages VR gaming sessions with timing and state tracking"""
+    """Manages game sessions and timers"""
     
-    def __init__(self, logger, status_callback: Optional[Callable] = None):
+    def __init__(self, logger, status_callback: Callable):
         self.logger = logger
         self.status_callback = status_callback
-        self.current_session: Optional[Dict[str, Any]] = None
-        self.session_start_time: Optional[float] = None
-        self.session_duration: int = 0
-        self.is_paused = False
-        self.pause_time: Optional[float] = None
-        self.total_pause_duration = 0
-        self.timer_thread: Optional[threading.Thread] = None
-        self.timer_running = False
-        
-        # Initialize Supabase sync if available
-        try:
-            from .supabase_sync import SupabaseSync
-            self.supabase_sync = SupabaseSync(logger)
-        except ImportError:
-            self.logger.warning("Supabase sync not available - running in local mode only")
-            self.supabase_sync = None
-    
-    def start_session(self, game_id: str, duration_seconds: int, rfid_tag: Optional[str] = None, venue_id: Optional[str] = None) -> str:
-        """Start a new gaming session"""
-        # End any existing session first
-        if self.current_session:
-            self.end_session()
-        
-        session_id = str(uuid.uuid4())
-        
-        self.current_session = {
-            "session_id": session_id,
-            "game_id": game_id,
-            "venue_id": venue_id,
-            "rfid_tag": rfid_tag,
-            "duration_seconds": duration_seconds,
-            "start_time": datetime.now().isoformat(),
-            "status": "active"
-        }
-        
-        self.session_start_time = time.time()
-        self.session_duration = duration_seconds
-        self.is_paused = False
-        self.pause_time = None
-        self.total_pause_duration = 0
-        
-        self.logger.info(f"Session started: {session_id} for game {game_id} ({duration_seconds}s)")
-        
-        # Start the session timer
-        self._start_timer()
-        
-        # Sync with Supabase asynchronously
-        if self.supabase_sync:
-            asyncio.create_task(self.supabase_sync.sync_session_start(self.current_session))
-        
-        # Notify status callback
-        if self.status_callback:
-            self.status_callback()
-        
-        return session_id
-    
-    def end_session(self, rating: Optional[int] = None) -> bool:
-        """End the current session"""
-        if not self.current_session:
-            return False
-        
-        # Stop the timer
-        self._stop_timer()
-        
-        # Calculate actual duration
-        actual_duration = self._get_elapsed_time()
-        
-        end_data = {
-            "duration_seconds": actual_duration,
-            "rating": rating,
-            "end_time": datetime.now().isoformat()
-        }
-        
-        session_id = self.current_session["session_id"]
-        
-        self.logger.info(f"Session ended: {session_id} (duration: {actual_duration}s)")
-        
-        # Sync with Supabase asynchronously
-        if self.supabase_sync:
-            asyncio.create_task(self.supabase_sync.sync_session_end(session_id, end_data))
-        
-        # Clear session data
-        self.current_session = None
-        self.session_start_time = None
         self.session_duration = 0
+        self.time_remaining = 0
+        self.is_active = False
         self.is_paused = False
-        self.pause_time = None
-        self.total_pause_duration = 0
+        self.pause_time = 0
+        self.pause_start_time = None
+        self.session_start_time = None
+        self.timer_task: Optional[asyncio.Task] = None
+        self.warnings_sent = set()  # Track which time warnings have been sent
+    
+    def start_timer(self, duration_seconds: int) -> bool:
+        """Start a session timer"""
+        if self.is_active:
+            self.stop_timer()
+            
+        self.logger.info(f"Starting session timer for {duration_seconds} seconds")
+        self.session_duration = duration_seconds
+        self.time_remaining = duration_seconds
+        self.is_active = True
+        self.is_paused = False
+        self.pause_time = 0
+        self.warnings_sent = set()
+        self.session_start_time = datetime.now()
         
-        # Notify status callback
-        if self.status_callback:
-            self.status_callback()
-        
+        # Start the timer task
+        self.timer_task = asyncio.create_task(self._timer_loop())
         return True
     
-    def pause_session(self) -> bool:
-        """Pause the current session"""
-        if not self.current_session or self.is_paused:
+    def stop_timer(self) -> bool:
+        """Stop the current timer"""
+        if not self.is_active:
             return False
+            
+        self.logger.info("Stopping session timer")
+        self.is_active = False
+        self.is_paused = False
+        self.time_remaining = 0
+        self.session_start_time = None
         
+        # Cancel the timer task if it exists
+        if self.timer_task:
+            self.timer_task.cancel()
+            self.timer_task = None
+            
+        return True
+    
+    def pause_timer(self) -> bool:
+        """Pause the current timer"""
+        if not self.is_active or self.is_paused:
+            return False
+            
+        self.logger.info("Pausing session timer")
         self.is_paused = True
-        self.pause_time = time.time()
-        
-        self.logger.info(f"Session paused: {self.current_session['session_id']}")
-        
-        # Notify status callback
-        if self.status_callback:
-            self.status_callback()
-        
+        self.pause_start_time = datetime.now()
         return True
     
-    def resume_session(self) -> bool:
-        """Resume the current session"""
-        if not self.current_session or not self.is_paused:
+    def resume_timer(self) -> bool:
+        """Resume the current timer"""
+        if not self.is_active or not self.is_paused:
             return False
+            
+        self.logger.info("Resuming session timer")
         
-        if self.pause_time:
-            self.total_pause_duration += time.time() - self.pause_time
-            self.pause_time = None
-        
+        # Calculate how long we were paused and add to total pause time
+        if self.pause_start_time:
+            pause_duration = (datetime.now() - self.pause_start_time).total_seconds()
+            self.pause_time += pause_duration
+            self.pause_start_time = None
+            
         self.is_paused = False
-        
-        self.logger.info(f"Session resumed: {self.current_session['session_id']}")
-        
-        # Notify status callback
-        if self.status_callback:
-            self.status_callback()
-        
         return True
     
-    def get_time_remaining(self) -> int:
-        """Get remaining time in seconds"""
-        if not self.current_session or not self.session_start_time:
-            return 0
-        
-        elapsed = self._get_elapsed_time()
-        remaining = max(0, self.session_duration - elapsed)
-        return remaining
+    def extend_timer(self, additional_seconds: int) -> bool:
+        """Extend the current timer by additional seconds"""
+        if not self.is_active:
+            return False
+            
+        if additional_seconds <= 0:
+            return False
+            
+        self.logger.info(f"Extending session timer by {additional_seconds} seconds")
+        self.time_remaining += additional_seconds
+        return True
     
-    def _get_elapsed_time(self) -> int:
-        """Get elapsed time excluding pause duration"""
+    def get_elapsed_time(self) -> int:
+        """Get the elapsed time in seconds (excluding pauses)"""
         if not self.session_start_time:
             return 0
+            
+        total_elapsed = (datetime.now() - self.session_start_time).total_seconds()
         
-        current_time = time.time()
-        elapsed = current_time - self.session_start_time
+        # Subtract pause time
+        actual_elapsed = total_elapsed - self.pause_time
         
-        # Subtract total pause duration
-        elapsed -= self.total_pause_duration
-        
-        # Subtract current pause duration if paused
-        if self.is_paused and self.pause_time:
-            elapsed -= (current_time - self.pause_time)
-        
-        return int(elapsed)
+        # If currently paused, also subtract current pause duration
+        if self.is_paused and self.pause_start_time:
+            current_pause = (datetime.now() - self.pause_start_time).total_seconds()
+            actual_elapsed -= current_pause
+            
+        return int(max(0, actual_elapsed))
     
-    def _start_timer(self):
-        """Start the session timer thread"""
-        if self.timer_thread and self.timer_thread.is_alive():
-            self._stop_timer()
+    async def _timer_loop(self):
+        """Timer loop that counts down the session time"""
+        last_update = time.time()
+        last_broadcast = time.time()
         
-        self.timer_running = True
-        self.timer_thread = threading.Thread(target=self._timer_loop, daemon=True)
-        self.timer_thread.start()
-    
-    def _stop_timer(self):
-        """Stop the session timer thread"""
-        self.timer_running = False
-        if self.timer_thread and self.timer_thread.is_alive():
-            self.timer_thread.join(timeout=1)
-    
-    def _timer_loop(self):
-        """Timer loop that checks for session timeout"""
-        while self.timer_running and self.current_session:
-            try:
-                remaining = self.get_time_remaining()
+        try:
+            while self.is_active and self.time_remaining > 0:
+                await asyncio.sleep(1)  # Update every second
                 
-                if remaining <= 0:
-                    self.logger.info("Session time expired - auto-ending session")
-                    self.end_session()
-                    break
+                current_time = time.time()
+                elapsed = current_time - last_update
                 
-                # Check every second
-                time.sleep(1)
+                # Only decrement time if not paused
+                if not self.is_paused:
+                    self.time_remaining = max(0, self.time_remaining - int(elapsed))
+                    last_update = current_time
                 
-            except Exception as e:
-                self.logger.error(f"Error in timer loop: {e}")
-                break
-        
-        self.timer_running = False
+                # Check if we need to send time warnings
+                await self._check_time_warnings()
+                
+                # Broadcast status periodically or when time gets low
+                should_broadcast = (
+                    current_time - last_broadcast >= 10 or  # Every 10 seconds
+                    self.time_remaining <= 60 or  # When under a minute
+                    self.time_remaining == 0  # When time is up
+                )
+                
+                if should_broadcast:
+                    await self.status_callback()
+                    last_broadcast = current_time
+                    
+                # Check if time is up
+                if self.time_remaining <= 0:
+                    self.logger.info("Session time expired")
+                    self.is_active = False
+                    await self.status_callback()
+        except asyncio.CancelledError:
+            self.logger.info("Timer task cancelled")
+            raise
+        except Exception as e:
+            self.logger.exception(f"Error in timer loop: {e}")
+        finally:
+            self.timer_task = None
     
-    def get_status(self) -> Dict[str, Any]:
-        """Get current session status"""
-        if not self.current_session:
-            return {
-                "active": False,
-                "session_id": None,
-                "time_remaining": 0,
-                "is_paused": False
-            }
+    async def _check_time_warnings(self):
+        """Check if we need to send time warnings"""
+        warning_thresholds = [300, 180, 60, 30]  # Warning thresholds in seconds
         
-        return {
-            "active": True,
-            "session_id": self.current_session["session_id"],
-            "game_id": self.current_session["game_id"],
-            "time_remaining": self.get_time_remaining(),
-            "is_paused": self.is_paused,
-            "elapsed_time": self._get_elapsed_time()
-        }
+        for threshold in warning_thresholds:
+            if self.time_remaining <= threshold and threshold not in self.warnings_sent:
+                self.warnings_sent.add(threshold)
+                self.logger.info(f"Time warning: {threshold} seconds remaining")
+                # This is where you would trigger notifications to clients
+                await self.status_callback()
+    
+    def get_time_remaining(self) -> int:
+        """Get the remaining time in seconds"""
+        return self.time_remaining if self.is_active else 0
+    
+    def get_session_duration(self) -> int:
+        """Get the total session duration in seconds"""
+        return self.session_duration
     
     def is_session_active(self) -> bool:
-        """Check if a session is currently active"""
-        return self.current_session is not None
+        """Check if a session is active"""
+        return self.is_active
+    
+    def is_paused(self) -> bool:
+        """Check if the session is paused"""
+        return self.is_paused
+    
+    def get_session_info(self) -> Dict[str, Any]:
+        """Get complete session information"""
+        return {
+            "isActive": self.is_active,
+            "isPaused": self.is_paused, 
+            "timeRemaining": self.time_remaining,
+            "sessionDuration": self.session_duration,
+            "elapsedTime": self.get_elapsed_time(),
+            "pauseTime": self.pause_time,
+            "startTime": self.session_start_time.isoformat() if self.session_start_time else None
+        }
