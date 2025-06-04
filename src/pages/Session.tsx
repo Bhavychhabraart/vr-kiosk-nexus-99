@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,7 @@ import {
   Star
 } from "lucide-react";
 import useCommandCenter from "@/hooks/useCommandCenter";
-import RatingInput from "@/components/ui/rating-input";
+import { RatingInput } from "@/components/ui/rating-input";
 import { toast } from "@/components/ui/use-toast";
 
 const Session = () => {

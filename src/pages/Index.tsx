@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { VrIcon } from "@/components/icons/VrIcon";
 import { Play, Settings, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import AnimatedBackground from "@/components/ui/animated-background";
+import { AnimatedBackground } from "@/components/ui/animated-background";
 
 const Index = () => {
   const navigate = useNavigate();
