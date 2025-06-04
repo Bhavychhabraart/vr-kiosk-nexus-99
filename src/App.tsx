@@ -28,7 +28,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/games" element={<Games />} />
-            <Route path="/game/:id" element={<GameDetail />} />
+            <Route path="/games/:id" element={<GameDetail />} />
             <Route path="/launch-options" element={<LaunchOptions />} />
             <Route path="/rfid-auth" element={<RFIDAuth />} />
             <Route path="/payment-selection" element={<PaymentSelection />} />

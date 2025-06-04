@@ -1,11 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   Clock,
   Star,
@@ -26,8 +23,6 @@ const GameDetail = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [trailerOpen, setTrailerOpen] = useState(searchParams.get("showTrailer") === "true");
-  const [durationDialogOpen, setDurationDialogOpen] = useState(false);
-  const [selectedDuration, setSelectedDuration] = useState("600"); // Default 10 minutes
   const [isLoading, setIsLoading] = useState(true);
   const [game, setGame] = useState<GameDetails | null>(null);
   
@@ -94,7 +89,7 @@ const GameDetail = () => {
     setSearchParams(searchParams);
   };
 
-  // Handle playing the game - now opens duration selector
+  // Handle playing the game - now goes directly to launch options
   const handlePlayGame = () => {
     if (!id || !game) {
       toast({
@@ -105,37 +100,13 @@ const GameDetail = () => {
       return;
     }
 
-    setDurationDialogOpen(true);
-  };
-
-  // Handle starting the game with selected duration - now redirects to RFID authentication
-  const handleStartGame = () => {
-    if (!id || !game) {
-      toast({
-        title: "Error",
-        description: "Game information not available.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setDurationDialogOpen(false);
-
-    toast({
-      title: "Redirecting to RFID authentication",
-      description: "Please scan your RFID card to start the session.",
+    // Navigate directly to launch options page
+    const params = new URLSearchParams({
+      gameId: id,
+      title: game.title
     });
     
-    // Navigate to RFID authentication page instead of directly to session
-    navigate(
-      `/rfid-auth?gameId=${id}&title=${encodeURIComponent(game.title)}&duration=${selectedDuration}`
-    );
-  };
-
-  // Format seconds to minutes
-  const formatDuration = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes} min`;
+    navigate(`/launch-options?${params.toString()}`);
   };
 
   if (isLoading) {
@@ -163,19 +134,6 @@ const GameDetail = () => {
   }
 
   const hasTrailer = !!game.trailerUrl;
-
-  // Duration options in seconds with pricing in INR
-  const durationOptions = [
-    { value: "300", label: "5 minutes", description: "Quick session", price: 100 },
-    { value: "600", label: "10 minutes", description: "Standard session", price: 150 },
-    { value: "900", label: "15 minutes", description: "Extended session", price: 200 },
-    { value: "1200", label: "20 minutes", description: "Premium session", price: 220 },
-  ];
-
-  const getSelectedPrice = () => {
-    const selected = durationOptions.find(option => option.value === selectedDuration);
-    return selected ? selected.price : 150;
-  };
 
   return (
     <MainLayout className="relative">
@@ -268,7 +226,7 @@ const GameDetail = () => {
         </div>
       </div>
 
-      {/* Game Content - Now using single column layout */}
+      {/* Game Content */}
       <div className="space-y-8">
         {/* Game Description and Info */}
         <div className="vr-card">
@@ -281,86 +239,16 @@ const GameDetail = () => {
             <InfoCard icon={<Users className="h-5 w-5 text-vr-accent" />} title="Players" value={game.players} />
             <InfoCard icon={<LayoutGrid className="h-5 w-5 text-green-400" />} title="Age Rating" value={game.ageRating} />
           </div>
-        </div>
-        
-        {/* Session Pricing */}
-        <div className="vr-card">
-          <div className="flex items-center gap-2 mb-4">
-            <IndianRupee className="h-5 w-5 text-vr-secondary" />
-            <h2 className="text-xl font-bold">Session Pricing</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {durationOptions.map((option) => (
-              <div key={option.value} className="bg-vr-dark/50 border border-vr-primary/20 p-4 rounded-lg text-center">
-                <h3 className="font-semibold text-vr-text">{option.label}</h3>
-                <p className="text-sm text-vr-muted mb-2">{option.description}</p>
-                <div className="flex items-center justify-center gap-1 text-vr-secondary font-bold text-lg">
-                  <IndianRupee className="h-4 w-4" />
-                  <span>{option.price}</span>
-                </div>
-              </div>
-            ))}
-          </div>
           
           <Button
-            className="w-full vr-button-secondary mt-6"
+            className="w-full vr-button-secondary"
             onClick={handlePlayGame}
           >
-            Start Session
+            <Play className="h-5 w-5 mr-2" />
+            Start Playing
           </Button>
         </div>
       </div>
-
-      {/* Duration Selection Dialog */}
-      <Dialog open={durationDialogOpen} onOpenChange={setDurationDialogOpen}>
-        <DialogContent className="sm:max-w-md bg-vr-dark border border-vr-primary/30">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Choose Session Duration</DialogTitle>
-            <DialogDescription>
-              Select how long you want to play {game.title}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-4">
-            <RadioGroup value={selectedDuration} onValueChange={setSelectedDuration}>
-              {durationOptions.map((option) => (
-                <div key={option.value} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-vr-primary/10 transition-colors">
-                  <RadioGroupItem value={option.value} id={option.value} />
-                  <Label htmlFor={option.value} className="flex-1 cursor-pointer">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="font-medium">{option.label}</div>
-                        <div className="text-sm text-vr-muted">{option.description}</div>
-                      </div>
-                      <div className="flex items-center gap-1 text-vr-secondary font-semibold">
-                        <IndianRupee className="h-4 w-4" />
-                        <span>{option.price}</span>
-                      </div>
-                    </div>
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDurationDialogOpen(false)}
-              className="border-vr-primary/50"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleStartGame}
-              className="bg-vr-secondary text-vr-dark hover:bg-vr-secondary/90"
-            >
-              Continue to RFID (₹{getSelectedPrice()})
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Trailer Dialog */}
       <Dialog open={trailerOpen} onOpenChange={setTrailerOpen}>
@@ -494,7 +382,6 @@ function getMockGameById(id: string): GameDetails | null {
       players: "Single Player",
       ageRating: "T for Teen",
     },
-    // Add fallback for any UUID that doesn't match our mock data
     "f469ed8e-682c-48e2-8621-b311fbbcc4c3": {
       id: "f469ed8e-682c-48e2-8621-b311fbbcc4c3",
       title: "VR Adventure Quest",
