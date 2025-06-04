@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useMachineAuth } from "@/hooks/useMachineAuth";
 import MachineAuthLogin from "@/components/auth/MachineAuthLogin";
@@ -9,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Building2, 
-  Games2, 
+  Gamepad2, 
   BarChart3, 
   LogOut,
   MapPin,
@@ -71,7 +70,7 @@ const MachineAdmin = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Available Games</CardTitle>
-              <Games2 className="h-4 w-4 text-muted-foreground" />
+              <Gamepad2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -131,7 +130,7 @@ const MachineAdmin = () => {
               Overview
             </TabsTrigger>
             <TabsTrigger value="games" className="flex items-center gap-2">
-              <Games2 className="w-4 h-4" />
+              <Gamepad2 className="w-4 h-4" />
               Games
             </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2">
@@ -216,7 +215,7 @@ const MachineAdmin = () => {
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <Games2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <Gamepad2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                     <p className="text-muted-foreground">No games assigned to this machine</p>
                   </div>
                 )}

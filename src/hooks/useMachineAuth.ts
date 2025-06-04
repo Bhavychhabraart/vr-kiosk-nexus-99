@@ -36,7 +36,8 @@ export function useMachineAuth() {
 
       if (error) throw error;
 
-      const response: MachineAuthResponse = data;
+      // Parse the JSON response from the database function
+      const response: MachineAuthResponse = typeof data === 'string' ? JSON.parse(data) : data;
 
       if (response.success && response.venue && response.auth) {
         const session: MachineSession = {

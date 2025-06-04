@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -81,7 +80,7 @@ const Index = () => {
   ];
 
   return (
-    <MainLayout backgroundVariant="mesh" withPattern intensity="medium">
+    <MainLayout backgroundVariant="grid" withPattern intensity="medium">
       <div className="space-y-16">
         {/* Hero Section */}
         <div className="text-center space-y-6">
