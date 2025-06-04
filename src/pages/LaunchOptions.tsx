@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -20,6 +19,7 @@ import { useGames } from "@/hooks/useGames";
 import { useVenues } from "@/hooks/useVenues";
 import useCommandCenter from "@/hooks/useCommandCenter";
 import { useSessionTracking } from "@/hooks/useSessionTracking";
+import { InlineRFIDInput } from "@/components/ui/inline-rfid-input";
 
 const LaunchOptions = () => {
   const navigate = useNavigate();
@@ -44,6 +44,7 @@ const LaunchOptions = () => {
   const gameData = games?.find(game => game.id === gameId);
   
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showRfidInput, setShowRfidInput] = useState(false);
 
   useEffect(() => {
     if (!gameId || !gameData) {
@@ -76,6 +77,11 @@ const LaunchOptions = () => {
   const handleLaunchOption = async (option: 'tap' | 'rfid' | 'qr') => {
     if (!gameData || !launchOptions || isProcessing || isLaunching) return;
 
+    if (option === 'rfid') {
+      setShowRfidInput(true);
+      return;
+    }
+
     setIsProcessing(true);
     
     try {
@@ -91,18 +97,6 @@ const LaunchOptions = () => {
           method: 'free' as const,
           amount: 0,
         };
-      } else if (option === 'rfid') {
-        // Navigate to RFID scanning
-        const params = new URLSearchParams({
-          gameId: gameData.id,
-          title: gameData.title,
-          duration: durationSeconds.toString(),
-          sessionId,
-          amount: amount.toString(),
-          returnTo: 'session'
-        });
-        navigate(`/rfid-auth?${params.toString()}`);
-        return;
       } else if (option === 'qr') {
         // Navigate to QR payment
         const params = new URLSearchParams({
@@ -136,6 +130,56 @@ const LaunchOptions = () => {
         title: "Launch Failed",
         description: "Failed to start the game. Please try again.",
       });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRfidScanned = async (rfidTag: string) => {
+    if (!gameData || !launchOptions || isProcessing || isLaunching) return;
+
+    setIsProcessing(true);
+    
+    try {
+      console.log('RFID card scanned:', rfidTag);
+      
+      const sessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const durationSeconds = launchOptions.default_duration_minutes * 60;
+      const amount = calculatePrice();
+      
+      const paymentData = {
+        method: 'rfid' as const,
+        amount: amount,
+        rfidTag: rfidTag,
+        venueId: venueId
+      };
+
+      // Launch game immediately
+      await launchGame(gameData.id, durationSeconds, paymentData);
+      
+      toast({
+        title: "RFID Card Accepted",
+        description: `Card ${rfidTag.substring(0, 8)}... validated successfully`,
+      });
+      
+      // Navigate to session page
+      const sessionParams = new URLSearchParams({
+        gameId: gameData.id,
+        title: gameData.title,
+        duration: durationSeconds.toString(),
+        sessionId,
+        rfidTag: rfidTag
+      });
+      navigate(`/session?${sessionParams.toString()}`);
+      
+    } catch (error) {
+      console.error('Failed to launch game with RFID:', error);
+      toast({
+        variant: "destructive",
+        title: "RFID Launch Failed",
+        description: "Failed to validate RFID card or start the game. Please try again.",
+      });
+      setShowRfidInput(false);
     } finally {
       setIsProcessing(false);
     }
@@ -278,18 +322,32 @@ const LaunchOptions = () => {
                   <div className="space-y-4">
                     <div className="text-2xl font-bold text-vr-secondary">₹{calculatePrice()}</div>
                     <p className="text-sm text-gray-400">{launchOptions.default_duration_minutes} minutes gameplay</p>
-                    <Button
-                      onClick={() => handleLaunchOption('rfid')}
-                      disabled={isProcessing || isLaunching}
-                      className="w-full bg-vr-secondary hover:bg-vr-secondary/90 text-black font-semibold"
-                    >
-                      {isProcessing ? "Processing..." : (
-                        <>
-                          <CreditCard className="h-4 w-4 mr-2" />
-                          Use RFID Card
-                        </>
-                      )}
-                    </Button>
+                    
+                    {!showRfidInput ? (
+                      <Button
+                        onClick={() => handleLaunchOption('rfid')}
+                        disabled={isProcessing || isLaunching}
+                        className="w-full bg-vr-secondary hover:bg-vr-secondary/90 text-black font-semibold"
+                      >
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        Use RFID Card
+                      </Button>
+                    ) : (
+                      <div className="space-y-2">
+                        <InlineRFIDInput
+                          onCardScanned={handleRfidScanned}
+                          isLoading={isProcessing}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowRfidInput(false)}
+                          className="text-gray-400 hover:text-white"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
