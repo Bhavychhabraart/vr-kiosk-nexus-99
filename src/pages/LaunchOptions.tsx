@@ -17,6 +17,7 @@ import {
 import { toast } from "@/components/ui/use-toast";
 import { useLaunchOptions } from "@/hooks/useLaunchOptions";
 import { useGames } from "@/hooks/useGames";
+import { useVenues } from "@/hooks/useVenues";
 import useCommandCenter from "@/hooks/useCommandCenter";
 import { useSessionTracking } from "@/hooks/useSessionTracking";
 
@@ -24,15 +25,18 @@ const LaunchOptions = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { games } = useGames();
+  const { venues } = useVenues();
   
   // Get parameters from URL
   const gameId = searchParams.get("gameId");
   const gameTitle = searchParams.get("title") || "VR Game";
   
-  // For demo purposes, using a hardcoded venue ID - in production this would come from context
-  const venueId = "00000000-0000-0000-0000-000000000001";
+  // Use the first available venue or fallback to hardcoded ID
+  const venueId = venues && venues.length > 0 ? venues[0].id : "00000000-0000-0000-0000-000000000001";
   
-  const { launchOptions, isLoading } = useLaunchOptions(venueId);
+  console.log('LaunchOptions - gameId:', gameId, 'venueId:', venueId, 'venues:', venues);
+  
+  const { launchOptions, isLoading, error } = useLaunchOptions(venueId);
   const { startSession } = useSessionTracking();
   const { launchGame, isLaunching } = useCommandCenter();
   
@@ -43,6 +47,7 @@ const LaunchOptions = () => {
 
   useEffect(() => {
     if (!gameId || !gameData) {
+      console.error('Game not found - gameId:', gameId, 'gameData:', gameData);
       toast({
         variant: "destructive",
         title: "Game Not Found",
@@ -51,6 +56,17 @@ const LaunchOptions = () => {
       setTimeout(() => navigate('/games'), 2000);
     }
   }, [gameId, gameData, navigate]);
+
+  useEffect(() => {
+    if (error) {
+      console.error('Launch options error:', error);
+      toast({
+        variant: "destructive",
+        title: "Configuration Error",
+        description: `Failed to load launch options: ${error.message}`,
+      });
+    }
+  }, [error]);
 
   const calculatePrice = () => {
     if (!launchOptions) return 0;
@@ -125,7 +141,7 @@ const LaunchOptions = () => {
     }
   };
 
-  if (isLoading || !gameData || !launchOptions) {
+  if (isLoading || !gameData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
         <Card className="w-full max-w-md bg-black/80 border-vr-primary/30">
@@ -134,6 +150,27 @@ const LaunchOptions = () => {
           </CardHeader>
           <CardContent className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-vr-primary mx-auto"></div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error || !launchOptions) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-black/80 border-red-500/30">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl text-white">Configuration Error</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <p className="text-gray-300 mb-4">
+              {error ? error.message : "Launch options not available"}
+            </p>
+            <Button onClick={() => navigate('/games')} variant="outline">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Games
+            </Button>
           </CardContent>
         </Card>
       </div>

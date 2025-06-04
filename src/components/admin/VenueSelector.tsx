@@ -9,13 +9,25 @@ interface VenueSelectorProps {
 }
 
 const VenueSelector = ({ selectedVenueId, onVenueSelect }: VenueSelectorProps) => {
-  const { venues, isLoading } = useVenues();
+  const { venues, isLoading, error } = useVenues();
+
+  console.log('VenueSelector - venues:', venues, 'loading:', isLoading, 'error:', error);
 
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Building2 className="h-4 w-4" />
         Loading venues...
+      </div>
+    );
+  }
+
+  if (error) {
+    console.error('Error loading venues:', error);
+    return (
+      <div className="flex items-center gap-2 text-sm text-red-500">
+        <Building2 className="h-4 w-4" />
+        Error loading venues: {error.message}
       </div>
     );
   }
