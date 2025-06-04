@@ -7,12 +7,13 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Games from "./pages/Games";
 import GameDetail from "./pages/GameDetail";
-import Session from "./pages/Session";
 import RFIDAuth from "./pages/RFIDAuth";
 import PaymentSelection from "./pages/PaymentSelection";
+import Session from "./pages/Session";
 import Admin from "./pages/Admin";
 import SuperAdmin from "./pages/SuperAdmin";
 import MachineAdmin from "./pages/MachineAdmin";
+import LaunchOptions from "./pages/LaunchOptions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,14 +28,14 @@ function App() {
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/games" element={<Games />} />
-            <Route path="/games/:id" element={<GameDetail />} />
             <Route path="/game/:id" element={<GameDetail />} />
-            <Route path="/payment-selection" element={<PaymentSelection />} />
+            <Route path="/launch-options" element={<LaunchOptions />} />
             <Route path="/rfid-auth" element={<RFIDAuth />} />
+            <Route path="/payment-selection" element={<PaymentSelection />} />
             <Route path="/session" element={<Session />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/superadmin" element={<SuperAdmin />} />
             <Route path="/machine-admin" element={<MachineAdmin />} />
-            <Route path="/super-admin" element={<SuperAdmin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

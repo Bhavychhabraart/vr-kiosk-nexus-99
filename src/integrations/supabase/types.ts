@@ -353,6 +353,50 @@ export type Database = {
           },
         ]
       }
+      launch_options: {
+        Row: {
+          created_at: string
+          default_duration_minutes: number
+          id: string
+          price_per_minute: number
+          qr_payment_enabled: boolean
+          rfid_enabled: boolean
+          tap_to_start_enabled: boolean
+          updated_at: string
+          venue_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          default_duration_minutes?: number
+          id?: string
+          price_per_minute?: number
+          qr_payment_enabled?: boolean
+          rfid_enabled?: boolean
+          tap_to_start_enabled?: boolean
+          updated_at?: string
+          venue_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          default_duration_minutes?: number
+          id?: string
+          price_per_minute?: number
+          qr_payment_enabled?: boolean
+          rfid_enabled?: boolean
+          tap_to_start_enabled?: boolean
+          updated_at?: string
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "launch_options_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       machine_auth: {
         Row: {
           access_level: string | null

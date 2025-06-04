@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,10 +16,12 @@ import {
   Smartphone,
   Wifi,
   Monitor,
-  Volume2
+  Volume2,
+  Zap
 } from "lucide-react";
 import { useKioskOwner } from "@/hooks/useKioskOwner";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { useLaunchOptions } from "@/hooks/useLaunchOptions";
 
 interface MachineSettingsTabProps {
   venueId: string;
@@ -29,6 +30,7 @@ interface MachineSettingsTabProps {
 const MachineSettingsTab = ({ venueId }: MachineSettingsTabProps) => {
   const { kioskOwner, isLoading: ownerLoading, updateKioskOwner, isUpdating: ownerUpdating } = useKioskOwner();
   const { paymentMethods, isLoading: paymentLoading, updatePaymentMethods, isUpdating: paymentUpdating } = usePaymentMethods();
+  const { launchOptions, updateLaunchOptions, isUpdating: launchUpdating } = useLaunchOptions(venueId);
 
   const [ownerForm, setOwnerForm] = useState({
     kiosk_name: kioskOwner?.kiosk_name || "",
@@ -43,6 +45,14 @@ const MachineSettingsTab = ({ venueId }: MachineSettingsTabProps) => {
     rfid_enabled: paymentMethods?.rfid_enabled ?? true,
     upi_enabled: paymentMethods?.upi_enabled ?? false,
     upi_merchant_id: paymentMethods?.upi_merchant_id || ""
+  });
+
+  const [launchForm, setLaunchForm] = useState({
+    tap_to_start_enabled: launchOptions?.tap_to_start_enabled ?? true,
+    rfid_enabled: launchOptions?.rfid_enabled ?? true,
+    qr_payment_enabled: launchOptions?.qr_payment_enabled ?? false,
+    default_duration_minutes: launchOptions?.default_duration_minutes ?? 10,
+    price_per_minute: launchOptions?.price_per_minute ?? 15.0
   });
 
   const [machineSettings, setMachineSettings] = useState({
@@ -76,6 +86,18 @@ const MachineSettingsTab = ({ venueId }: MachineSettingsTabProps) => {
     }
   }, [paymentMethods]);
 
+  React.useEffect(() => {
+    if (launchOptions) {
+      setLaunchForm({
+        tap_to_start_enabled: launchOptions.tap_to_start_enabled,
+        rfid_enabled: launchOptions.rfid_enabled,
+        qr_payment_enabled: launchOptions.qr_payment_enabled,
+        default_duration_minutes: launchOptions.default_duration_minutes,
+        price_per_minute: launchOptions.price_per_minute
+      });
+    }
+  }, [launchOptions]);
+
   const handleOwnerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateKioskOwner(ownerForm);
@@ -84,6 +106,11 @@ const MachineSettingsTab = ({ venueId }: MachineSettingsTabProps) => {
   const handlePaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updatePaymentMethods(paymentForm);
+  };
+
+  const handleLaunchOptionsSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateLaunchOptions(launchForm);
   };
 
   if (ownerLoading || paymentLoading) {
@@ -110,6 +137,133 @@ const MachineSettingsTab = ({ venueId }: MachineSettingsTabProps) => {
 
   return (
     <div className="space-y-6">
+      {/* Customer Launch Options */}
+      <Card className="border-vr-secondary/30 bg-gradient-to-r from-vr-secondary/5 to-vr-primary/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-vr-secondary" />
+            Customer Launch Options
+          </CardTitle>
+          <CardDescription>
+            Configure how customers can start games on this machine
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleLaunchOptionsSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <h3 className="font-semibold">Available Launch Methods</h3>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Zap className="h-5 w-5 text-vr-primary" />
+                    <div>
+                      <p className="font-medium">Tap to Start</p>
+                      <p className="text-sm text-muted-foreground">
+                        Allow instant free demo launches
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={launchForm.tap_to_start_enabled}
+                    onCheckedChange={(checked) => 
+                      setLaunchForm(prev => ({ ...prev, tap_to_start_enabled: checked }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="h-5 w-5 text-vr-secondary" />
+                    <div>
+                      <p className="font-medium">RFID Card Launch</p>
+                      <p className="text-sm text-muted-foreground">
+                        Launch with RFID card payment
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={launchForm.rfid_enabled}
+                    onCheckedChange={(checked) => 
+                      setLaunchForm(prev => ({ ...prev, rfid_enabled: checked }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Smartphone className="h-5 w-5 text-green-500" />
+                    <div>
+                      <p className="font-medium">QR Code Payment</p>
+                      <p className="text-sm text-muted-foreground">
+                        Launch with UPI QR payment
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={launchForm.qr_payment_enabled}
+                    onCheckedChange={(checked) => 
+                      setLaunchForm(prev => ({ ...prev, qr_payment_enabled: checked }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="font-semibold">Pricing & Duration</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="default_duration">Default Duration (minutes)</Label>
+                  <Input
+                    id="default_duration"
+                    type="number"
+                    min="1"
+                    max="60"
+                    value={launchForm.default_duration_minutes}
+                    onChange={(e) => setLaunchForm(prev => ({ 
+                      ...prev, 
+                      default_duration_minutes: parseInt(e.target.value) || 10 
+                    }))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="price_per_minute">Price per Minute (₹)</Label>
+                  <Input
+                    id="price_per_minute"
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={launchForm.price_per_minute}
+                    onChange={(e) => setLaunchForm(prev => ({ 
+                      ...prev, 
+                      price_per_minute: parseFloat(e.target.value) || 15.0 
+                    }))}
+                  />
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Game Price:</strong> ₹{(launchForm.default_duration_minutes * launchForm.price_per_minute).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    {launchForm.default_duration_minutes} minutes × ₹{launchForm.price_per_minute}/min
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <Button 
+              type="submit" 
+              disabled={launchUpdating}
+              className="w-full"
+            >
+              {launchUpdating ? "Updating..." : "Save Launch Options"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Machine Information */}
         <Card>

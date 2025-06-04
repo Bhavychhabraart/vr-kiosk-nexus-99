@@ -3,24 +3,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Play,
   Clock,
-  Users,
-  Star,
   ChevronLeft,
   Gamepad2,
-  CreditCard
+  Zap
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import useCommandCenter from "@/hooks/useCommandCenter";
@@ -41,9 +29,6 @@ const GameDetail = ({ game, onBack }: GameDetailProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isConnected } = useCommandCenter();
-  
-  const [showDurationDialog, setShowDurationDialog] = useState(false);
-  const [duration, setDuration] = useState(Math.floor((game.min_duration_seconds + game.max_duration_seconds) / 2));
 
   const handlePlayClick = () => {
     if (!isConnected) {
@@ -55,29 +40,13 @@ const GameDetail = ({ game, onBack }: GameDetailProps) => {
       return;
     }
     
-    setShowDurationDialog(true);
-  };
-
-  const handleStartGameFlow = () => {
-    if (duration < game.min_duration_seconds || duration > game.max_duration_seconds) {
-      toast({
-        title: "Invalid Duration",
-        description: `Duration must be between ${Math.floor(game.min_duration_seconds / 60)} and ${Math.floor(game.max_duration_seconds / 60)} minutes.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setShowDurationDialog(false);
-    
-    // Navigate to RFID authentication with game details
+    // Navigate directly to launch options page
     const params = new URLSearchParams({
       gameId: game.id,
-      title: game.title,
-      duration: duration.toString()
+      title: game.title
     });
     
-    navigate(`/rfid-auth?${params.toString()}`);
+    navigate(`/launch-options?${params.toString()}`);
   };
 
   const formatDuration = (seconds: number) => {
@@ -145,12 +114,12 @@ const GameDetail = ({ game, onBack }: GameDetailProps) => {
 
           <div className="bg-vr-primary/5 p-4 rounded-lg border border-vr-primary/20">
             <div className="flex items-center gap-2 mb-2">
-              <CreditCard className="h-4 w-4 text-vr-primary" />
-              <span className="font-medium text-vr-primary">Game Launch Process</span>
+              <Zap className="h-4 w-4 text-vr-primary" />
+              <span className="font-medium text-vr-primary">Quick Launch</span>
             </div>
             <p className="text-sm text-vr-muted">
-              Click "Start Game" to begin the launch process. You'll need to scan your RFID card 
-              and select payment method before the game begins.
+              Choose from multiple launch options including instant tap-to-start, 
+              RFID card payment, or QR code payment.
             </p>
           </div>
         </div>
@@ -162,86 +131,10 @@ const GameDetail = ({ game, onBack }: GameDetailProps) => {
             className="w-full py-6 bg-vr-secondary hover:bg-vr-secondary/90 text-vr-dark font-semibold text-lg"
           >
             <Play className="h-5 w-5 mr-2" />
-            {isConnected ? "Start Game" : "System Offline"}
+            {isConnected ? "Play Now" : "System Offline"}
           </Button>
         </div>
       </div>
-
-      {/* Duration Selection Dialog */}
-      <Dialog open={showDurationDialog} onOpenChange={setShowDurationDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Select Session Duration</DialogTitle>
-            <DialogDescription>
-              Choose how long you want to play {game.title}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="duration">Duration (seconds)</Label>
-              <Input
-                id="duration"
-                type="number"
-                min={game.min_duration_seconds}
-                max={game.max_duration_seconds}
-                value={duration}
-                onChange={(e) => setDuration(parseInt(e.target.value) || game.min_duration_seconds)}
-                className="mt-1"
-              />
-              <p className="text-sm text-muted-foreground mt-1">
-                {formatDuration(duration)} • Range: {formatDuration(game.min_duration_seconds)} - {formatDuration(game.max_duration_seconds)}
-              </p>
-            </div>
-
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDuration(game.min_duration_seconds)}
-              >
-                Min ({formatDuration(game.min_duration_seconds)})
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDuration(Math.floor((game.min_duration_seconds + game.max_duration_seconds) / 2))}
-              >
-                Default
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDuration(game.max_duration_seconds)}
-              >
-                Max ({formatDuration(game.max_duration_seconds)})
-              </Button>
-            </div>
-
-            <div className="bg-blue-50 p-3 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <strong>Next Steps:</strong> After selecting duration, you'll need to scan your RFID card 
-                and complete payment before the game launches.
-              </p>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDurationDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleStartGameFlow}
-              className="bg-vr-secondary hover:bg-vr-secondary/90 text-vr-dark"
-            >
-              Continue to RFID Auth
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </motion.div>
   );
 };
