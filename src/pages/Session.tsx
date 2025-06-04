@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -16,18 +16,34 @@ import {
 import useCommandCenter from "@/hooks/useCommandCenter";
 import { RatingInput } from "@/components/ui/rating-input";
 import { toast } from "@/components/ui/use-toast";
+import { useGames } from "@/hooks/useGames";
 
 const Session = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const gameData = location.state?.game;
-  const sessionDuration = location.state?.duration || 300;
-  const paymentData = location.state?.paymentData;
+  const [searchParams] = useSearchParams();
+  const { data: games, isLoading: gamesLoading } = useGames();
+  
+  // Get parameters from URL
+  const gameId = searchParams.get("gameId");
+  const gameTitle = searchParams.get("title") || "VR Game";
+  const sessionDuration = parseInt(searchParams.get("duration") || "300");
+  const sessionId = searchParams.get("sessionId");
+  const rfidTag = searchParams.get("rfidTag");
+  
+  // Find the game data from the games list
+  const gameData = games?.find(game => game.id === gameId);
   
   const [timeRemaining, setTimeRemaining] = useState(sessionDuration);
   const [isGameActive, setIsGameActive] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [sessionRating, setSessionRating] = useState(0);
+  
+  // Create payment data from URL parameters
+  const paymentData = rfidTag ? {
+    method: 'rfid' as const,
+    amount: Math.floor(sessionDuration / 60) * 10, // ₹10 per minute
+    rfidTag: rfidTag
+  } : undefined;
   
   const { 
     launchGame, 
@@ -50,26 +66,48 @@ const Session = () => {
   useEffect(() => {
     // Add debugging to understand what's happening
     console.log('Session component mounted');
-    console.log('Game data:', gameData);
-    console.log('Session duration:', sessionDuration);
-    console.log('Payment data:', paymentData);
-    console.log('Location state:', location.state);
+    console.log('Game ID from URL:', gameId);
+    console.log('Game title from URL:', gameTitle);
+    console.log('Session duration from URL:', sessionDuration);
+    console.log('RFID tag from URL:', rfidTag);
+    console.log('Session ID from URL:', sessionId);
+    console.log('Found game data:', gameData);
+    console.log('Games loading:', gamesLoading);
     
-    if (!gameData) {
-      console.error('No game data found in location state');
+    // Check if we have the required parameters
+    if (!gameId) {
+      console.error('No game ID found in URL parameters');
       toast({
         variant: "destructive",
         title: "Session Error",
-        description: "No game data found. Redirecting to games page.",
+        description: "No game selected. Redirecting to games page.",
       });
-      // Add a small delay to show the toast before redirecting
       setTimeout(() => {
         navigate('/games');
       }, 2000);
       return;
     }
 
-    // Auto-launch the game when component mounts
+    // Wait for games to load and game data to be available
+    if (gamesLoading) {
+      console.log('Still loading games...');
+      return;
+    }
+
+    if (!gameData) {
+      console.error('Game not found in games list');
+      toast({
+        variant: "destructive",
+        title: "Session Error",
+        description: "Selected game not found. Redirecting to games page.",
+      });
+      setTimeout(() => {
+        navigate('/games');
+      }, 2000);
+      return;
+    }
+
+    // Auto-launch the game when component mounts and we have game data
     const autoLaunch = async () => {
       try {
         console.log('Auto-launching game:', gameData.id);
@@ -86,7 +124,7 @@ const Session = () => {
     };
 
     autoLaunch();
-  }, [gameData, sessionDuration, paymentData, launchGame, navigate, location.state]);
+  }, [gameId, gameData, gamesLoading, sessionDuration, paymentData, launchGame, navigate]);
 
   // Update time remaining
   useEffect(() => {
@@ -151,14 +189,16 @@ const Session = () => {
     ((sessionDuration - timeRemaining) / sessionDuration) * 100 : 0;
 
   // Show loading state while we check for game data
-  if (!gameData) {
+  if (gamesLoading || !gameData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
         <Card className="w-full max-w-md bg-black/80 border-vr-primary/30">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl text-white">Loading Session...</CardTitle>
+            <CardTitle className="text-2xl text-white">
+              {gamesLoading ? "Loading Session..." : "Game Not Found"}
+            </CardTitle>
             <CardDescription className="text-gray-300">
-              Preparing your VR experience
+              {gamesLoading ? "Preparing your VR experience" : "Redirecting to games page..."}
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
