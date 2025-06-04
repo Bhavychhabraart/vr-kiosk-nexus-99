@@ -19,7 +19,8 @@ import {
   Users,
   Star,
   ChevronLeft,
-  Gamepad2
+  Gamepad2,
+  CreditCard
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import useCommandCenter from "@/hooks/useCommandCenter";
@@ -39,11 +40,10 @@ interface GameDetailProps {
 const GameDetail = ({ game, onBack }: GameDetailProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { launchGame, isConnected } = useCommandCenter();
+  const { isConnected } = useCommandCenter();
   
   const [showDurationDialog, setShowDurationDialog] = useState(false);
   const [duration, setDuration] = useState(Math.floor((game.min_duration_seconds + game.max_duration_seconds) / 2));
-  const [isLaunching, setIsLaunching] = useState(false);
 
   const handlePlayClick = () => {
     if (!isConnected) {
@@ -58,7 +58,7 @@ const GameDetail = ({ game, onBack }: GameDetailProps) => {
     setShowDurationDialog(true);
   };
 
-  const handleLaunchGame = async () => {
+  const handleStartGameFlow = () => {
     if (duration < game.min_duration_seconds || duration > game.max_duration_seconds) {
       toast({
         title: "Invalid Duration",
@@ -68,29 +68,16 @@ const GameDetail = ({ game, onBack }: GameDetailProps) => {
       return;
     }
 
-    setIsLaunching(true);
+    setShowDurationDialog(false);
     
-    try {
-      await launchGame(game.id, duration);
-      
-      toast({
-        title: "Game Starting",
-        description: `${game.title} is launching...`,
-      });
-
-      // Navigate to session page
-      navigate(`/session?gameId=${game.id}&title=${encodeURIComponent(game.title)}`);
-    } catch (error) {
-      console.error("Error launching game:", error);
-      toast({
-        title: "Launch Failed",
-        description: "Failed to start the game. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLaunching(false);
-      setShowDurationDialog(false);
-    }
+    // Navigate to RFID authentication with game details
+    const params = new URLSearchParams({
+      gameId: game.id,
+      title: game.title,
+      duration: duration.toString()
+    });
+    
+    navigate(`/rfid-auth?${params.toString()}`);
   };
 
   const formatDuration = (seconds: number) => {
@@ -155,6 +142,17 @@ const GameDetail = ({ game, onBack }: GameDetailProps) => {
               <div className="text-2xl font-bold">{formatDuration(game.max_duration_seconds)}</div>
             </div>
           </div>
+
+          <div className="bg-vr-primary/5 p-4 rounded-lg border border-vr-primary/20">
+            <div className="flex items-center gap-2 mb-2">
+              <CreditCard className="h-4 w-4 text-vr-primary" />
+              <span className="font-medium text-vr-primary">Game Launch Process</span>
+            </div>
+            <p className="text-sm text-vr-muted">
+              Click "Start Game" to begin the launch process. You'll need to scan your RFID card 
+              and select payment method before the game begins.
+            </p>
+          </div>
         </div>
 
         <div className="mt-8">
@@ -164,7 +162,7 @@ const GameDetail = ({ game, onBack }: GameDetailProps) => {
             className="w-full py-6 bg-vr-secondary hover:bg-vr-secondary/90 text-vr-dark font-semibold text-lg"
           >
             <Play className="h-5 w-5 mr-2" />
-            {isConnected ? "Play Now" : "System Offline"}
+            {isConnected ? "Start Game" : "System Offline"}
           </Button>
         </div>
       </div>
@@ -219,6 +217,13 @@ const GameDetail = ({ game, onBack }: GameDetailProps) => {
                 Max ({formatDuration(game.max_duration_seconds)})
               </Button>
             </div>
+
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Next Steps:</strong> After selecting duration, you'll need to scan your RFID card 
+                and complete payment before the game launches.
+              </p>
+            </div>
           </div>
 
           <DialogFooter>
@@ -229,11 +234,10 @@ const GameDetail = ({ game, onBack }: GameDetailProps) => {
               Cancel
             </Button>
             <Button
-              onClick={handleLaunchGame}
-              disabled={isLaunching}
+              onClick={handleStartGameFlow}
               className="bg-vr-secondary hover:bg-vr-secondary/90 text-vr-dark"
             >
-              {isLaunching ? "Starting..." : "Start Game"}
+              Continue to RFID Auth
             </Button>
           </DialogFooter>
         </DialogContent>

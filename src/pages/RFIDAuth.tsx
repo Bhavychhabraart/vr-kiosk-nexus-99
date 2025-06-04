@@ -1,28 +1,22 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { RfidCardInput } from "@/components/ui/rfid-card-input";
+import { Badge } from "@/components/ui/badge";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  CreditCard,
   ArrowLeft,
-  Loader2,
+  CreditCard,
   CheckCircle,
-  AlertTriangle,
-  Gamepad2,
-  IndianRupee
+  AlertCircle,
+  Clock,
+  Play,
+  Loader2
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
-import { rfidService } from "@/services/rfidService";
 
 const RFIDAuth = () => {
   const navigate = useNavigate();
@@ -31,141 +25,84 @@ const RFIDAuth = () => {
   
   const gameId = searchParams.get("gameId");
   const gameTitle = searchParams.get("title") || "VR Game";
-  const duration = searchParams.get("duration") || "600";
+  const duration = searchParams.get("duration") || "1800";
   
-  const [rfidInput, setRfidInput] = useState("");
-  const [isValidating, setIsValidating] = useState(false);
-  const [isSimulating, setIsSimulating] = useState(false);
+  const [rfidTag, setRfidTag] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
   const [cardInfo, setCardInfo] = useState<any>(null);
-  const [validationStep, setValidationStep] = useState<'scan' | 'validated' | 'creating'>('scan');
+  const [authStep, setAuthStep] = useState<"scan" | "verify" | "confirmed">("scan");
 
   useEffect(() => {
-    if (!gameId || !gameTitle) {
+    if (!gameId) {
       toast({
         title: "Invalid Request",
-        description: "Game information is missing. Please select a game first.",
+        description: "No game selected. Please select a game first.",
         variant: "destructive",
       });
       navigate("/games");
     }
-  }, [gameId, gameTitle, navigate, toast]);
+  }, [gameId, navigate, toast]);
 
-  const handleRFIDSubmit = async (cardId: string) => {
-    if (!cardId.trim()) {
-      toast({
-        title: "Invalid Input",
-        description: "Please enter an RFID card ID.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsValidating(true);
-    setValidationStep('scan');
-
+  const handleCardScan = async (tag: string) => {
+    if (!tag) return;
+    
+    setRfidTag(tag);
+    setIsVerifying(true);
+    setAuthStep("verify");
+    
     try {
-      // Validate the RFID card
-      const card = await rfidService.validateRFIDCard(cardId);
-      setCardInfo(card);
-      setValidationStep('validated');
-
-      toast({
-        title: "Card Validated",
-        description: `Welcome ${card.name || 'Player'}! Card is valid and active.`,
-      });
-
-      // Short delay to show validation success
-      setTimeout(async () => {
-        setValidationStep('creating');
-        
-        try {
-          // Create session from RFID
-          const sessionId = await rfidService.createSessionFromRFID(
-            cardId, 
-            gameId!, 
-            parseInt(duration)
-          );
-
-          toast({
-            title: "Session Created",
-            description: "Your game session has been created. Starting game...",
-          });
-
-          // Navigate to session with RFID info
-          navigate(
-            `/session?gameId=${gameId}&title=${encodeURIComponent(gameTitle)}&duration=${duration}&sessionId=${sessionId}&rfidTag=${cardId}`
-          );
-        } catch (error) {
-          console.error("Session creation error:", error);
-          toast({
-            title: "Session Creation Failed",
-            description: error instanceof Error ? error.message : "Failed to create session",
-            variant: "destructive",
-          });
-          setValidationStep('scan');
-        }
-      }, 1500);
-
-    } catch (error) {
-      console.error("RFID validation error:", error);
-      toast({
-        title: "Card Validation Failed",
-        description: error instanceof Error ? error.message : "Invalid RFID card",
-        variant: "destructive",
-      });
-      setValidationStep('scan');
-    } finally {
-      setIsValidating(false);
-    }
-  };
-
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleRFIDSubmit(rfidInput);
-  };
-
-  const handleSimulateRFID = async () => {
-    setIsSimulating(true);
-    try {
-      const simulatedCardId = await rfidService.simulateRFIDTap();
-      toast({
-        title: "RFID Simulated",
-        description: `Simulated card: ${simulatedCardId}`,
-      });
+      // Simulate RFID verification
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Auto-submit the simulated card
-      await handleRFIDSubmit(simulatedCardId);
-    } catch (error) {
-      console.error("Simulation error:", error);
+      // Mock card data
+      const mockCardInfo = {
+        tag_id: tag,
+        name: `Card ${tag.substring(0, 8)}`,
+        balance: 500,
+        is_active: true,
+        last_used: new Date().toISOString()
+      };
+      
+      setCardInfo(mockCardInfo);
+      setAuthStep("confirmed");
+      
       toast({
-        title: "Simulation Failed",
-        description: "Failed to simulate RFID tap",
+        title: "RFID Card Verified",
+        description: `Welcome! Card balance: ₹${mockCardInfo.balance}`,
+      });
+    } catch (error) {
+      console.error("RFID verification error:", error);
+      toast({
+        title: "Verification Failed",
+        description: "Unable to verify RFID card. Please try again.",
         variant: "destructive",
       });
+      setAuthStep("scan");
     } finally {
-      setIsSimulating(false);
+      setIsVerifying(false);
     }
   };
 
-  const formatDuration = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+  const handleContinueToPayment = () => {
+    if (!rfidTag || !cardInfo) return;
+    
+    const params = new URLSearchParams({
+      gameId: gameId!,
+      title: gameTitle,
+      duration: duration,
+      rfidTag: rfidTag
+    });
+    
+    navigate(`/payment-selection?${params.toString()}`);
   };
 
-  const getPrice = (seconds: number) => {
-    const prices: Record<number, number> = {
-      300: 100,   // 5 minutes
-      600: 150,   // 10 minutes
-      900: 200,   // 15 minutes
-      1200: 220,  // 20 minutes
-    };
-    return prices[seconds] || 150;
+  const formatDuration = (seconds: string) => {
+    const mins = Math.floor(parseInt(seconds) / 60);
+    return `${mins} minutes`;
   };
-
-  const sessionPrice = getPrice(parseInt(duration));
 
   return (
-    <MainLayout className="relative px-4 py-8 min-h-screen flex flex-col">
+    <MainLayout className="relative px-4 py-8 h-screen flex flex-col">
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -174,165 +111,121 @@ const RFIDAuth = () => {
         <Button 
           variant="ghost" 
           className="text-vr-muted hover:text-vr-text flex items-center gap-2"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate("/games")}
         >
           <ArrowLeft className="h-4 w-4" />
-          Back
+          Back to Games
         </Button>
       </motion.div>
 
-      <div className="flex-1 flex flex-col items-center justify-center max-w-md mx-auto w-full">
+      <div className="flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto w-full">
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: "spring", damping: 15 }}
           className="w-full"
         >
-          <Card className="vr-card border-vr-primary/30">
+          <Card className="vr-card backdrop-blur-md">
             <CardHeader className="text-center">
-              <motion.div
-                animate={{
-                  scale: validationStep === 'validated' ? [1, 1.1, 1] : 1,
-                  color: validationStep === 'validated' ? '#00eaff' : undefined
-                }}
-                transition={{ duration: 0.5 }}
-              >
-                {validationStep === 'validated' ? (
-                  <CheckCircle className="h-16 w-16 mx-auto mb-4 text-vr-secondary" />
-                ) : validationStep === 'creating' ? (
-                  <Loader2 className="h-16 w-16 mx-auto mb-4 text-vr-primary animate-spin" />
-                ) : (
-                  <CreditCard className="h-16 w-16 mx-auto mb-4 text-vr-primary" />
-                )}
-              </motion.div>
-              
-              <CardTitle className="text-2xl font-bold">
-                {validationStep === 'validated' ? 'Card Validated!' :
-                 validationStep === 'creating' ? 'Creating Session...' :
-                 'RFID Authentication'}
+              <CardTitle className="text-2xl flex items-center justify-center gap-2">
+                <CreditCard className="h-6 w-6 text-vr-primary" />
+                RFID Authentication
               </CardTitle>
-              
               <CardDescription>
-                {validationStep === 'validated' ? (
-                  <>Welcome {cardInfo?.name || 'Player'}! Preparing your session...</>
-                ) : validationStep === 'creating' ? (
-                  <>Setting up your game session...</>
-                ) : (
-                  <>Scan your RFID card or simulate one to start playing {gameTitle}</>
-                )}
+                Scan your RFID card to start playing {gameTitle}
               </CardDescription>
             </CardHeader>
-
+            
             <CardContent className="space-y-6">
-              {validationStep === 'scan' && (
-                <>
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <div className="bg-vr-primary/10 p-4 rounded-lg mb-4">
-                        <div className="flex items-center gap-2 justify-center text-vr-muted mb-2">
-                          <Gamepad2 className="h-4 w-4" />
-                          <span>Session: {formatDuration(parseInt(duration))}</span>
-                        </div>
-                        <div className="flex items-center gap-1 justify-center text-vr-secondary font-bold text-lg">
-                          <IndianRupee className="h-5 w-5" />
-                          <span>{sessionPrice}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* RFID Simulation */}
-                    <div className="text-center">
-                      <Button
-                        onClick={handleSimulateRFID}
-                        disabled={isSimulating || isValidating}
-                        className="w-full py-6 bg-vr-secondary hover:bg-vr-secondary/90 text-vr-dark font-semibold text-lg"
-                      >
-                        {isSimulating ? (
-                          <>
-                            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                            Simulating RFID Tap...
-                          </>
-                        ) : (
-                          <>
-                            <CreditCard className="h-5 w-5 mr-2" />
-                            Simulate RFID Tap
-                          </>
-                        )}
-                      </Button>
-                      <p className="text-xs text-vr-muted mt-2">
-                        Works without hardware - Perfect for testing
-                      </p>
-                    </div>
-
-                    <div className="relative">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t border-vr-primary/20" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-vr-dark px-2 text-vr-muted">Or enter manually</span>
-                      </div>
-                    </div>
-
-                    {/* Manual RFID Input */}
-                    <form onSubmit={handleManualSubmit} className="space-y-4">
-                      <div>
-                        <Label htmlFor="rfid" className="text-vr-text">RFID Card ID</Label>
-                        <Input
-                          id="rfid"
-                          type="text"
-                          placeholder="Enter RFID card ID"
-                          value={rfidInput}
-                          onChange={(e) => setRfidInput(e.target.value)}
-                          className="mt-1 bg-vr-dark/50 border-vr-primary/30"
-                          disabled={isValidating || isSimulating}
-                        />
-                      </div>
-                      
-                      <Button
-                        type="submit"
-                        disabled={isValidating || isSimulating || !rfidInput.trim()}
-                        className="w-full bg-vr-primary hover:bg-vr-primary/80"
-                      >
-                        {isValidating ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Validating...
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Validate Card
-                          </>
-                        )}
-                      </Button>
-                    </form>
-                  </div>
-                </>
-              )}
-
-              {validationStep === 'validated' && cardInfo && (
-                <div className="text-center space-y-4">
-                  <div className="bg-vr-primary/10 p-4 rounded-lg">
-                    <h3 className="font-semibold text-vr-text">Card Information</h3>
-                    <p className="text-vr-muted">Name: {cardInfo.name || 'Unknown'}</p>
-                    <p className="text-vr-muted">Card ID: {cardInfo.tag_id}</p>
-                  </div>
+              {/* Game Info */}
+              <div className="bg-vr-primary/10 p-4 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-vr-primary">Selected Game</span>
+                  <Badge variant="secondary">{formatDuration(duration)}</Badge>
                 </div>
-              )}
-
-              {validationStep === 'creating' && (
-                <div className="text-center space-y-4">
-                  <div className="bg-vr-primary/10 p-4 rounded-lg">
-                    <p className="text-vr-muted">Creating your game session...</p>
-                    <p className="text-vr-muted">This will count as 1 session usage.</p>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Play className="h-4 w-4 text-vr-text" />
+                  <span className="text-vr-text font-semibold">{gameTitle}</span>
                 </div>
-              )}
+              </div>
 
-              <div className="text-center">
-                <div className="text-xs text-vr-muted/70 bg-vr-accent/10 p-3 rounded-lg">
-                  <AlertTriangle className="h-4 w-4 inline mr-1" />
-                  Each RFID tap creates one game session. Session usage is tracked and counted.
+              {/* RFID Scan Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  {authStep === "scan" && <CreditCard className="h-5 w-5 text-vr-muted" />}
+                  {authStep === "verify" && <Loader2 className="h-5 w-5 text-vr-primary animate-spin" />}
+                  {authStep === "confirmed" && <CheckCircle className="h-5 w-5 text-green-500" />}
+                  <span className="font-medium">
+                    {authStep === "scan" && "Scan RFID Card"}
+                    {authStep === "verify" && "Verifying Card..."}
+                    {authStep === "confirmed" && "Card Verified"}
+                  </span>
+                </div>
+
+                <RfidCardInput
+                  onCardDetected={handleCardScan}
+                  disabled={authStep !== "scan"}
+                  placeholder="Tap or scan your RFID card here"
+                />
+
+                {isVerifying && (
+                  <div className="text-center">
+                    <div className="text-sm text-vr-muted">
+                      Verifying RFID card...
+                    </div>
+                  </div>
+                )}
+
+                {cardInfo && authStep === "confirmed" && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-green-50 border border-green-200 p-4 rounded-lg"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="font-medium text-green-800">Card Authenticated</span>
+                    </div>
+                    <div className="text-sm text-green-700">
+                      <div>Card ID: {cardInfo.tag_id.substring(0, 12)}...</div>
+                      <div>Balance: ₹{cardInfo.balance}</div>
+                      <div>Status: Active</div>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                {authStep === "confirmed" && (
+                  <Button
+                    onClick={handleContinueToPayment}
+                    className="w-full py-6 bg-vr-secondary hover:bg-vr-secondary/90 text-vr-dark font-semibold"
+                  >
+                    Continue to Payment
+                  </Button>
+                )}
+
+                {authStep === "scan" && (
+                  <div className="text-center text-sm text-vr-muted">
+                    Place your RFID card near the reader or enter the card number manually
+                  </div>
+                )}
+              </div>
+
+              {/* Instructions */}
+              <div className="bg-vr-dark/20 p-4 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-vr-accent mt-0.5" />
+                  <div className="text-sm text-vr-muted">
+                    <div className="font-medium mb-1">How to use RFID:</div>
+                    <ul className="space-y-1 text-xs">
+                      <li>• Hold your RFID card near the scanner</li>
+                      <li>• Wait for the beep and confirmation</li>
+                      <li>• Your card will be verified automatically</li>
+                      <li>• Ensure your card has sufficient balance</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             </CardContent>

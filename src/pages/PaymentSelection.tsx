@@ -1,123 +1,161 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { UpiQrPayment } from "@/components/ui/upi-qr-payment";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  CreditCard,
   ArrowLeft,
+  CreditCard,
   Smartphone,
-  Gamepad2,
-  IndianRupee,
-  Zap
+  Wallet,
+  Play,
+  Clock,
+  CheckCircle,
+  User
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
-import { usePaymentMethods } from "@/hooks/usePaymentMethods";
-import UPIQRPayment from "@/components/ui/upi-qr-payment";
 
 const PaymentSelection = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const { paymentMethods } = usePaymentMethods();
   
   const gameId = searchParams.get("gameId");
   const gameTitle = searchParams.get("title") || "VR Game";
-  const duration = searchParams.get("duration") || "600";
+  const duration = searchParams.get("duration") || "1800";
+  const rfidTag = searchParams.get("rfidTag");
   
-  const [selectedPayment, setSelectedPayment] = useState<'rfid' | 'upi' | null>(null);
-  const [showUPIPayment, setShowUPIPayment] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
 
-  const getPrice = (seconds: number) => {
-    const prices: Record<number, number> = {
-      300: 100,   // 5 minutes
-      600: 150,   // 10 minutes
-      900: 200,   // 15 minutes
-      1200: 220,  // 20 minutes
-    };
-    return prices[seconds] || 150;
-  };
-
-  const formatDuration = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
-  };
-
-  const sessionPrice = getPrice(parseInt(duration));
-  const transactionRef = `TXN${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
-
-  const handleRFIDPayment = () => {
-    navigate(`/rfid-auth?gameId=${gameId}&title=${encodeURIComponent(gameTitle)}&duration=${duration}`);
-  };
-
-  const handleUPIPayment = () => {
-    if (!paymentMethods?.upi_merchant_id) {
+  useEffect(() => {
+    if (!gameId || !rfidTag) {
       toast({
-        title: "UPI Not Configured",
-        description: "UPI payments are not available at this time",
+        title: "Invalid Request",
+        description: "Missing game or RFID information. Please start over.",
         variant: "destructive",
       });
-      return;
+      navigate("/games");
     }
-    setShowUPIPayment(true);
+  }, [gameId, rfidTag, navigate, toast]);
+
+  const calculatePrice = () => {
+    const durationMinutes = Math.floor(parseInt(duration) / 60);
+    const pricePerMinute = 10; // ₹10 per minute
+    return durationMinutes * pricePerMinute;
   };
 
-  const handlePaymentComplete = () => {
-    toast({
-      title: "Payment Successful",
-      description: "Your VR session is starting...",
-    });
-    navigate(
-      `/session?gameId=${gameId}&title=${encodeURIComponent(gameTitle)}&duration=${duration}&paymentMethod=upi&transactionRef=${transactionRef}`
-    );
+  const paymentMethods = [
+    {
+      id: "rfid_balance",
+      name: "RFID Card Balance",
+      description: "Use your card's stored balance",
+      icon: CreditCard,
+      available: true,
+      balance: 500
+    },
+    {
+      id: "upi",
+      name: "UPI Payment",
+      description: "Pay with any UPI app",
+      icon: Smartphone,
+      available: true
+    },
+    {
+      id: "cash",
+      name: "Cash Payment",
+      description: "Pay with cash to staff",
+      icon: Wallet,
+      available: true
+    }
+  ];
+
+  const handlePaymentMethod = async (methodId: string) => {
+    setSelectedMethod(methodId);
+    setIsProcessing(true);
+
+    try {
+      const price = calculatePrice();
+      
+      if (methodId === "rfid_balance") {
+        // Simulate RFID balance deduction
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        toast({
+          title: "Payment Successful",
+          description: `₹${price} deducted from your RFID card balance`,
+        });
+        setPaymentCompleted(true);
+        
+      } else if (methodId === "cash") {
+        // For cash payment, skip processing and go directly to session
+        toast({
+          title: "Cash Payment Selected",
+          description: "Please pay the staff and confirm to start the game",
+        });
+        setPaymentCompleted(true);
+        
+      } else if (methodId === "upi") {
+        // For UPI, we'll show the QR payment component
+        toast({
+          title: "UPI Payment Initiated",
+          description: "Complete the payment to start the game",
+        });
+      }
+    } catch (error) {
+      console.error("Payment error:", error);
+      toast({
+        title: "Payment Failed",
+        description: "Unable to process payment. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handlePaymentCancel = () => {
-    setShowUPIPayment(false);
-    setSelectedPayment(null);
+  const handleStartGame = async () => {
+    if (!paymentCompleted && selectedMethod !== "upi") return;
+    
+    try {
+      // Create session record
+      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Navigate to session with all required parameters
+      const params = new URLSearchParams({
+        gameId: gameId!,
+        title: gameTitle,
+        duration: duration,
+        sessionId: sessionId,
+        rfidTag: rfidTag!
+      });
+      
+      navigate(`/session?${params.toString()}`);
+      
+    } catch (error) {
+      console.error("Session creation error:", error);
+      toast({
+        title: "Session Creation Failed",
+        description: "Unable to start game session. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  if (showUPIPayment) {
-    return (
-      <MainLayout className="relative px-4 py-8 min-h-screen flex flex-col">
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="absolute top-8 left-8"
-        >
-          <Button 
-            variant="ghost" 
-            className="text-vr-muted hover:text-vr-text flex items-center gap-2"
-            onClick={() => setShowUPIPayment(false)}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Payment Options
-          </Button>
-        </motion.div>
+  const formatDuration = (seconds: string) => {
+    const mins = Math.floor(parseInt(seconds) / 60);
+    return `${mins} minutes`;
+  };
 
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <UPIQRPayment
-            amount={sessionPrice}
-            merchantId={paymentMethods?.upi_merchant_id || "vrworld@paytm"}
-            transactionRef={transactionRef}
-            onPaymentComplete={handlePaymentComplete}
-            onPaymentCancel={handlePaymentCancel}
-          />
-        </div>
-      </MainLayout>
-    );
-  }
+  const price = calculatePrice();
 
   return (
-    <MainLayout className="relative px-4 py-8 min-h-screen flex flex-col">
+    <MainLayout className="relative px-4 py-8 h-screen flex flex-col">
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -138,144 +176,120 @@ const PaymentSelection = () => {
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: "spring", damping: 15 }}
-          className="w-full"
+          className="w-full space-y-6"
         >
-          <Card className="vr-card border-vr-primary/30">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold">Choose Payment Method</CardTitle>
-              <CardDescription>
-                Select how you'd like to pay for your VR session
-              </CardDescription>
-              
-              {/* Session Info */}
-              <div className="bg-vr-primary/10 p-4 rounded-lg mt-4">
-                <div className="flex items-center gap-2 justify-center text-vr-muted mb-2">
-                  <Gamepad2 className="h-4 w-4" />
-                  <span>{gameTitle} - {formatDuration(parseInt(duration))}</span>
+          {/* Session Summary */}
+          <Card className="vr-card backdrop-blur-md">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Play className="h-5 w-5 text-vr-primary" />
+                Session Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="text-sm text-vr-muted">Game</div>
+                  <div className="font-semibold">{gameTitle}</div>
                 </div>
-                <div className="flex items-center gap-1 justify-center text-vr-secondary font-bold text-2xl">
-                  <IndianRupee className="h-6 w-6" />
-                  <span>{sessionPrice}</span>
+                <div className="space-y-2">
+                  <div className="text-sm text-vr-muted">Duration</div>
+                  <div className="font-semibold">{formatDuration(duration)}</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm text-vr-muted">RFID Card</div>
+                  <div className="font-semibold">{rfidTag?.substring(0, 12)}...</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm text-vr-muted">Total Price</div>
+                  <div className="font-bold text-vr-primary text-lg">₹{price}</div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Payment Selection */}
+          <Card className="vr-card backdrop-blur-md">
+            <CardHeader>
+              <CardTitle>Select Payment Method</CardTitle>
+              <CardDescription>
+                Choose how you want to pay for your VR session
+              </CardDescription>
             </CardHeader>
-
             <CardContent className="space-y-4">
-              {/* RFID Payment Option */}
-              {paymentMethods?.rfid_enabled && (
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Card 
-                    className={`cursor-pointer transition-all ${
-                      selectedPayment === 'rfid' 
-                        ? 'border-vr-primary bg-vr-primary/5' 
-                        : 'border-gray-200 hover:border-vr-primary/50'
-                    }`}
-                    onClick={() => setSelectedPayment('rfid')}
+              {paymentMethods.map((method) => {
+                const Icon = method.icon;
+                const isSelected = selectedMethod === method.id;
+                const canAfford = method.id === "rfid_balance" ? (method.balance || 0) >= price : true;
+                
+                return (
+                  <motion.div
+                    key={method.id}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-4">
-                        <div className="p-3 rounded-full bg-vr-primary/10">
-                          <CreditCard className="h-6 w-6 text-vr-primary" />
+                    <Button
+                      variant={isSelected ? "default" : "outline"}
+                      className={`w-full p-4 h-auto justify-start ${
+                        !canAfford ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
+                      onClick={() => !isProcessing && canAfford && handlePaymentMethod(method.id)}
+                      disabled={isProcessing || !canAfford}
+                    >
+                      <div className="flex items-center gap-3 w-full">
+                        <Icon className="h-5 w-5" />
+                        <div className="flex-1 text-left">
+                          <div className="font-medium">{method.name}</div>
+                          <div className="text-sm opacity-75">{method.description}</div>
+                          {method.id === "rfid_balance" && (
+                            <div className="text-xs opacity-75">
+                              Available: ₹{method.balance} {!canAfford && "(Insufficient balance)"}
+                            </div>
+                          )}
                         </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg">RFID Card Payment</h3>
-                          <p className="text-muted-foreground text-sm">
-                            Quick and contactless payment with your RFID card
-                          </p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Zap className="h-4 w-4 text-green-500" />
-                            <span className="text-sm text-green-600 font-medium">Instant Access</span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-vr-primary">₹{sessionPrice}</div>
-                          <div className="text-xs text-muted-foreground">No extra fees</div>
-                        </div>
+                        {paymentCompleted && isSelected && (
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                        )}
                       </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )}
+                    </Button>
+                  </motion.div>
+                );
+              })}
 
-              {/* UPI Payment Option */}
-              {paymentMethods?.upi_enabled && (
+              {/* UPI Payment Component */}
+              {selectedMethod === "upi" && (
                 <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="mt-4"
                 >
-                  <Card 
-                    className={`cursor-pointer transition-all ${
-                      selectedPayment === 'upi' 
-                        ? 'border-vr-secondary bg-vr-secondary/5' 
-                        : 'border-gray-200 hover:border-vr-secondary/50'
-                    }`}
-                    onClick={() => setSelectedPayment('upi')}
-                  >
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-4">
-                        <div className="p-3 rounded-full bg-vr-secondary/10">
-                          <Smartphone className="h-6 w-6 text-vr-secondary" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg">UPI QR Code Payment</h3>
-                          <p className="text-muted-foreground text-sm">
-                            Pay with any UPI app - PhonePe, GPay, Paytm, etc.
-                          </p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">
-                              Scan & Pay
-                            </span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-vr-secondary">₹{sessionPrice}</div>
-                          <div className="text-xs text-muted-foreground">Secure payment</div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )}
-
-              {/* No Payment Methods Available */}
-              {!paymentMethods?.rfid_enabled && !paymentMethods?.upi_enabled && (
-                <Card className="border-orange-200 bg-orange-50">
-                  <CardContent className="p-6 text-center">
-                    <p className="text-orange-600">
-                      No payment methods are currently available. Please contact support.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Action Button */}
-              {selectedPayment && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="pt-4"
-                >
-                  <Button 
-                    onClick={selectedPayment === 'rfid' ? handleRFIDPayment : handleUPIPayment}
-                    className="w-full py-6 text-lg font-semibold"
-                    style={{
-                      backgroundColor: selectedPayment === 'rfid' ? '#00eaff' : '#ff6b35',
+                  <UpiQrPayment
+                    amount={price}
+                    description={`VR Game: ${gameTitle}`}
+                    onPaymentComplete={() => {
+                      setPaymentCompleted(true);
+                      toast({
+                        title: "Payment Successful",
+                        description: "UPI payment completed successfully",
+                      });
                     }}
+                  />
+                </motion.div>
+              )}
+
+              {/* Start Game Button */}
+              {(paymentCompleted || selectedMethod === "upi") && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="pt-4 border-t"
+                >
+                  <Button
+                    onClick={handleStartGame}
+                    className="w-full py-6 bg-vr-secondary hover:bg-vr-secondary/90 text-vr-dark font-semibold text-lg"
                   >
-                    {selectedPayment === 'rfid' ? (
-                      <>
-                        <CreditCard className="h-5 w-5 mr-2" />
-                        Continue with RFID Card
-                      </>
-                    ) : (
-                      <>
-                        <Smartphone className="h-5 w-5 mr-2" />
-                        Continue with UPI Payment
-                      </>
-                    )}
+                    <Play className="h-5 w-5 mr-2" />
+                    Start VR Session
                   </Button>
                 </motion.div>
               )}
