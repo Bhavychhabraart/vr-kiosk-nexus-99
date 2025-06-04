@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { RfidCardInput } from "@/components/ui/rfid-card-input";
+import { RFIDCardInput } from "@/components/ui/rfid-card-input";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,

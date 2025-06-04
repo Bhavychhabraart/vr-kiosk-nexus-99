@@ -6,7 +6,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { UpiQrPayment } from "@/components/ui/upi-qr-payment";
+import UpiQrPayment from "@/components/ui/upi-qr-payment";
 import {
   ArrowLeft,
   CreditCard,
