@@ -76,7 +76,7 @@ const MachineAdmin = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Building2 className="w-4 h-4" />
               Overview
@@ -147,7 +147,7 @@ const MachineAdmin = () => {
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
-            <MachineAnalyticsTab venueId={venue.id} />
+            <MachineAnalyticsTab />
           </TabsContent>
 
           <TabsContent value="earnings" className="space-y-6">
