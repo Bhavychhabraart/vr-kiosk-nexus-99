@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -162,7 +161,7 @@ const RFIDAuth = () => {
                   </span>
                 </div>
 
-                <RfidCardInput
+                <RFIDCardInput
                   onCardDetected={handleCardScan}
                   disabled={authStep !== "scan"}
                   placeholder="Tap or scan your RFID card here"

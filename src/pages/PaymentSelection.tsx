@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -265,12 +264,21 @@ const PaymentSelection = () => {
                 >
                   <UpiQrPayment
                     amount={price}
-                    description={`VR Game: ${gameTitle}`}
+                    merchantId="vrgaminghub@upi"
+                    transactionRef={`txn_${Date.now()}_${gameId}`}
                     onPaymentComplete={() => {
                       setPaymentCompleted(true);
                       toast({
                         title: "Payment Successful",
                         description: "UPI payment completed successfully",
+                      });
+                    }}
+                    onPaymentCancel={() => {
+                      setSelectedMethod(null);
+                      toast({
+                        title: "Payment Cancelled",
+                        description: "UPI payment was cancelled",
+                        variant: "destructive",
                       });
                     }}
                   />
