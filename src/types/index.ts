@@ -18,6 +18,15 @@ export type RFIDCard = Database["public"]["Tables"]["rfid_cards"]["Row"];
 export type RFIDCardInsert = Database["public"]["Tables"]["rfid_cards"]["Insert"];
 export type RFIDCardUpdate = Database["public"]["Tables"]["rfid_cards"]["Update"];
 
+// Business management types
+export type KioskOwner = Database["public"]["Tables"]["kiosk_owners"]["Row"];
+export type PaymentMethod = Database["public"]["Tables"]["payment_methods"]["Row"];
+export type EarningsSummary = Database["public"]["Tables"]["earnings_summary"]["Row"];
+export type PopularGame = Database["public"]["Tables"]["popular_games"]["Row"];
+export type UpcomingProduct = Database["public"]["Tables"]["upcoming_products"]["Row"];
+export type Subscription = Database["public"]["Tables"]["subscriptions"]["Row"];
+export type SupportTicket = Database["public"]["Tables"]["support_tickets"]["Row"];
+
 // Add any additional custom types here
 export interface WebSocketSettings {
   url: string;

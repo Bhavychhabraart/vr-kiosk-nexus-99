@@ -1,267 +1,422 @@
-
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import React, { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Save, RefreshCw } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Building2, 
+  User, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Clock, 
+  CreditCard, 
+  Smartphone,
+  Crown,
+  Calendar
+} from "lucide-react";
+import { useKioskOwner } from "@/hooks/useKioskOwner";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { useSubscription } from "@/hooks/useSubscription";
 import { useWebSocketSettings, useKioskSettings } from "@/hooks/useSettings";
-import { WebSocketSettings, KioskSettings } from "@/types";
 
-export function SettingsTab() {
-  // WebSocket settings
-  const { 
-    settings: wsSettings, 
-    isLoading: wsLoading, 
-    updateSettings: updateWsSettings,
-    isUpdating: wsUpdating
-  } = useWebSocketSettings();
-  
-  const [webSocketForm, setWebSocketForm] = useState<WebSocketSettings>({
-    url: 'ws://localhost:8081',
-    reconnectAttempts: 5,
-    reconnectDelay: 2000
+const SettingsTab = () => {
+  const { kioskOwner, isLoading: ownerLoading, updateKioskOwner, isUpdating: ownerUpdating } = useKioskOwner();
+  const { paymentMethods, isLoading: paymentLoading, updatePaymentMethods, isUpdating: paymentUpdating } = usePaymentMethods();
+  const { subscription } = useSubscription();
+  const { settings: wsSettings, updateSettings: updateWsSettings, isUpdating: wsUpdating } = useWebSocketSettings();
+  const { settings: kioskSettings, updateSettings: updateKioskSettings, isUpdating: kioskUpdating } = useKioskSettings();
+
+  const [ownerForm, setOwnerForm] = useState({
+    kiosk_name: kioskOwner?.kiosk_name || "",
+    owner_name: kioskOwner?.owner_name || "",
+    business_license: kioskOwner?.business_license || "",
+    contact_email: kioskOwner?.contact_email || "",
+    contact_phone: kioskOwner?.contact_phone || "",
+    address: kioskOwner?.address || ""
   });
 
-  // Kiosk settings
-  const {
-    settings: kioskSettings,
-    isLoading: kioskLoading,
-    updateSettings: updateKioskSettings,
-    isUpdating: kioskUpdating
-  } = useKioskSettings();
-  
-  const [kioskForm, setKioskForm] = useState<KioskSettings>({
-    name: 'VR Kiosk',
-    location: 'Main Hall',
-    idleTimeout: 300
+  const [paymentForm, setPaymentForm] = useState({
+    rfid_enabled: paymentMethods?.rfid_enabled ?? true,
+    upi_enabled: paymentMethods?.upi_enabled ?? false,
+    upi_merchant_id: paymentMethods?.upi_merchant_id || ""
   });
 
-  // Update form when settings are loaded
-  useEffect(() => {
-    if (wsSettings) {
-      setWebSocketForm(wsSettings);
+  React.useEffect(() => {
+    if (kioskOwner) {
+      setOwnerForm({
+        kiosk_name: kioskOwner.kiosk_name || "",
+        owner_name: kioskOwner.owner_name || "",
+        business_license: kioskOwner.business_license || "",
+        contact_email: kioskOwner.contact_email || "",
+        contact_phone: kioskOwner.contact_phone || "",
+        address: kioskOwner.address || ""
+      });
     }
-  }, [wsSettings]);
+  }, [kioskOwner]);
 
-  useEffect(() => {
-    if (kioskSettings) {
-      setKioskForm(kioskSettings);
+  React.useEffect(() => {
+    if (paymentMethods) {
+      setPaymentForm({
+        rfid_enabled: paymentMethods.rfid_enabled ?? true,
+        upi_enabled: paymentMethods.upi_enabled ?? false,
+        upi_merchant_id: paymentMethods.upi_merchant_id || ""
+      });
     }
-  }, [kioskSettings]);
+  }, [paymentMethods]);
 
-  // Handle WebSocket form submission
-  const handleWebSocketSubmit = (e: React.FormEvent) => {
+  const handleOwnerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateWsSettings(webSocketForm);
+    updateKioskOwner(ownerForm);
   };
 
-  // Handle Kiosk form submission
-  const handleKioskSubmit = (e: React.FormEvent) => {
+  const handlePaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateKioskSettings(kioskForm);
+    updatePaymentMethods(paymentForm);
   };
+
+  if (ownerLoading || paymentLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="animate-pulse">
+            <CardHeader>
+              <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {Array(4).fill(0).map((_, i) => (
+                  <div key={i} className="h-10 bg-gray-200 rounded"></div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* WebSocket Settings */}
-      <Card className="vr-card">
-        <form onSubmit={handleWebSocketSubmit}>
+      {/* Subscription Status */}
+      {subscription && (
+        <Card className="border-vr-primary/30 bg-gradient-to-r from-vr-primary/5 to-vr-secondary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-vr-primary" />
+              Subscription Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <Badge variant="secondary" className="mb-2">
+                  {subscription.plan_tier.toUpperCase()}
+                </Badge>
+                <p className="text-lg font-semibold">{subscription.plan_name}</p>
+                <p className="text-sm text-muted-foreground">
+                  ₹{subscription.monthly_cost}/month
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Valid until</p>
+                <p className="font-semibold">
+                  {subscription.end_date ? new Date(subscription.end_date).toLocaleDateString() : 'Ongoing'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Kiosk & Ownership Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Kiosk & Ownership Details
+            </CardTitle>
+            <CardDescription>
+              Manage your kiosk information and business details
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleOwnerSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="kiosk_name">Kiosk Name</Label>
+                <Input
+                  id="kiosk_name"
+                  value={ownerForm.kiosk_name}
+                  onChange={(e) => setOwnerForm(prev => ({ ...prev, kiosk_name: e.target.value }))}
+                  placeholder="VR Gaming Hub"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="owner_name">Owner Name</Label>
+                <Input
+                  id="owner_name"
+                  value={ownerForm.owner_name}
+                  onChange={(e) => setOwnerForm(prev => ({ ...prev, owner_name: e.target.value }))}
+                  placeholder="John Doe"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="business_license">Business License</Label>
+                <Input
+                  id="business_license"
+                  value={ownerForm.business_license}
+                  onChange={(e) => setOwnerForm(prev => ({ ...prev, business_license: e.target.value }))}
+                  placeholder="BL2024001"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="contact_email">Email</Label>
+                  <Input
+                    id="contact_email"
+                    type="email"
+                    value={ownerForm.contact_email}
+                    onChange={(e) => setOwnerForm(prev => ({ ...prev, contact_email: e.target.value }))}
+                    placeholder="owner@vrgaming.com"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contact_phone">Phone</Label>
+                  <Input
+                    id="contact_phone"
+                    value={ownerForm.contact_phone}
+                    onChange={(e) => setOwnerForm(prev => ({ ...prev, contact_phone: e.target.value }))}
+                    placeholder="+91-9876543210"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="address">Address</Label>
+                <Textarea
+                  id="address"
+                  value={ownerForm.address}
+                  onChange={(e) => setOwnerForm(prev => ({ ...prev, address: e.target.value }))}
+                  placeholder="Shop 101, Tech Mall, Bangalore"
+                  rows={3}
+                />
+              </div>
+
+              <Button 
+                type="submit" 
+                disabled={ownerUpdating}
+                className="w-full"
+              >
+                {ownerUpdating ? "Updating..." : "Update Kiosk Details"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Payment Methods Configuration */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Payment Methods
+            </CardTitle>
+            <CardDescription>
+              Configure payment options for your kiosk
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handlePaymentSubmit} className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="h-5 w-5 text-vr-primary" />
+                    <div>
+                      <p className="font-medium">RFID Card Payments</p>
+                      <p className="text-sm text-muted-foreground">
+                        Enable contactless RFID card payments
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={paymentForm.rfid_enabled}
+                    onCheckedChange={(checked) => 
+                      setPaymentForm(prev => ({ ...prev, rfid_enabled: checked }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Smartphone className="h-5 w-5 text-vr-secondary" />
+                    <div>
+                      <p className="font-medium">UPI QR Code Payments</p>
+                      <p className="text-sm text-muted-foreground">
+                        Enable UPI QR code payments
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={paymentForm.upi_enabled}
+                    onCheckedChange={(checked) => 
+                      setPaymentForm(prev => ({ ...prev, upi_enabled: checked }))
+                    }
+                  />
+                </div>
+
+                {paymentForm.upi_enabled && (
+                  <div className="space-y-2 ml-8">
+                    <Label htmlFor="upi_merchant_id">UPI Merchant ID</Label>
+                    <Input
+                      id="upi_merchant_id"
+                      value={paymentForm.upi_merchant_id}
+                      onChange={(e) => setPaymentForm(prev => ({ ...prev, upi_merchant_id: e.target.value }))}
+                      placeholder="merchant@paytm"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <Button 
+                type="submit" 
+                disabled={paymentUpdating}
+                className="w-full"
+              >
+                {paymentUpdating ? "Updating..." : "Update Payment Settings"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Separator />
+
+      {/* System Settings - Keep existing WebSocket and Kiosk settings */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
           <CardHeader>
             <CardTitle>WebSocket Connection</CardTitle>
             <CardDescription>
-              Configure the connection to your VR Command Center
+              Configure the connection to the VR system backend
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {wsLoading ? (
-              <div className="flex justify-center py-4">
-                <Loader2 className="h-6 w-6 animate-spin text-vr-secondary" />
-              </div>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="wsUrl">WebSocket Server URL</Label>
+            {wsSettings && (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="ws-url">WebSocket URL</Label>
                   <Input
-                    id="wsUrl"
+                    id="ws-url"
+                    value={wsSettings.url}
+                    onChange={(e) => updateWsSettings({ ...wsSettings, url: e.target.value })}
                     placeholder="ws://localhost:8081"
-                    value={webSocketForm.url}
-                    onChange={(e) => 
-                      setWebSocketForm({ ...webSocketForm, url: e.target.value })
-                    }
-                    className="bg-vr-dark border-vr-primary/30 focus:border-vr-secondary"
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="reconnectAttempts">Reconnection Attempts</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="reconnect-attempts">Reconnect Attempts</Label>
                     <Input
-                      id="reconnectAttempts"
+                      id="reconnect-attempts"
                       type="number"
-                      min={1}
-                      max={20}
-                      value={webSocketForm.reconnectAttempts}
-                      onChange={(e) => 
-                        setWebSocketForm({ 
-                          ...webSocketForm, 
-                          reconnectAttempts: parseInt(e.target.value) || 5
-                        })
-                      }
-                      className="bg-vr-dark border-vr-primary/30 focus:border-vr-secondary"
+                      value={wsSettings.reconnectAttempts}
+                      onChange={(e) => updateWsSettings({ 
+                        ...wsSettings, 
+                        reconnectAttempts: parseInt(e.target.value) 
+                      })}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="reconnectDelay">Reconnection Delay (ms)</Label>
+                  <div>
+                    <Label htmlFor="reconnect-delay">Reconnect Delay (ms)</Label>
                     <Input
-                      id="reconnectDelay"
+                      id="reconnect-delay"
                       type="number"
-                      min={100}
-                      max={10000}
-                      step={100}
-                      value={webSocketForm.reconnectDelay}
-                      onChange={(e) => 
-                        setWebSocketForm({ 
-                          ...webSocketForm, 
-                          reconnectDelay: parseInt(e.target.value) || 2000
-                        })
-                      }
-                      className="bg-vr-dark border-vr-primary/30 focus:border-vr-secondary"
+                      value={wsSettings.reconnectDelay}
+                      onChange={(e) => updateWsSettings({ 
+                        ...wsSettings, 
+                        reconnectDelay: parseInt(e.target.value) 
+                      })}
                     />
                   </div>
                 </div>
-              </>
+                <Button 
+                  disabled={wsUpdating}
+                  className="w-full"
+                >
+                  {wsUpdating ? "Saving..." : "Save WebSocket Settings"}
+                </Button>
+              </div>
             )}
           </CardContent>
-          <CardFooter>
-            <Button 
-              type="submit" 
-              className="bg-vr-secondary text-vr-dark hover:bg-vr-secondary/90"
-              disabled={wsLoading || wsUpdating}
-            >
-              {wsUpdating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save WebSocket Settings
-                </>
-              )}
-            </Button>
-            <Button 
-              type="button"
-              variant="outline"
-              className="ml-2 border-vr-primary/30 hover:bg-vr-primary/10"
-              onClick={() => {
-                if (wsSettings) setWebSocketForm(wsSettings);
-              }}
-              disabled={wsLoading || wsUpdating}
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Reset
-            </Button>
-          </CardFooter>
-        </form>
-      </Card>
+        </Card>
 
-      {/* Kiosk Settings */}
-      <Card className="vr-card">
-        <form onSubmit={handleKioskSubmit}>
+        <Card>
           <CardHeader>
-            <CardTitle>Kiosk Settings</CardTitle>
+            <CardTitle>Kiosk Configuration</CardTitle>
             <CardDescription>
-              Configure your VR kiosk information and behavior
+              System behavior and display settings
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {kioskLoading ? (
-              <div className="flex justify-center py-4">
-                <Loader2 className="h-6 w-6 animate-spin text-vr-secondary" />
-              </div>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="kioskName">Kiosk Name</Label>
+            {kioskSettings && (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="kiosk-name">Display Name</Label>
                   <Input
-                    id="kioskName"
+                    id="kiosk-name"
+                    value={kioskSettings.name}
+                    onChange={(e) => updateKioskSettings({ 
+                      ...kioskSettings, 
+                      name: e.target.value 
+                    })}
                     placeholder="VR Kiosk"
-                    value={kioskForm.name}
-                    onChange={(e) => 
-                      setKioskForm({ ...kioskForm, name: e.target.value })
-                    }
-                    className="bg-vr-dark border-vr-primary/30 focus:border-vr-secondary"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
+                <div>
+                  <Label htmlFor="kiosk-location">Location</Label>
                   <Input
-                    id="location"
+                    id="kiosk-location"
+                    value={kioskSettings.location}
+                    onChange={(e) => updateKioskSettings({ 
+                      ...kioskSettings, 
+                      location: e.target.value 
+                    })}
                     placeholder="Main Hall"
-                    value={kioskForm.location}
-                    onChange={(e) => 
-                      setKioskForm({ ...kioskForm, location: e.target.value })
-                    }
-                    className="bg-vr-dark border-vr-primary/30 focus:border-vr-secondary"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="idleTimeout">Idle Timeout (seconds)</Label>
+                <div>
+                  <Label htmlFor="idle-timeout">Idle Timeout (seconds)</Label>
                   <Input
-                    id="idleTimeout"
+                    id="idle-timeout"
                     type="number"
-                    min={60}
-                    max={1800}
-                    value={kioskForm.idleTimeout}
-                    onChange={(e) => 
-                      setKioskForm({ 
-                        ...kioskForm, 
-                        idleTimeout: parseInt(e.target.value) || 300
-                      })
-                    }
-                    className="bg-vr-dark border-vr-primary/30 focus:border-vr-secondary"
+                    value={kioskSettings.idleTimeout}
+                    onChange={(e) => updateKioskSettings({ 
+                      ...kioskSettings, 
+                      idleTimeout: parseInt(e.target.value) 
+                    })}
                   />
                 </div>
-              </>
+                <Button 
+                  disabled={kioskUpdating}
+                  className="w-full"
+                >
+                  {kioskUpdating ? "Saving..." : "Save Kiosk Settings"}
+                </Button>
+              </div>
             )}
           </CardContent>
-          <CardFooter>
-            <Button 
-              type="submit" 
-              className="bg-vr-secondary text-vr-dark hover:bg-vr-secondary/90"
-              disabled={kioskLoading || kioskUpdating}
-            >
-              {kioskUpdating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Kiosk Settings
-                </>
-              )}
-            </Button>
-            <Button 
-              type="button"
-              variant="outline"
-              className="ml-2 border-vr-primary/30 hover:bg-vr-primary/10"
-              onClick={() => {
-                if (kioskSettings) setKioskForm(kioskSettings);
-              }}
-              disabled={kioskLoading || kioskUpdating}
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Reset
-            </Button>
-          </CardFooter>
-        </form>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
-}
+};
 
 export default SettingsTab;

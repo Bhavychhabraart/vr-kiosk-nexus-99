@@ -9,6 +9,50 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      earnings_summary: {
+        Row: {
+          created_at: string | null
+          date: string
+          id: string
+          kiosk_id: string | null
+          rfid_revenue: number | null
+          session_breakdown: Json | null
+          total_revenue: number | null
+          total_sessions: number | null
+          upi_revenue: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          id?: string
+          kiosk_id?: string | null
+          rfid_revenue?: number | null
+          session_breakdown?: Json | null
+          total_revenue?: number | null
+          total_sessions?: number | null
+          upi_revenue?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          id?: string
+          kiosk_id?: string | null
+          rfid_revenue?: number | null
+          session_breakdown?: Json | null
+          total_revenue?: number | null
+          total_sessions?: number | null
+          upi_revenue?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "earnings_summary_kiosk_id_fkey"
+            columns: ["kiosk_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_owners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       games: {
         Row: {
           arguments: string | null
@@ -56,6 +100,152 @@ export type Database = {
           working_directory?: string | null
         }
         Relationships: []
+      }
+      kiosk_owners: {
+        Row: {
+          address: string | null
+          business_license: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string | null
+          id: string
+          kiosk_name: string
+          logo_url: string | null
+          operating_hours: Json | null
+          owner_name: string
+          theme_colors: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          business_license?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          id?: string
+          kiosk_name: string
+          logo_url?: string | null
+          operating_hours?: Json | null
+          owner_name: string
+          theme_colors?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          business_license?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          id?: string
+          kiosk_name?: string
+          logo_url?: string | null
+          operating_hours?: Json | null
+          owner_name?: string
+          theme_colors?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      payment_methods: {
+        Row: {
+          created_at: string | null
+          id: string
+          kiosk_id: string | null
+          payment_gateway_config: Json | null
+          rfid_enabled: boolean | null
+          updated_at: string | null
+          upi_enabled: boolean | null
+          upi_merchant_id: string | null
+          upi_qr_settings: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          kiosk_id?: string | null
+          payment_gateway_config?: Json | null
+          rfid_enabled?: boolean | null
+          updated_at?: string | null
+          upi_enabled?: boolean | null
+          upi_merchant_id?: string | null
+          upi_qr_settings?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          kiosk_id?: string | null
+          payment_gateway_config?: Json | null
+          rfid_enabled?: boolean | null
+          updated_at?: string | null
+          upi_enabled?: boolean | null
+          upi_merchant_id?: string | null
+          upi_qr_settings?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_methods_kiosk_id_fkey"
+            columns: ["kiosk_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_owners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      popular_games: {
+        Row: {
+          average_rating: number | null
+          created_at: string | null
+          game_id: string | null
+          id: string
+          kiosk_id: string | null
+          last_played_at: string | null
+          monthly_sessions: number | null
+          total_revenue: number | null
+          total_sessions: number | null
+          updated_at: string | null
+          weekly_sessions: number | null
+        }
+        Insert: {
+          average_rating?: number | null
+          created_at?: string | null
+          game_id?: string | null
+          id?: string
+          kiosk_id?: string | null
+          last_played_at?: string | null
+          monthly_sessions?: number | null
+          total_revenue?: number | null
+          total_sessions?: number | null
+          updated_at?: string | null
+          weekly_sessions?: number | null
+        }
+        Update: {
+          average_rating?: number | null
+          created_at?: string | null
+          game_id?: string | null
+          id?: string
+          kiosk_id?: string | null
+          last_played_at?: string | null
+          monthly_sessions?: number | null
+          total_revenue?: number | null
+          total_sessions?: number | null
+          updated_at?: string | null
+          weekly_sessions?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "popular_games_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "popular_games_kiosk_id_fkey"
+            columns: ["kiosk_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_owners"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rfid_cards: {
         Row: {
@@ -149,6 +339,169 @@ export type Database = {
           id?: string
           updated_at?: string
           value?: Json
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          billing_history: Json | null
+          created_at: string | null
+          end_date: string | null
+          features: Json | null
+          id: string
+          kiosk_id: string | null
+          max_games: number | null
+          max_sessions_per_month: number | null
+          monthly_cost: number
+          plan_name: string
+          plan_tier: string
+          start_date: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          billing_history?: Json | null
+          created_at?: string | null
+          end_date?: string | null
+          features?: Json | null
+          id?: string
+          kiosk_id?: string | null
+          max_games?: number | null
+          max_sessions_per_month?: number | null
+          monthly_cost: number
+          plan_name: string
+          plan_tier: string
+          start_date: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          billing_history?: Json | null
+          created_at?: string | null
+          end_date?: string | null
+          features?: Json | null
+          id?: string
+          kiosk_id?: string | null
+          max_games?: number | null
+          max_sessions_per_month?: number | null
+          monthly_cost?: number
+          plan_name?: string
+          plan_tier?: string
+          start_date?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_kiosk_id_fkey"
+            columns: ["kiosk_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_owners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          assigned_to: string | null
+          attachments: Json | null
+          category: string
+          created_at: string | null
+          description: string
+          id: string
+          kiosk_id: string | null
+          priority: string | null
+          resolution: string | null
+          resolved_at: string | null
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          attachments?: Json | null
+          category: string
+          created_at?: string | null
+          description: string
+          id?: string
+          kiosk_id?: string | null
+          priority?: string | null
+          resolution?: string | null
+          resolved_at?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          attachments?: Json | null
+          category?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          kiosk_id?: string | null
+          priority?: string | null
+          resolution?: string | null
+          resolved_at?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_kiosk_id_fkey"
+            columns: ["kiosk_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_owners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      upcoming_products: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          estimated_price: number | null
+          features: Json | null
+          id: string
+          name: string
+          pre_order_available: boolean | null
+          preview_image_url: string | null
+          release_date: string | null
+          status: string | null
+          trailer_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          estimated_price?: number | null
+          features?: Json | null
+          id?: string
+          name: string
+          pre_order_available?: boolean | null
+          preview_image_url?: string | null
+          release_date?: string | null
+          status?: string | null
+          trailer_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          estimated_price?: number | null
+          features?: Json | null
+          id?: string
+          name?: string
+          pre_order_available?: boolean | null
+          preview_image_url?: string | null
+          release_date?: string | null
+          status?: string | null
+          trailer_url?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }

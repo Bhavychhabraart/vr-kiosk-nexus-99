@@ -2,10 +2,23 @@
 import React, { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Database, Settings, Shield } from "lucide-react";
+import { 
+  BarChart3, 
+  Database, 
+  Settings, 
+  Shield, 
+  CreditCard, 
+  TrendingUp, 
+  Package, 
+  HeadphonesIcon 
+} from "lucide-react";
 import GamesManagementTab from "@/components/admin/GamesManagementTab";
 import SettingsTab from "@/components/admin/SettingsTab";
 import AnalyticsTab from "@/components/admin/AnalyticsTab";
+import PaymentsEarningsTab from "@/components/admin/PaymentsEarningsTab";
+import GamesShowcaseTab from "@/components/admin/GamesShowcaseTab";
+import ProductCatalogTab from "@/components/admin/ProductCatalogTab";
+import SupportTab from "@/components/admin/SupportTab";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Button } from "@/components/ui/button";
@@ -134,7 +147,7 @@ const Admin = () => {
         onValueChange={setActiveTab}
         className="w-full"
       >
-        <TabsList className="w-full grid grid-cols-3 mb-8">
+        <TabsList className="w-full grid grid-cols-7 mb-8">
           <TabsTrigger value="games" className="py-3">
             <Database className="h-4 w-4 mr-2" />
             Games
@@ -145,7 +158,23 @@ const Admin = () => {
           </TabsTrigger>
           <TabsTrigger value="settings" className="py-3">
             <Settings className="h-4 w-4 mr-2" />
-            Settings
+            Kiosk Settings
+          </TabsTrigger>
+          <TabsTrigger value="payments" className="py-3">
+            <CreditCard className="h-4 w-4 mr-2" />
+            Payments
+          </TabsTrigger>
+          <TabsTrigger value="showcase" className="py-3">
+            <TrendingUp className="h-4 w-4 mr-2" />
+            Showcase
+          </TabsTrigger>
+          <TabsTrigger value="catalog" className="py-3">
+            <Package className="h-4 w-4 mr-2" />
+            Catalog
+          </TabsTrigger>
+          <TabsTrigger value="support" className="py-3">
+            <HeadphonesIcon className="h-4 w-4 mr-2" />
+            Support
           </TabsTrigger>
         </TabsList>
         
@@ -159,6 +188,22 @@ const Admin = () => {
         
         <TabsContent value="settings" className="mt-0">
           <SettingsTab />
+        </TabsContent>
+        
+        <TabsContent value="payments" className="mt-0">
+          <PaymentsEarningsTab />
+        </TabsContent>
+        
+        <TabsContent value="showcase" className="mt-0">
+          <GamesShowcaseTab />
+        </TabsContent>
+        
+        <TabsContent value="catalog" className="mt-0">
+          <ProductCatalogTab />
+        </TabsContent>
+        
+        <TabsContent value="support" className="mt-0">
+          <SupportTab />
         </TabsContent>
       </Tabs>
     </MainLayout>
