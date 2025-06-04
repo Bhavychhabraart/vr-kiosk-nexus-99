@@ -27,7 +27,7 @@ export const useLaunchOptions = (venueId?: string) => {
         .from('launch_options')
         .select('*')
         .eq('venue_id', venueId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching launch options:', error);
