@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +38,9 @@ const Session = () => {
   const [showRating, setShowRating] = useState(false);
   const [sessionRating, setSessionRating] = useState(0);
   
+  // Add ref to track if game has been launched
+  const hasLaunchedRef = useRef(false);
+  
   // Create payment data from URL parameters
   const paymentData = rfidTag ? {
     method: 'rfid' as const,
@@ -72,6 +76,9 @@ const Session = () => {
     console.log('Session ID from URL:', sessionId);
     console.log('Found game data:', gameData);
     console.log('Games loading:', gamesLoading);
+    console.log('Has launched ref:', hasLaunchedRef.current);
+    console.log('Is launching:', isLaunching);
+    console.log('Server status game running:', serverStatus.gameRunning);
     
     // Check if we have the required parameters
     if (!gameId) {
@@ -106,14 +113,23 @@ const Session = () => {
       return;
     }
 
+    // Prevent multiple launches - check if already launched, launching, or game is running
+    if (hasLaunchedRef.current || isLaunching || serverStatus.gameRunning) {
+      console.log('Game launch prevented - already launched/launching/running');
+      return;
+    }
+
     // Auto-launch the game when component mounts and we have game data
     const autoLaunch = async () => {
       try {
         console.log('Auto-launching game:', gameData.id);
+        hasLaunchedRef.current = true; // Set flag immediately to prevent duplicate launches
+        
         await launchGame(gameData.id, sessionDuration, paymentData);
         console.log('Game launch initiated successfully');
       } catch (error) {
         console.error('Failed to auto-launch game:', error);
+        hasLaunchedRef.current = false; // Reset flag on error so user can retry
         toast({
           variant: "destructive",
           title: "Launch Failed",
@@ -123,7 +139,7 @@ const Session = () => {
     };
 
     autoLaunch();
-  }, [gameId, gameData, gamesLoading, sessionDuration, paymentData, launchGame, navigate]);
+  }, [gameId, gameData, gamesLoading, sessionDuration, paymentData, launchGame, navigate, isLaunching, serverStatus.gameRunning]);
 
   // Update time remaining
   useEffect(() => {
