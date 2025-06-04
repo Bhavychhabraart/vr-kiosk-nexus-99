@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import websocketService, { 
@@ -6,6 +5,7 @@ import websocketService, {
   CommandType, 
   ServerStatus
 } from '@/services/websocket';
+import { useSessionTracking } from './useSessionTracking';
 
 interface CommandCenterOptions {
   onStatusChange?: (status: ServerStatus) => void;
@@ -20,12 +20,13 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
     websocketService.getServerStatus()
   );
   const [isLaunching, setIsLaunching] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+
+  const { startSession, endSession, updateSessionStatus } = useSessionTracking();
 
   useEffect(() => {
-    // Connect to the WebSocket server when the component mounts
     websocketService.connect();
 
-    // Subscribe to connection state changes
     const unsubConnectionState = websocketService.onConnectionStateChange(
       (state) => {
         setConnectionState(state);
@@ -33,17 +34,14 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
       }
     );
 
-    // Subscribe to server status updates
     const unsubServerStatus = websocketService.onStatusUpdate((status) => {
       setServerStatus(status);
       
-      // Handle launching state more intelligently
       const wasLaunching = isLaunching;
       const isCurrentlyLaunching = status.gameLaunching || false;
       
       setIsLaunching(isCurrentlyLaunching);
       
-      // Clear launching state when game actually starts running
       if (wasLaunching && status.gameRunning && !isCurrentlyLaunching) {
         console.log('Game launch completed successfully');
         toast({
@@ -54,14 +52,12 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
       
       options.onStatusChange?.(status);
       
-      // Check for system alerts
       if (status.alerts && status.alerts.length > 0) {
         const newAlerts = status.alerts.filter(alert => {
-          // Convert timestamp to number if it's a string, then compare
           const alertTime = typeof alert.timestamp === 'string' 
             ? Date.parse(alert.timestamp) 
             : alert.timestamp;
-          return alertTime > Date.now() - 60000; // Show only alerts from the last minute
+          return alertTime > Date.now() - 60000;
         });
         
         if (newAlerts.length > 0) {
@@ -70,18 +66,20 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
       }
     });
 
-    // Cleanup function
     return () => {
       unsubConnectionState();
       unsubServerStatus();
     };
   }, [options, isLaunching]);
 
-  // Check if connected
   const isConnected = connectionState === ConnectionState.CONNECTED;
 
-  // Launch a game with enhanced error handling and progress tracking
-  const launchGame = useCallback(async (gameId: string, durationSeconds: number) => {
+  const launchGame = useCallback(async (gameId: string, durationSeconds: number, paymentData?: {
+    method: 'rfid' | 'upi';
+    amount: number;
+    rfidTag?: string;
+    venueId?: string;
+  }) => {
     try {
       setIsLaunching(true);
       
@@ -92,28 +90,27 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
         sessionDuration: durationSeconds
       });
       
-      // Store session start in database
-      try {
-        const sessionData = {
-          game_id: gameId,
-          duration_seconds: durationSeconds,
-          status: 'active',
-        };
+      // Start session tracking if payment data is provided
+      if (paymentData) {
+        const sessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        setCurrentSessionId(sessionId);
         
-        console.log('Starting new session:', sessionData);
-      } catch (err) {
-        console.error('Error recording session start:', err);
+        await startSession({
+          sessionId,
+          gameId,
+          venueId: paymentData.venueId,
+          paymentMethod: paymentData.method,
+          amountPaid: paymentData.amount,
+          rfidTag: paymentData.rfidTag
+        });
       }
       
-      // Don't show success toast immediately - wait for actual game launch
       console.log('Game launch command sent successfully');
-      
       return response;
     } catch (error) {
       console.error('Error launching game:', error);
       setIsLaunching(false);
       
-      // Provide more specific error messages
       let errorMessage = 'Failed to launch game';
       if (error instanceof Error) {
         if (error.message.includes('timeout')) {
@@ -133,18 +130,16 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
       
       throw error;
     }
-  }, []);
+  }, [startSession]);
 
-  // End the current session
-  const endSession = useCallback(async () => {
+  const endSessionCommand = useCallback(async (rating?: number) => {
     try {
       const response = await websocketService.sendCommand(CommandType.END_SESSION);
       
-      // Log session end in database
-      try {
-        console.log('Ending session');
-      } catch (err) {
-        console.error('Error recording session end:', err);
+      // End session tracking if we have a current session
+      if (currentSessionId) {
+        await endSession(currentSessionId, rating);
+        setCurrentSessionId(null);
       }
       
       toast({
@@ -164,12 +159,15 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
       
       throw error;
     }
-  }, []);
+  }, [currentSessionId, endSession]);
 
-  // Pause the current session
   const pauseSession = useCallback(async () => {
     try {
       const response = await websocketService.sendCommand(CommandType.PAUSE_SESSION);
+      
+      if (currentSessionId) {
+        await updateSessionStatus(currentSessionId, 'paused');
+      }
       
       toast({
         title: "Session Paused",
@@ -188,12 +186,15 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
       
       throw error;
     }
-  }, []);
+  }, [currentSessionId, updateSessionStatus]);
 
-  // Resume the current session
   const resumeSession = useCallback(async () => {
     try {
       const response = await websocketService.sendCommand(CommandType.RESUME_SESSION);
+      
+      if (currentSessionId) {
+        await updateSessionStatus(currentSessionId, 'active');
+      }
       
       toast({
         title: "Session Resumed",
@@ -212,9 +213,8 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
       
       throw error;
     }
-  }, []);
+  }, [currentSessionId, updateSessionStatus]);
 
-  // Get the current server status
   const getServerStatus = useCallback(async () => {
     try {
       return await websocketService.sendCommand(CommandType.GET_STATUS);
@@ -224,28 +224,12 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
     }
   }, []);
 
-  // Submit a game rating
   const submitRating = useCallback(async (gameId: string, rating: number) => {
     try {
-      // Send rating to the server
       await websocketService.sendCommand(CommandType.SUBMIT_RATING, { 
         gameId, 
         rating
       });
-      
-      // Also store it in our database
-      try {
-        const ratingData = {
-          game_id: gameId,
-          rating: rating,
-          end_time: new Date().toISOString(),
-          status: 'completed'
-        };
-        
-        console.log('Submitting rating:', ratingData);
-      } catch (err) {
-        console.error('Error recording rating:', err);
-      }
       
       toast({
         title: "Rating Submitted",
@@ -266,7 +250,6 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
     }
   }, []);
 
-  // Get system metrics and diagnostics
   const getSystemDiagnostics = useCallback(async () => {
     try {
       const response = await websocketService.sendCommand(CommandType.GET_DIAGNOSTICS);
@@ -282,8 +265,9 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
     serverStatus,
     isConnected,
     isLaunching,
+    currentSessionId,
     launchGame,
-    endSession,
+    endSession: endSessionCommand,
     pauseSession,
     resumeSession,
     getServerStatus,

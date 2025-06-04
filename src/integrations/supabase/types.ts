@@ -719,6 +719,72 @@ export type Database = {
           },
         ]
       }
+      session_tracking: {
+        Row: {
+          amount_paid: number | null
+          created_at: string | null
+          duration_seconds: number | null
+          end_time: string | null
+          game_id: string | null
+          id: string
+          payment_method: string | null
+          rating: number | null
+          rfid_tag: string | null
+          session_id: string
+          start_time: string
+          status: string
+          updated_at: string | null
+          venue_id: string | null
+        }
+        Insert: {
+          amount_paid?: number | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          end_time?: string | null
+          game_id?: string | null
+          id?: string
+          payment_method?: string | null
+          rating?: number | null
+          rfid_tag?: string | null
+          session_id: string
+          start_time?: string
+          status?: string
+          updated_at?: string | null
+          venue_id?: string | null
+        }
+        Update: {
+          amount_paid?: number | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          end_time?: string | null
+          game_id?: string | null
+          id?: string
+          payment_method?: string | null
+          rating?: number | null
+          rfid_tag?: string | null
+          session_id?: string
+          start_time?: string
+          status?: string
+          updated_at?: string | null
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_tracking_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_tracking_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings: {
         Row: {
           id: string
