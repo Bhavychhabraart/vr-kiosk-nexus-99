@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -148,7 +149,7 @@ const Session = () => {
           <CardContent className="space-y-6">
             <div className="flex justify-center">
               <RatingInput
-                value={sessionRating}
+                initialRating={sessionRating}
                 onChange={setSessionRating}
                 size="lg"
               />
