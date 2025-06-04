@@ -45,6 +45,47 @@ export type Database = {
         }
         Relationships: []
       }
+      auth_attempts: {
+        Row: {
+          attempted_at: string | null
+          error_message: string | null
+          id: string
+          ip_address: string | null
+          product_id: string | null
+          success: boolean | null
+          user_agent: string | null
+          venue_id: string | null
+        }
+        Insert: {
+          attempted_at?: string | null
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          product_id?: string | null
+          success?: boolean | null
+          user_agent?: string | null
+          venue_id?: string | null
+        }
+        Update: {
+          attempted_at?: string | null
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          product_id?: string | null
+          success?: boolean | null
+          user_agent?: string | null
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auth_attempts_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_analytics: {
         Row: {
           active_venues: number | null
@@ -305,6 +346,95 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "kiosk_owners_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machine_auth: {
+        Row: {
+          access_level: string | null
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          last_used_at: string | null
+          product_id: string
+          product_key: string
+          updated_at: string | null
+          venue_id: string
+        }
+        Insert: {
+          access_level?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_used_at?: string | null
+          product_id: string
+          product_key: string
+          updated_at?: string | null
+          venue_id: string
+        }
+        Update: {
+          access_level?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_used_at?: string | null
+          product_id?: string
+          product_key?: string
+          updated_at?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_auth_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machine_games: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          game_id: string
+          id: string
+          is_active: boolean | null
+          venue_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          game_id: string
+          id?: string
+          is_active?: boolean | null
+          venue_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          game_id?: string
+          id?: string
+          is_active?: boolean | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_games_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_games_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
@@ -858,7 +988,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      validate_machine_auth: {
+        Args: {
+          p_venue_id: string
+          p_product_key: string
+          p_ip_address?: string
+          p_user_agent?: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
