@@ -1,4 +1,3 @@
-
 import json
 import logging
 import os
@@ -20,6 +19,7 @@ class GameManager:
         self.status_callback: Optional[callable] = None
         self.process_monitor_thread: Optional[threading.Thread] = None
         self.process_monitor_running = False
+        self.game_launch_status = "idle"  # idle, launching, running, failed
         
         # Load game configurations from database
         self.load_games()
@@ -43,15 +43,22 @@ class GameManager:
         if self.is_game_running():
             self.end_game()
         
+        self.game_launch_status = "launching"
+        
         game = self.database.get_game(game_id)
         if not game:
             self.logger.error(f"Game ID {game_id} not found")
+            self.game_launch_status = "failed"
             return False, {}
         
         # Cache the game data
         self.games_cache[game_id] = game
         
         self.logger.info(f"Launching game: {game['title']}")
+        
+        # Notify clients of launch start
+        if self.status_callback:
+            self.status_callback()
         
         try:
             executable = game.get('executable_path', '')
@@ -79,6 +86,7 @@ class GameManager:
                 
                 # Start monitoring the process
                 self.current_game_id = game_id
+                self.game_launch_status = "running"
                 self._start_process_monitor()
                 
                 # Notify clients immediately
@@ -92,6 +100,8 @@ class GameManager:
                 self.logger.info("Entering demo mode - session will continue without actual game")
                 
                 self.current_game_id = game_id
+                self.game_launch_status = "running"  # Demo mode is considered "running"
+                
                 # Notify clients of demo mode
                 if self.status_callback:
                     self.status_callback()
@@ -100,6 +110,9 @@ class GameManager:
             
         except Exception as e:
             self.logger.exception(f"Error launching game {game_id}: {e}")
+            self.game_launch_status = "failed"
+            if self.status_callback:
+                self.status_callback()
             return False, {}
     
     def _start_process_monitor(self):
@@ -178,6 +191,7 @@ class GameManager:
         # Reset game state
         self.current_game_id = None
         self.current_game_process = None
+        self.game_launch_status = "idle"
         
         # Notify clients
         if self.status_callback:
@@ -195,16 +209,23 @@ class GameManager:
                 # Process has exited, clean up
                 self.logger.info(f"Game process exited with code {return_code}")
                 self.current_game_process = None
+                self.game_launch_status = "idle"
                 if not self.current_game_id:  # Don't clear if we're in demo mode
                     self.current_game_id = None
+                    
+                # Notify clients of status change
+                if self.status_callback:
+                    self.status_callback()
                 return False
         
-        # Return True if we have a game ID (could be demo mode or actual process)
-        return self.current_game_id is not None
+        # Return True if we have a game ID and status is running
+        return self.current_game_id is not None and self.game_launch_status == "running"
     
     def is_demo_mode(self) -> bool:
         """Check if we're running in demo mode (game ID set but no process)"""
-        return self.current_game_id is not None and self.current_game_process is None
+        return (self.current_game_id is not None and 
+                self.current_game_process is None and 
+                self.game_launch_status == "running")
     
     def get_current_game_id(self) -> Optional[str]:
         """Get the ID of the currently running game"""
@@ -231,7 +252,8 @@ class GameManager:
             "demo_mode": self.is_demo_mode(),
             "current_game": self.get_current_game_title(),
             "game_id": self.current_game_id,
-            "process_running": self.current_game_process is not None and self.current_game_process.poll() is None
+            "process_running": self.current_game_process is not None and self.current_game_process.poll() is None,
+            "launch_status": self.game_launch_status
         }
     
     def get_available_games(self) -> List[Dict[str, Any]]:

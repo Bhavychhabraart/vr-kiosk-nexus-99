@@ -1,4 +1,3 @@
-
 import { toast } from "@/components/ui/use-toast";
 import { WebSocketSettings } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -85,12 +84,12 @@ const defaultSettings: WebSocketSettings = {
 
 // Command timeout configurations (in milliseconds)
 const COMMAND_TIMEOUTS = {
-  [CommandType.LAUNCH_GAME]: 45000, // 45 seconds for game launch
-  [CommandType.END_SESSION]: 15000, // 15 seconds for ending session
+  [CommandType.LAUNCH_GAME]: 60000, // Increased to 60 seconds for game launch
+  [CommandType.END_SESSION]: 15000,
   [CommandType.PAUSE_SESSION]: 5000,
   [CommandType.RESUME_SESSION]: 5000,
-  [CommandType.GET_STATUS]: 5000,
-  [CommandType.HEARTBEAT]: 10000,
+  [CommandType.GET_STATUS]: 10000, // Increased from 5000
+  [CommandType.HEARTBEAT]: 15000, // Increased from 10000
   [CommandType.SUBMIT_RATING]: 10000,
   [CommandType.GET_DIAGNOSTICS]: 15000,
 };
@@ -123,6 +122,7 @@ class WebSocketService {
   private connectionHealthCheck: number | null = null;
   private commandQueue: Command[] = [];
   private isProcessingQueue = false;
+  private statusPollingInterval: number | null = null;
 
   constructor() {
     this.setDefaultRateLimits();
@@ -259,6 +259,8 @@ class WebSocketService {
       this.connectionHealthCheck = null;
     }
 
+    this.stopStatusPolling();
+
     // Reject all pending commands
     this.commandCallbacks.forEach(({ reject, timeout }) => {
       window.clearTimeout(timeout);
@@ -361,23 +363,43 @@ class WebSocketService {
     return this.serverStatus;
   }
   
+  private startStatusPolling(): void {
+    if (this.statusPollingInterval) {
+      window.clearInterval(this.statusPollingInterval);
+    }
+
+    this.statusPollingInterval = window.setInterval(async () => {
+      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+        try {
+          await this.sendCommand(CommandType.GET_STATUS);
+        } catch (error) {
+          console.warn('Status polling failed:', error);
+        }
+      }
+    }, 5000); // Poll every 5 seconds
+  }
+
+  private stopStatusPolling(): void {
+    if (this.statusPollingInterval) {
+      window.clearInterval(this.statusPollingInterval);
+      this.statusPollingInterval = null;
+    }
+  }
+
   private handleOpen = () => {
     console.log('WebSocket connection opened');
     this.reconnectAttempts = 0;
     this.updateConnectionState(ConnectionState.CONNECTED);
     this.startHeartbeat();
     this.startConnectionHealthCheck();
+    this.startStatusPolling();
     this.processCommandQueue();
     
-    // Get initial status with retry
+    // Get initial status with better error handling
     this.sendCommand(CommandType.GET_STATUS)
       .catch(error => {
-        console.error('Failed to get initial status:', error);
-        // Retry after 2 seconds
-        setTimeout(() => {
-          this.sendCommand(CommandType.GET_STATUS)
-            .catch(e => console.error('Second attempt to get status failed:', e));
-        }, 2000);
+        console.warn('Failed to get initial status:', error);
+        // Don't retry immediately, let polling handle it
       });
     
     toast({
@@ -397,7 +419,27 @@ class WebSocketService {
   
   private handleMessage = (event: MessageEvent) => {
     try {
-      const response: CommandResponse = JSON.parse(event.data);
+      let response: CommandResponse;
+      
+      // Handle malformed or undefined responses
+      if (!event.data || event.data === 'undefined') {
+        console.warn('Received undefined or empty WebSocket message');
+        return;
+      }
+      
+      try {
+        response = JSON.parse(event.data);
+      } catch (parseError) {
+        console.error('Failed to parse WebSocket message:', event.data, parseError);
+        return;
+      }
+      
+      // Validate response structure
+      if (!response || typeof response !== 'object') {
+        console.warn('Invalid response structure:', response);
+        return;
+      }
+      
       console.log('Status update received:', response.data);
       
       if (response.id && this.commandCallbacks.has(response.id)) {
@@ -434,9 +476,7 @@ class WebSocketService {
       }
       
       // Update heartbeat tracking
-      if (response.data && response.data.timestamp) {
-        this.lastHeartbeatTime = Date.now();
-      }
+      this.lastHeartbeatTime = Date.now();
     } catch (error) {
       console.error('Error handling WebSocket message:', error);
     }
@@ -508,16 +548,15 @@ class WebSocketService {
       }
     }
     
-    if (previousStatus.gameLaunching !== status.gameLaunching) {
-      console.log(`Game launching status changed: ${previousStatus.gameLaunching} -> ${status.gameLaunching}`);
-    }
-    
-    if (previousStatus.demoMode !== status.demoMode) {
-      console.log(`Demo mode status changed: ${previousStatus.demoMode} -> ${status.demoMode}`);
-    }
-    
-    if (previousStatus.processRunning !== status.processRunning) {
-      console.log(`Process running status changed: ${previousStatus.processRunning} -> ${status.processRunning}`);
+    // Auto-clear launching state after timeout if game doesn't start
+    if (status.gameLaunching && !status.gameRunning) {
+      setTimeout(() => {
+        if (this.serverStatus.gameLaunching && !this.serverStatus.gameRunning) {
+          console.log('Auto-clearing launching state after timeout');
+          this.serverStatus.gameLaunching = false;
+          this.statusListeners.forEach(listener => listener(this.serverStatus));
+        }
+      }, 30000); // Clear after 30 seconds if game hasn't started
     }
     
     this.statusListeners.forEach(listener => listener(this.serverStatus));

@@ -158,11 +158,22 @@ class WebSocketServer:
             },
             "timestamp": int(datetime.now().timestamp() * 1000)
         }
-        await websocket.send(json.dumps(response))
-        
-        # Update message counter
-        if websocket in self.client_info:
-            self.client_info[websocket]['messages_sent'] += 1
+        await self.send_message_to_client(websocket, response)
+
+    async def send_message_to_client(self, websocket: websockets.WebSocketServerProtocol, message: Dict[str, Any]):
+        """Send a message to a specific client with proper error handling"""
+        try:
+            message_str = json.dumps(message)
+            await websocket.send(message_str)
+            
+            # Update message counter
+            if websocket in self.client_info:
+                self.client_info[websocket]['messages_sent'] += 1
+                
+        except websockets.exceptions.ConnectionClosed:
+            logger.debug(f"Client connection closed while sending message")
+        except Exception as e:
+            logger.error(f"Error sending message to client: {e}")
 
     async def broadcast_status(self):
         """Broadcast system status to all connected clients"""
@@ -177,21 +188,22 @@ class WebSocketServer:
             },
             "timestamp": int(datetime.now().timestamp() * 1000)
         }
-        message = json.dumps(status_data)
         
-        logger.debug(f"Broadcasting status: {status_data['data']['status']}")
+        logger.debug(f"Broadcasting status to {len(self.clients)} clients: {status_data['data']['status']}")
         
         # Send to all clients
-        for client in self.clients.copy():  # Use copy to avoid modification during iteration
+        disconnected_clients = set()
+        for client in self.clients.copy():
             try:
-                await client.send(message)
-                if client in self.client_info:
-                    self.client_info[client]['messages_sent'] += 1
-            except websockets.exceptions.ConnectionClosed:
-                logger.debug(f"Client already closed during broadcast")
-                # Client will be removed in handle_client
+                await self.send_message_to_client(client, status_data)
             except Exception as e:
                 logger.error(f"Error broadcasting to client: {e}")
+                disconnected_clients.add(client)
+        
+        # Remove disconnected clients
+        for client in disconnected_clients:
+            if client in self.clients:
+                await self.unregister_client(client)
 
     async def status_broadcast_loop(self):
         """Periodically broadcast system status to all clients"""
@@ -236,9 +248,7 @@ class WebSocketServer:
                     
                     # Send response if the command handler didn't already do so
                     if response:
-                        await websocket.send(json.dumps(response))
-                        if websocket in self.client_info:
-                            self.client_info[websocket]['messages_sent'] += 1
+                        await self.send_message_to_client(websocket, response)
                         
                 except json.JSONDecodeError:
                     logger.error(f"Invalid JSON received: {message}")
@@ -263,9 +273,7 @@ class WebSocketServer:
             "error": error_message,
             "timestamp": int(datetime.now().timestamp() * 1000)
         }
-        await websocket.send(json.dumps(response))
-        if websocket in self.client_info:
-            self.client_info[websocket]['messages_sent'] += 1
+        await self.send_message_to_client(websocket, response)
 
     def get_server_status(self) -> Dict[str, Any]:
         """Get the current server status"""

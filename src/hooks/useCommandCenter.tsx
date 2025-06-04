@@ -36,7 +36,22 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
     // Subscribe to server status updates
     const unsubServerStatus = websocketService.onStatusUpdate((status) => {
       setServerStatus(status);
-      setIsLaunching(status.gameLaunching || false);
+      
+      // Handle launching state more intelligently
+      const wasLaunching = isLaunching;
+      const isCurrentlyLaunching = status.gameLaunching || false;
+      
+      setIsLaunching(isCurrentlyLaunching);
+      
+      // Clear launching state when game actually starts running
+      if (wasLaunching && status.gameRunning && !isCurrentlyLaunching) {
+        console.log('Game launch completed successfully');
+        toast({
+          title: "Game Launched",
+          description: "VR game is now running successfully",
+        });
+      }
+      
       options.onStatusChange?.(status);
       
       // Check for system alerts
@@ -60,7 +75,7 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
       unsubConnectionState();
       unsubServerStatus();
     };
-  }, [options]);
+  }, [options, isLaunching]);
 
   // Check if connected
   const isConnected = connectionState === ConnectionState.CONNECTED;
@@ -90,11 +105,8 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
         console.error('Error recording session start:', err);
       }
       
-      // Show success toast
-      toast({
-        title: "Game Launched Successfully",
-        description: `${response.data?.gameTitle || 'Game'} is now running`,
-      });
+      // Don't show success toast immediately - wait for actual game launch
+      console.log('Game launch command sent successfully');
       
       return response;
     } catch (error) {
