@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -35,6 +36,9 @@ const GameDetail = () => {
 
   // Load game data from games API
   useEffect(() => {
+    console.log("Loading game with ID:", id);
+    console.log("Available games:", games);
+    
     setIsLoading(true);
     
     if (games && games.length > 0 && id) {
@@ -42,15 +46,19 @@ const GameDetail = () => {
       const foundGame = games.find(g => g.id === id);
       
       if (foundGame) {
+        console.log("Found game in API:", foundGame);
         // Transform the game data to match our detailed view format
         const gameData = getEnhancedGameDetails(foundGame);
         setGame(gameData);
       } else {
+        console.log("Game not found in API, trying mock data");
         // If game not in API results, try mock data as fallback
-        const mockGame = getMockGameById(Number(id));
+        const mockGame = getMockGameById(id);
         if (mockGame) {
+          console.log("Found game in mock data:", mockGame);
           setGame(mockGame);
         } else {
+          console.log("Game not found anywhere");
           // No game found in either source
           toast({
             title: "Game not found",
@@ -59,10 +67,12 @@ const GameDetail = () => {
           });
         }
       }
-    } else {
+    } else if (id) {
+      console.log("No games loaded yet, trying mock data");
       // If no games loaded yet or no id, try to get from mock data
-      const mockGame = getMockGameById(Number(id));
+      const mockGame = getMockGameById(id);
       if (mockGame) {
+        console.log("Found game in mock data (fallback):", mockGame);
         setGame(mockGame);
       }
     }
@@ -445,10 +455,10 @@ interface GameDetails {
   ageRating: string;
 }
 
-// Mock function to get game by ID
-function getMockGameById(id: number): GameDetails | null {
-  const games: Record<number, GameDetails> = {
-    1: {
+// Mock function to get game by ID - supporting both string and number IDs
+function getMockGameById(id: string): GameDetails | null {
+  const games: Record<string, GameDetails> = {
+    "1": {
       id: "1",
       title: "Beat Saber",
       description: "Beat Saber is a VR rhythm game where your goal is to slash the beats which fit perfectly into precisely handcrafted music. Every beat indicates which saber you need to use and the direction you need to match. All the music is composed to perfectly fit the handmade levels. Our goal is to make players almost dance while cutting the cubes and avoiding obstacles.",
@@ -460,7 +470,7 @@ function getMockGameById(id: number): GameDetails | null {
       players: "Single Player",
       ageRating: "E for Everyone",
     },
-    2: {
+    "2": {
       id: "2",
       title: "Half-Life: Alyx",
       description: "Half-Life: Alyx is Valve's VR return to the Half-Life series. It's the story of an impossible fight against a vicious alien race known as the Combine, set between the events of Half-Life and Half-Life 2. Playing as Alyx Vance, you are humanity's only chance for survival.",
@@ -472,7 +482,7 @@ function getMockGameById(id: number): GameDetails | null {
       players: "Single Player",
       ageRating: "M for Mature",
     },
-    3: {
+    "3": {
       id: "3",
       title: "Superhot VR",
       description: "SUPERHOT VR is a virtual reality first-person shooter video game. Time in the game progresses only when the player moves, allowing for a unique gameplay experience where players can plan their actions in slow-motion. The game features multiple locations and gives players access to a variety of weapons.",
@@ -483,6 +493,43 @@ function getMockGameById(id: number): GameDetails | null {
       duration: "5-20 min",
       players: "Single Player",
       ageRating: "T for Teen",
+    },
+    // Add fallback for any UUID that doesn't match our mock data
+    "f469ed8e-682c-48e2-8621-b311fbbcc4c3": {
+      id: "f469ed8e-682c-48e2-8621-b311fbbcc4c3",
+      title: "VR Adventure Quest",
+      description: "An immersive VR adventure that takes you through mystical lands filled with puzzles, creatures, and epic battles. Experience the next generation of virtual reality gaming.",
+      coverImage: "https://images.unsplash.com/photo-1592478411213-6153e4ebc696?q=80&w=1600&auto=format&fit=crop",
+      trailerUrl: "",
+      categories: ["Adventure", "Fantasy", "Action"],
+      rating: 4.6,
+      duration: "5-20 min",
+      players: "Single Player",
+      ageRating: "T for Teen",
+    },
+    "768ce333-6745-4f9f-9250-7165b5b92153": {
+      id: "768ce333-6745-4f9f-9250-7165b5b92153",
+      title: "Space Explorer VR",
+      description: "Explore the vastness of space in this incredible VR experience. Navigate through asteroid fields, discover new planets, and engage in thrilling space battles.",
+      coverImage: "https://images.unsplash.com/photo-1614732414444-096e5f1122d5?q=80&w=1600&auto=format&fit=crop",
+      trailerUrl: "",
+      categories: ["Space", "Exploration", "Simulation"],
+      rating: 4.5,
+      duration: "5-20 min",
+      players: "Single Player",
+      ageRating: "E for Everyone",
+    },
+    "62534d81-7e81-4b7d-8d07-26ecb2431174": {
+      id: "62534d81-7e81-4b7d-8d07-26ecb2431174",
+      title: "Racing Thunder VR",
+      description: "Feel the adrenaline rush in this high-speed VR racing game. Race through stunning environments with realistic physics and compete against AI drivers in intense races.",
+      coverImage: "https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?q=80&w=1600&auto=format&fit=crop",
+      trailerUrl: "",
+      categories: ["Racing", "Sports", "Simulation"],
+      rating: 4.4,
+      duration: "5-20 min",
+      players: "Single Player",
+      ageRating: "E for Everyone",
     }
   };
 
