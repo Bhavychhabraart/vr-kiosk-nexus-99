@@ -82,6 +82,11 @@ const RFIDAuth = () => {
     }
   };
 
+  const handleSimulateRfid = async () => {
+    const simulatedTag = `RFID_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
+    await handleCardScan(simulatedTag);
+  };
+
   const handleContinueToPayment = () => {
     if (!rfidTag || !cardInfo) return;
     
@@ -162,9 +167,12 @@ const RFIDAuth = () => {
                 </div>
 
                 <RFIDCardInput
-                  onCardDetected={handleCardScan}
-                  disabled={authStep !== "scan"}
+                  onCardScanned={handleCardScan}
+                  onSimulate={handleSimulateRfid}
+                  isLoading={isVerifying}
+                  isSimulating={false}
                   placeholder="Tap or scan your RFID card here"
+                  showSimulation={authStep === "scan"}
                 />
 
                 {isVerifying && (
