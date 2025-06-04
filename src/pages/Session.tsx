@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,7 @@ import { useGames } from "@/hooks/useGames";
 const Session = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { data: games, isLoading: gamesLoading } = useGames();
+  const { games, isLoading: gamesLoading } = useGames();
   
   // Get parameters from URL
   const gameId = searchParams.get("gameId");
