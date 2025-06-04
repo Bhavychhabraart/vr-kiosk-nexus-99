@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useMachineAuth } from "@/hooks/useMachineAuth";
 import MachineAuthLogin from "@/components/auth/MachineAuthLogin";
@@ -13,17 +14,25 @@ import {
   LogOut,
   MapPin,
   Calendar,
-  Settings
+  Settings,
+  CreditCard,
+  Star,
+  Package,
+  Headphones
 } from "lucide-react";
-import { useMachineGames } from "@/hooks/useMachineGames";
+
+// Import machine-specific admin components
+import MachineGamesManagementTab from "@/components/machine-admin/MachineGamesManagementTab";
+import MachineAnalyticsTab from "@/components/machine-admin/MachineAnalyticsTab";
+import MachineSettingsTab from "@/components/machine-admin/MachineSettingsTab";
+import MachinePaymentsEarningsTab from "@/components/machine-admin/MachinePaymentsEarningsTab";
+import MachineGamesShowcaseTab from "@/components/machine-admin/MachineGamesShowcaseTab";
+import MachineProductCatalogTab from "@/components/machine-admin/MachineProductCatalogTab";
+import MachineSupportTab from "@/components/machine-admin/MachineSupportTab";
 
 const MachineAdmin = () => {
   const { isAuthenticated, machineSession, logout } = useMachineAuth();
   const [activeTab, setActiveTab] = useState("overview");
-
-  const { machineGames, isLoadingMachineGames } = useMachineGames(
-    machineSession?.venue?.id
-  );
 
   if (!isAuthenticated || !machineSession) {
     return <MachineAuthLogin onSuccess={() => {}} />;
@@ -65,66 +74,9 @@ const MachineAdmin = () => {
           </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Available Games</CardTitle>
-              <Gamepad2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {isLoadingMachineGames ? '...' : machineGames?.length || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Games assigned to this machine
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Machine Status</CardTitle>
-              <Settings className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">Online</div>
-              <p className="text-xs text-muted-foreground">
-                System operational
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Today's Sessions</CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">12</div>
-              <p className="text-xs text-muted-foreground">
-                +3 from yesterday
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Revenue Today</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">₹2,840</div>
-              <p className="text-xs text-muted-foreground">
-                +15% from yesterday
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Building2 className="w-4 h-4" />
               Overview
@@ -136,6 +88,22 @@ const MachineAdmin = () => {
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               Analytics
+            </TabsTrigger>
+            <TabsTrigger value="earnings" className="flex items-center gap-2">
+              <CreditCard className="w-4 h-4" />
+              Payments
+            </TabsTrigger>
+            <TabsTrigger value="showcase" className="flex items-center gap-2">
+              <Star className="w-4 h-4" />
+              Showcase
+            </TabsTrigger>
+            <TabsTrigger value="catalog" className="flex items-center gap-2">
+              <Package className="w-4 h-4" />
+              Catalog
+            </TabsTrigger>
+            <TabsTrigger value="support" className="flex items-center gap-2">
+              <Headphones className="w-4 h-4" />
+              Support
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="w-4 h-4" />
@@ -175,92 +143,31 @@ const MachineAdmin = () => {
           </TabsContent>
 
           <TabsContent value="games" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Assigned Games</CardTitle>
-                <CardDescription>
-                  Games currently available on this machine
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoadingMachineGames ? (
-                  <div className="text-center py-8">Loading games...</div>
-                ) : machineGames && machineGames.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {machineGames.map((game) => (
-                      <Card key={game.id} className="overflow-hidden">
-                        {game.image_url && (
-                          <div className="aspect-video bg-gray-200">
-                            <img 
-                              src={game.image_url} 
-                              alt={game.title}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        )}
-                        <div className="p-4">
-                          <h3 className="font-semibold">{game.title}</h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {game.description}
-                          </p>
-                          <div className="flex items-center justify-between mt-3">
-                            <Badge variant="secondary">Active</Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {Math.floor(game.min_duration_seconds / 60)}-{Math.floor(game.max_duration_seconds / 60)} min
-                            </span>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Gamepad2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">No games assigned to this machine</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <MachineGamesManagementTab venueId={venue.id} />
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Machine Analytics</CardTitle>
-                <CardDescription>
-                  Performance metrics for {venue.name}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Analytics dashboard coming soon</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    This will show machine-specific performance data
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <MachineAnalyticsTab venueId={venue.id} />
+          </TabsContent>
+
+          <TabsContent value="earnings" className="space-y-6">
+            <MachinePaymentsEarningsTab venueId={venue.id} />
+          </TabsContent>
+
+          <TabsContent value="showcase" className="space-y-6">
+            <MachineGamesShowcaseTab venueId={venue.id} />
+          </TabsContent>
+
+          <TabsContent value="catalog" className="space-y-6">
+            <MachineProductCatalogTab venueId={venue.id} />
+          </TabsContent>
+
+          <TabsContent value="support" className="space-y-6">
+            <MachineSupportTab venueId={venue.id} />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Machine Settings</CardTitle>
-                <CardDescription>
-                  Configure settings for {venue.name}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <Settings className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Settings panel coming soon</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    This will allow machine-specific configuration
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <MachineSettingsTab venueId={venue.id} />
           </TabsContent>
         </Tabs>
       </div>
