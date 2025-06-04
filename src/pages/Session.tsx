@@ -48,15 +48,33 @@ const Session = () => {
   });
 
   useEffect(() => {
+    // Add debugging to understand what's happening
+    console.log('Session component mounted');
+    console.log('Game data:', gameData);
+    console.log('Session duration:', sessionDuration);
+    console.log('Payment data:', paymentData);
+    console.log('Location state:', location.state);
+    
     if (!gameData) {
-      navigate('/games');
+      console.error('No game data found in location state');
+      toast({
+        variant: "destructive",
+        title: "Session Error",
+        description: "No game data found. Redirecting to games page.",
+      });
+      // Add a small delay to show the toast before redirecting
+      setTimeout(() => {
+        navigate('/games');
+      }, 2000);
       return;
     }
 
     // Auto-launch the game when component mounts
     const autoLaunch = async () => {
       try {
+        console.log('Auto-launching game:', gameData.id);
         await launchGame(gameData.id, sessionDuration, paymentData);
+        console.log('Game launch initiated successfully');
       } catch (error) {
         console.error('Failed to auto-launch game:', error);
         toast({
@@ -68,7 +86,7 @@ const Session = () => {
     };
 
     autoLaunch();
-  }, [gameData, sessionDuration, paymentData, launchGame]);
+  }, [gameData, sessionDuration, paymentData, launchGame, navigate, location.state]);
 
   // Update time remaining
   useEffect(() => {
@@ -132,8 +150,23 @@ const Session = () => {
   const progressPercentage = sessionDuration > 0 ? 
     ((sessionDuration - timeRemaining) / sessionDuration) * 100 : 0;
 
+  // Show loading state while we check for game data
   if (!gameData) {
-    return null;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-black/80 border-vr-primary/30">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl text-white">Loading Session...</CardTitle>
+            <CardDescription className="text-gray-300">
+              Preparing your VR experience
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-vr-primary mx-auto"></div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (showRating) {
