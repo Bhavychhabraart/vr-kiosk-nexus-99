@@ -9,6 +9,151 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_users: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          last_login: string | null
+          permissions: Json | null
+          role: string
+          updated_at: string | null
+          username: string
+          venue_ids: string[] | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_login?: string | null
+          permissions?: Json | null
+          role?: string
+          updated_at?: string | null
+          username: string
+          venue_ids?: string[] | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_login?: string | null
+          permissions?: Json | null
+          role?: string
+          updated_at?: string | null
+          username?: string
+          venue_ids?: string[] | null
+        }
+        Relationships: []
+      }
+      business_analytics: {
+        Row: {
+          active_venues: number | null
+          average_session_duration: number | null
+          created_at: string | null
+          date: string
+          id: string
+          new_customers: number | null
+          regional_breakdown: Json | null
+          top_performing_venue_id: string | null
+          total_customers: number | null
+          total_revenue: number | null
+          total_sessions: number | null
+          total_venues: number | null
+        }
+        Insert: {
+          active_venues?: number | null
+          average_session_duration?: number | null
+          created_at?: string | null
+          date: string
+          id?: string
+          new_customers?: number | null
+          regional_breakdown?: Json | null
+          top_performing_venue_id?: string | null
+          total_customers?: number | null
+          total_revenue?: number | null
+          total_sessions?: number | null
+          total_venues?: number | null
+        }
+        Update: {
+          active_venues?: number | null
+          average_session_duration?: number | null
+          created_at?: string | null
+          date?: string
+          id?: string
+          new_customers?: number | null
+          regional_breakdown?: Json | null
+          top_performing_venue_id?: string | null
+          total_customers?: number | null
+          total_revenue?: number | null
+          total_sessions?: number | null
+          total_venues?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_analytics_top_performing_venue_id_fkey"
+            columns: ["top_performing_venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          created_at: string | null
+          date_of_birth: string | null
+          email: string | null
+          gender: string | null
+          id: string
+          last_visit_date: string | null
+          loyalty_points: number | null
+          name: string | null
+          phone: string | null
+          preferred_venue_id: string | null
+          total_sessions: number | null
+          total_spent: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          gender?: string | null
+          id?: string
+          last_visit_date?: string | null
+          loyalty_points?: number | null
+          name?: string | null
+          phone?: string | null
+          preferred_venue_id?: string | null
+          total_sessions?: number | null
+          total_spent?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          gender?: string | null
+          id?: string
+          last_visit_date?: string | null
+          loyalty_points?: number | null
+          name?: string | null
+          phone?: string | null
+          preferred_venue_id?: string | null
+          total_sessions?: number | null
+          total_spent?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_preferred_venue_id_fkey"
+            columns: ["preferred_venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       earnings_summary: {
         Row: {
           created_at: string | null
@@ -20,6 +165,7 @@ export type Database = {
           total_revenue: number | null
           total_sessions: number | null
           upi_revenue: number | null
+          venue_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -31,6 +177,7 @@ export type Database = {
           total_revenue?: number | null
           total_sessions?: number | null
           upi_revenue?: number | null
+          venue_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -42,6 +189,7 @@ export type Database = {
           total_revenue?: number | null
           total_sessions?: number | null
           upi_revenue?: number | null
+          venue_id?: string | null
         }
         Relationships: [
           {
@@ -49,6 +197,13 @@ export type Database = {
             columns: ["kiosk_id"]
             isOneToOne: false
             referencedRelation: "kiosk_owners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "earnings_summary_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
             referencedColumns: ["id"]
           },
         ]
@@ -115,6 +270,7 @@ export type Database = {
           owner_name: string
           theme_colors: Json | null
           updated_at: string | null
+          venue_id: string | null
         }
         Insert: {
           address?: string | null
@@ -129,6 +285,7 @@ export type Database = {
           owner_name: string
           theme_colors?: Json | null
           updated_at?: string | null
+          venue_id?: string | null
         }
         Update: {
           address?: string | null
@@ -143,6 +300,63 @@ export type Database = {
           owner_name?: string
           theme_colors?: Json | null
           updated_at?: string | null
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kiosk_owners_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          message: string
+          priority: string | null
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string | null
+          target_ids: string[] | null
+          target_type: string
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          message: string
+          priority?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          target_ids?: string[] | null
+          target_type: string
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          message?: string
+          priority?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          target_ids?: string[] | null
+          target_type?: string
+          title?: string
+          type?: string
         }
         Relationships: []
       }
@@ -157,6 +371,7 @@ export type Database = {
           upi_enabled: boolean | null
           upi_merchant_id: string | null
           upi_qr_settings: Json | null
+          venue_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -168,6 +383,7 @@ export type Database = {
           upi_enabled?: boolean | null
           upi_merchant_id?: string | null
           upi_qr_settings?: Json | null
+          venue_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -179,6 +395,7 @@ export type Database = {
           upi_enabled?: boolean | null
           upi_merchant_id?: string | null
           upi_qr_settings?: Json | null
+          venue_id?: string | null
         }
         Relationships: [
           {
@@ -186,6 +403,13 @@ export type Database = {
             columns: ["kiosk_id"]
             isOneToOne: false
             referencedRelation: "kiosk_owners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_methods_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
             referencedColumns: ["id"]
           },
         ]
@@ -202,6 +426,7 @@ export type Database = {
           total_revenue: number | null
           total_sessions: number | null
           updated_at: string | null
+          venue_id: string | null
           weekly_sessions: number | null
         }
         Insert: {
@@ -215,6 +440,7 @@ export type Database = {
           total_revenue?: number | null
           total_sessions?: number | null
           updated_at?: string | null
+          venue_id?: string | null
           weekly_sessions?: number | null
         }
         Update: {
@@ -228,6 +454,7 @@ export type Database = {
           total_revenue?: number | null
           total_sessions?: number | null
           updated_at?: string | null
+          venue_id?: string | null
           weekly_sessions?: number | null
         }
         Relationships: [
@@ -245,11 +472,19 @@ export type Database = {
             referencedRelation: "kiosk_owners"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "popular_games_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
         ]
       }
       rfid_cards: {
         Row: {
           created_at: string
+          customer_id: string | null
           id: string
           last_used_at: string | null
           name: string | null
@@ -259,6 +494,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          customer_id?: string | null
           id?: string
           last_used_at?: string | null
           name?: string | null
@@ -268,6 +504,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          customer_id?: string | null
           id?: string
           last_used_at?: string | null
           name?: string | null
@@ -275,11 +512,20 @@ export type Database = {
           tag_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "rfid_cards_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       session_history: {
         Row: {
           created_at: string
+          customer_id: string | null
           duration_seconds: number | null
           end_time: string | null
           game_id: string | null
@@ -289,9 +535,11 @@ export type Database = {
           rfid_tag: string | null
           start_time: string
           status: string
+          venue_id: string | null
         }
         Insert: {
           created_at?: string
+          customer_id?: string | null
           duration_seconds?: number | null
           end_time?: string | null
           game_id?: string | null
@@ -301,9 +549,11 @@ export type Database = {
           rfid_tag?: string | null
           start_time?: string
           status?: string
+          venue_id?: string | null
         }
         Update: {
           created_at?: string
+          customer_id?: string | null
           duration_seconds?: number | null
           end_time?: string | null
           game_id?: string | null
@@ -313,13 +563,28 @@ export type Database = {
           rfid_tag?: string | null
           start_time?: string
           status?: string
+          venue_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "session_history_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "session_history_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_history_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
             referencedColumns: ["id"]
           },
         ]
@@ -358,6 +623,7 @@ export type Database = {
           start_date: string
           status: string | null
           updated_at: string | null
+          venue_id: string | null
         }
         Insert: {
           billing_history?: Json | null
@@ -374,6 +640,7 @@ export type Database = {
           start_date: string
           status?: string | null
           updated_at?: string | null
+          venue_id?: string | null
         }
         Update: {
           billing_history?: Json | null
@@ -390,6 +657,7 @@ export type Database = {
           start_date?: string
           status?: string | null
           updated_at?: string | null
+          venue_id?: string | null
         }
         Relationships: [
           {
@@ -397,6 +665,13 @@ export type Database = {
             columns: ["kiosk_id"]
             isOneToOne: false
             referencedRelation: "kiosk_owners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
             referencedColumns: ["id"]
           },
         ]
@@ -416,6 +691,7 @@ export type Database = {
           status: string | null
           title: string
           updated_at: string | null
+          venue_id: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -431,6 +707,7 @@ export type Database = {
           status?: string | null
           title: string
           updated_at?: string | null
+          venue_id?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -446,6 +723,7 @@ export type Database = {
           status?: string | null
           title?: string
           updated_at?: string | null
+          venue_id?: string | null
         }
         Relationships: [
           {
@@ -453,6 +731,13 @@ export type Database = {
             columns: ["kiosk_id"]
             isOneToOne: false
             referencedRelation: "kiosk_owners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
             referencedColumns: ["id"]
           },
         ]
@@ -501,6 +786,69 @@ export type Database = {
           release_date?: string | null
           status?: string | null
           trailer_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      venues: {
+        Row: {
+          address: string
+          city: string
+          created_at: string | null
+          id: string
+          installation_date: string | null
+          last_maintenance: string | null
+          latitude: number | null
+          longitude: number | null
+          machine_model: string | null
+          manager_email: string | null
+          manager_name: string | null
+          manager_phone: string | null
+          name: string
+          pin_code: string
+          serial_number: string | null
+          state: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address: string
+          city: string
+          created_at?: string | null
+          id?: string
+          installation_date?: string | null
+          last_maintenance?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          machine_model?: string | null
+          manager_email?: string | null
+          manager_name?: string | null
+          manager_phone?: string | null
+          name: string
+          pin_code: string
+          serial_number?: string | null
+          state: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string
+          city?: string
+          created_at?: string | null
+          id?: string
+          installation_date?: string | null
+          last_maintenance?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          machine_model?: string | null
+          manager_email?: string | null
+          manager_name?: string | null
+          manager_phone?: string | null
+          name?: string
+          pin_code?: string
+          serial_number?: string | null
+          state?: string
+          status?: string | null
           updated_at?: string | null
         }
         Relationships: []

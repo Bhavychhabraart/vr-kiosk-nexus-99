@@ -11,6 +11,7 @@ import Session from "./pages/Session";
 import RFIDAuth from "./pages/RFIDAuth";
 import PaymentSelection from "./pages/PaymentSelection";
 import Admin from "./pages/Admin";
+import SuperAdmin from "./pages/SuperAdmin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ function App() {
             <Route path="/rfid-auth" element={<RFIDAuth />} />
             <Route path="/session" element={<Session />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/super-admin" element={<SuperAdmin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

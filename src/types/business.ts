@@ -30,6 +30,27 @@ export type SupportTicket = Database["public"]["Tables"]["support_tickets"]["Row
 export type SupportTicketInsert = Database["public"]["Tables"]["support_tickets"]["Insert"];
 export type SupportTicketUpdate = Database["public"]["Tables"]["support_tickets"]["Update"];
 
+// New types for Super Admin Panel
+export type Venue = Database["public"]["Tables"]["venues"]["Row"];
+export type VenueInsert = Database["public"]["Tables"]["venues"]["Insert"];
+export type VenueUpdate = Database["public"]["Tables"]["venues"]["Update"];
+
+export type Customer = Database["public"]["Tables"]["customers"]["Row"];
+export type CustomerInsert = Database["public"]["Tables"]["customers"]["Insert"];
+export type CustomerUpdate = Database["public"]["Tables"]["customers"]["Update"];
+
+export type Notification = Database["public"]["Tables"]["notifications"]["Row"];
+export type NotificationInsert = Database["public"]["Tables"]["notifications"]["Insert"];
+export type NotificationUpdate = Database["public"]["Tables"]["notifications"]["Update"];
+
+export type BusinessAnalytics = Database["public"]["Tables"]["business_analytics"]["Row"];
+export type BusinessAnalyticsInsert = Database["public"]["Tables"]["business_analytics"]["Insert"];
+export type BusinessAnalyticsUpdate = Database["public"]["Tables"]["business_analytics"]["Update"];
+
+export type AdminUser = Database["public"]["Tables"]["admin_users"]["Row"];
+export type AdminUserInsert = Database["public"]["Tables"]["admin_users"]["Insert"];
+export type AdminUserUpdate = Database["public"]["Tables"]["admin_users"]["Update"];
+
 // Additional business interfaces
 export interface PaymentSettings {
   rfidEnabled: boolean;
@@ -61,4 +82,20 @@ export interface GamePerformance extends PopularGame {
 export interface ProductPreview extends UpcomingProduct {
   is_featured?: boolean;
   demo_available?: boolean;
+}
+
+export interface VenueWithAnalytics extends Venue {
+  daily_revenue?: number;
+  monthly_sessions?: number;
+  customer_count?: number;
+  status_color?: string;
+}
+
+export interface BusinessMetrics {
+  totalRevenue: number;
+  totalVenues: number;
+  activeVenues: number;
+  totalCustomers: number;
+  averageSessionDuration: number;
+  topPerformingVenue?: Venue;
 }
