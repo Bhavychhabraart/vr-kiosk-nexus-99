@@ -177,7 +177,7 @@ export function useAdminSignup() {
           }
 
           // Check if the function returned an error by properly typing the result
-          const result = roleResult as RoleAssignmentResult;
+          const result = roleResult as unknown as RoleAssignmentResult;
           if (result && !result.success) {
             console.error('Role assignment function error:', result.error);
             toast({
