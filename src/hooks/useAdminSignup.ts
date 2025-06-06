@@ -20,12 +20,6 @@ interface SignupValidationResult {
   error?: string;
 }
 
-interface RoleAssignmentResult {
-  success: boolean;
-  error?: string;
-  message?: string;
-}
-
 export function useAdminSignup() {
   const [isLoading, setIsLoading] = useState(false);
   const [validatedVenue, setValidatedVenue] = useState<SignupValidationResult['venue'] | null>(null);
@@ -167,6 +161,7 @@ export function useAdminSignup() {
     try {
       console.log('Starting admin signup process for:', email);
 
+      // Re-validate the product key to ensure it's still valid
       const validation = await validateProductKey(productKey);
       if (!validation.success) {
         console.error('Product key validation failed during signup:', validation.error);
@@ -243,7 +238,7 @@ export function useAdminSignup() {
 
         toast({
           title: "Welcome!",
-          description: `Admin account created successfully for ${validatedVenue?.name}. Please check your email to verify your account.`,
+          description: `Admin account created successfully for ${validation.venue.name}. Please check your email to verify your account.`,
         });
 
         return { success: true, user: authData.user };

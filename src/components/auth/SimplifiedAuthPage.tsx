@@ -14,6 +14,7 @@ import { useAdminSignup } from '@/hooks/useAdminSignup';
 const SimplifiedAuthPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [validatedProductKey, setValidatedProductKey] = useState<string>('');
   const { signIn, signUp, signUpWithInvitation, user } = useSimplifiedAuth();
   const { signUpAdmin, validateProductKey, validatedVenue, isLoading: adminSignupLoading, clearValidation } = useAdminSignup();
   const navigate = useNavigate();
@@ -28,6 +29,11 @@ const SimplifiedAuthPage = () => {
       navigate(from, { replace: true });
     }
   }, [user, navigate, from]);
+
+  // Normalize machine ID for comparison (remove hyphens, convert to uppercase)
+  const normalizeMachineId = (id: string) => {
+    return id.replace(/[-\s]/g, '').toUpperCase();
+  };
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -71,30 +77,12 @@ const SimplifiedAuthPage = () => {
     setError('');
 
     const formData = new FormData(e.currentTarget);
-    const machineId = formData.get('machineId') as string;
-    const productKey = formData.get('productKey') as string;
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     const fullName = formData.get('fullName') as string;
 
-    // Validate product key first
-    if (!validatedVenue) {
-      const validation = await validateProductKey(productKey);
-      if (!validation.success) {
-        setError(validation.error || 'Invalid product key');
-        return;
-      }
-      
-      // Check if machine ID matches the validated venue
-      if (validation.venue && validation.venue.serial_number !== machineId) {
-        setError('Machine ID does not match the product key');
-        clearValidation();
-        return;
-      }
-    }
-
-    // Proceed with signup
-    const result = await signUpAdmin(email, password, fullName, productKey);
+    // Use the validated product key that was stored during validation
+    const result = await signUpAdmin(email, password, fullName, validatedProductKey);
     
     if (result.error) {
       setError(result.error);
@@ -144,12 +132,33 @@ const SimplifiedAuthPage = () => {
       return;
     }
 
-    // Check if machine ID matches
-    if (validation.venue && validation.venue.serial_number !== machineId) {
-      setError('Machine ID does not match the product key');
+    // Normalize both the entered machine ID and the venue serial number for comparison
+    const normalizedInput = normalizeMachineId(machineId);
+    const normalizedVenueSerial = normalizeMachineId(validation.venue?.serial_number || '');
+
+    console.log('Machine ID comparison:', {
+      userInput: machineId,
+      normalizedInput,
+      venueSerial: validation.venue?.serial_number,
+      normalizedVenueSerial,
+      match: normalizedInput === normalizedVenueSerial
+    });
+
+    // Check if machine ID matches (using normalized comparison)
+    if (validation.venue && normalizedInput !== normalizedVenueSerial) {
+      setError(`Machine ID "${machineId}" does not match the product key. Expected: ${validation.venue.serial_number}`);
       clearValidation();
       return;
     }
+
+    // Store the validated product key for use in signup
+    setValidatedProductKey(productKey);
+  };
+
+  const handleClearValidation = () => {
+    clearValidation();
+    setValidatedProductKey('');
+    setError('');
   };
 
   return (
@@ -317,11 +326,14 @@ const SimplifiedAuthPage = () => {
                           id="machine-id"
                           name="machineId"
                           type="text"
-                          placeholder="e.g., VRX001DEL"
+                          placeholder="e.g., VRX001DEL or VRX001-DEL"
                           className="pl-10"
                           required
                         />
                       </div>
+                      <p className="text-xs text-muted-foreground">
+                        Enter your machine's serial number (case insensitive, hyphens optional)
+                      </p>
                     </div>
 
                     <div className="space-y-2">
@@ -337,6 +349,9 @@ const SimplifiedAuthPage = () => {
                           required
                         />
                       </div>
+                      <p className="text-xs text-muted-foreground">
+                        Product key provided with your VR kiosk
+                      </p>
                     </div>
 
                     <Button 
@@ -354,13 +369,12 @@ const SimplifiedAuthPage = () => {
                       <Building2 className="h-4 w-4" />
                       <AlertDescription>
                         Machine validated: <strong>{validatedVenue.name}</strong> in {validatedVenue.city}, {validatedVenue.state}
+                        <br />
+                        <span className="text-sm text-muted-foreground">Serial: {validatedVenue.serial_number}</span>
                       </AlertDescription>
                     </Alert>
 
                     <form onSubmit={handleMachineAdminSignUp} className="space-y-4">
-                      <input type="hidden" name="machineId" value={validatedVenue.serial_number} />
-                      <input type="hidden" name="productKey" value="" />
-
                       <div className="space-y-2">
                         <Label htmlFor="machine-admin-name">Full Name</Label>
                         <div className="relative">
@@ -419,7 +433,7 @@ const SimplifiedAuthPage = () => {
                         type="button" 
                         variant="outline" 
                         className="w-full" 
-                        onClick={clearValidation}
+                        onClick={handleClearValidation}
                       >
                         Back to Validation
                       </Button>
