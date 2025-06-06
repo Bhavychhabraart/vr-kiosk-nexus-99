@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Lock, Mail, User, ArrowRight, Crown, Settings } from 'lucide-react';
+import { Lock, Mail, User, ArrowRight, Crown, Settings, Building2, Info } from 'lucide-react';
 import { useSimplifiedAuth } from '@/hooks/useSimplifiedAuth';
 
 const SimplifiedAuthPage = () => {
@@ -87,6 +87,11 @@ const SimplifiedAuthPage = () => {
     }
     
     setIsLoading(false);
+  };
+
+  const handleContactSupport = () => {
+    // Could be enhanced to open a support form or redirect to support email
+    window.location.href = 'mailto:support@arcadiavr.com?subject=Machine Admin Access Request';
   };
 
   return (
@@ -302,8 +307,30 @@ const SimplifiedAuthPage = () => {
             </Tabs>
           )}
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Machine Admins receive invitation emails from Super Admins</p>
+          {/* Machine Admin Access Information */}
+          <div className="mt-6 space-y-3">
+            <div className="border-t pt-4">
+              <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
+                <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm">
+                  <p className="font-medium text-blue-900 mb-1">
+                    Need Machine Admin Access?
+                  </p>
+                  <p className="text-blue-700 mb-2">
+                    Machine Admins receive invitation emails from Super Admins or can contact support for access.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleContactSupport}
+                    className="text-blue-700 border-blue-200 hover:bg-blue-100"
+                  >
+                    <Building2 className="w-4 h-4 mr-2" />
+                    Contact Support
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
