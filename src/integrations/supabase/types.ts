@@ -1355,6 +1355,62 @@ export type Database = {
           },
         ]
       }
+      venue_settings: {
+        Row: {
+          admin_password: string | null
+          brightness: number | null
+          created_at: string | null
+          id: string
+          password_protection_enabled: boolean | null
+          rfid_enabled: boolean | null
+          sound_effects_enabled: boolean | null
+          theme: string | null
+          updated_at: string | null
+          upi_enabled: boolean | null
+          upi_merchant_id: string | null
+          venue_id: string
+          volume: number | null
+        }
+        Insert: {
+          admin_password?: string | null
+          brightness?: number | null
+          created_at?: string | null
+          id?: string
+          password_protection_enabled?: boolean | null
+          rfid_enabled?: boolean | null
+          sound_effects_enabled?: boolean | null
+          theme?: string | null
+          updated_at?: string | null
+          upi_enabled?: boolean | null
+          upi_merchant_id?: string | null
+          venue_id: string
+          volume?: number | null
+        }
+        Update: {
+          admin_password?: string | null
+          brightness?: number | null
+          created_at?: string | null
+          id?: string
+          password_protection_enabled?: boolean | null
+          rfid_enabled?: boolean | null
+          sound_effects_enabled?: boolean | null
+          theme?: string | null
+          updated_at?: string | null
+          upi_enabled?: boolean | null
+          upi_merchant_id?: string | null
+          venue_id?: string
+          volume?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_settings_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venues: {
         Row: {
           address: string

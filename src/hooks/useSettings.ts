@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +18,7 @@ interface KioskSettingsRaw {
 }
 
 interface VenueSettings {
+  id?: string;
   venue_id: string;
   rfid_enabled?: boolean;
   upi_enabled?: boolean;
@@ -27,6 +29,8 @@ interface VenueSettings {
   sound_effects_enabled?: boolean;
   password_protection_enabled?: boolean;
   admin_password?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export function useSettings(venueId?: string | null) {
@@ -39,9 +43,9 @@ export function useSettings(venueId?: string | null) {
       .from('venue_settings')
       .select('*')
       .eq('venue_id', venueId)
-      .single();
+      .maybeSingle();
       
-    if (error && error.code !== 'PGRST116') throw error;
+    if (error) throw error;
     
     return data || {
       venue_id: venueId,
@@ -65,9 +69,14 @@ export function useSettings(venueId?: string | null) {
   
   const updateSettings = useMutation({
     mutationFn: async (newSettings: Partial<VenueSettings>) => {
+      const settingsToUpdate = {
+        ...newSettings,
+        venue_id: venueId || newSettings.venue_id
+      };
+      
       const { error } = await supabase
         .from('venue_settings')
-        .upsert(newSettings);
+        .upsert(settingsToUpdate);
       
       if (error) throw error;
       return newSettings;
