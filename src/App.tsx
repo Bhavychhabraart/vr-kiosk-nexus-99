@@ -14,7 +14,7 @@ import PaymentSelection from "./pages/PaymentSelection";
 import Session from "./pages/Session";
 import SimplifiedSuperAdmin from "./pages/SimplifiedSuperAdmin";
 import SimplifiedMachineAdmin from "./pages/SimplifiedMachineAdmin";
-import SimplifiedAuthPage from "./components/auth/SimplifiedAuthPage";
+import SimplifiedMachineLogin from "./pages/SimplifiedMachineLogin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -35,7 +35,7 @@ function App() {
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<SimplifiedIndex />} />
-              <Route path="/auth" element={<SimplifiedAuthPage />} />
+              <Route path="/machine-login" element={<SimplifiedMachineLogin />} />
               <Route path="/games" element={<Games />} />
               <Route path="/games/:id" element={<GameDetail />} />
               <Route path="/launch-options" element={<LaunchOptions />} />
@@ -54,11 +54,7 @@ function App() {
               
               <Route 
                 path="/machine-admin" 
-                element={
-                  <SimplifiedProtectedRoute requiredRole="machine_admin">
-                    <SimplifiedMachineAdmin />
-                  </SimplifiedProtectedRoute>
-                } 
+                element={<SimplifiedMachineAdmin />} 
               />
 
               {/* Catch all route */}

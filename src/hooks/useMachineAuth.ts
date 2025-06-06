@@ -5,6 +5,17 @@ import { toast } from '@/components/ui/use-toast';
 import { MachineAuthResponse, MachineSession } from '@/types/machine';
 import { Venue } from '@/types/business';
 
+// Define access keys for each machine
+const MACHINE_ACCESS_KEYS: Record<string, string> = {
+  'VRX001DEL': 'VRX001-ADMIN-KEY',
+  'VRX002MUM': 'VRX002-ADMIN-KEY', 
+  'VRX003BLR': 'VRX003-ADMIN-KEY',
+  'VRX004CHE': 'VRX004-ADMIN-KEY',
+  'VRX005HYD': 'VRX005-ADMIN-KEY',
+  'VRX008CHN': 'VRX008-ADMIN-KEY',
+  'VRX009BLR': 'VRX009-ADMIN-KEY'
+};
+
 export function useMachineAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [machineSession, setMachineSession] = useState<MachineSession | null>(null);
@@ -24,46 +35,53 @@ export function useMachineAuth() {
     }
   }, []);
 
-  const authenticateMachine = async (venueId: string, productKey: string): Promise<boolean> => {
+  const authenticateMachine = async (venueId: string, accessKey: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.rpc('validate_machine_auth', {
-        p_venue_id: venueId,
-        p_product_key: productKey,
-        p_ip_address: null, // Could be populated with actual IP
-        p_user_agent: navigator.userAgent
-      });
+      // Fetch venue details
+      const { data: venueData, error: venueError } = await supabase
+        .from('venues')
+        .select('*')
+        .eq('id', venueId)
+        .single();
 
-      if (error) throw error;
+      if (venueError || !venueData) {
+        throw new Error('Venue not found');
+      }
 
-      // Parse the JSON response from the database function
-      const response: MachineAuthResponse = typeof data === 'string' ? JSON.parse(data) : data;
-
-      if (response.success && response.venue && response.auth) {
-        const session: MachineSession = {
-          venue: response.venue,
-          auth: response.auth,
-          authenticated: true
-        };
-
-        setMachineSession(session);
-        setIsAuthenticated(true);
-        localStorage.setItem('machineSession', JSON.stringify(session));
-
-        toast({
-          title: "Authentication Successful",
-          description: `Welcome to ${response.venue.name} admin panel`,
-        });
-
-        return true;
-      } else {
+      // Validate access key
+      const expectedKey = MACHINE_ACCESS_KEYS[venueData.serial_number];
+      if (!expectedKey || accessKey !== expectedKey) {
         toast({
           title: "Authentication Failed",
-          description: response.error || "Invalid credentials",
+          description: "Invalid access key for this machine",
           variant: "destructive",
         });
         return false;
       }
+
+      // Create machine session
+      const session: MachineSession = {
+        venue: venueData,
+        auth: {
+          product_id: venueData.serial_number,
+          access_level: 'machine_admin',
+          expires_at: null,
+          is_active: true
+        },
+        authenticated: true
+      };
+
+      setMachineSession(session);
+      setIsAuthenticated(true);
+      localStorage.setItem('machineSession', JSON.stringify(session));
+
+      toast({
+        title: "Authentication Successful",
+        description: `Welcome to ${venueData.name} admin panel`,
+      });
+
+      return true;
     } catch (error) {
       console.error('Authentication error:', error);
       toast({
