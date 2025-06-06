@@ -53,47 +53,6 @@ export type Database = {
           },
         ]
       }
-      admin_invitations: {
-        Row: {
-          created_at: string | null
-          email: string
-          expires_at: string
-          id: string
-          invited_by: string
-          token: string
-          used_at: string | null
-          venue_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          email: string
-          expires_at?: string
-          id?: string
-          invited_by: string
-          token: string
-          used_at?: string | null
-          venue_id: string
-        }
-        Update: {
-          created_at?: string | null
-          email?: string
-          expires_at?: string
-          id?: string
-          invited_by?: string
-          token?: string
-          used_at?: string | null
-          venue_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "admin_invitations_venue_id_fkey"
-            columns: ["venue_id"]
-            isOneToOne: false
-            referencedRelation: "venues"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       admin_users: {
         Row: {
           created_at: string | null
@@ -1079,44 +1038,6 @@ export type Database = {
         }
         Relationships: []
       }
-      simplified_user_roles: {
-        Row: {
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          role: Database["public"]["Enums"]["simplified_user_role"]
-          updated_at: string | null
-          user_id: string
-          venue_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          role: Database["public"]["Enums"]["simplified_user_role"]
-          updated_at?: string | null
-          user_id: string
-          venue_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          role?: Database["public"]["Enums"]["simplified_user_role"]
-          updated_at?: string | null
-          user_id?: string
-          venue_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "simplified_user_roles_venue_id_fkey"
-            columns: ["venue_id"]
-            isOneToOne: false
-            referencedRelation: "venues"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       subscriptions: {
         Row: {
           billing_history: Json | null
@@ -1432,30 +1353,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      accept_invitation: {
-        Args: { p_token: string; p_user_id: string }
-        Returns: Json
-      }
-      assign_machine_admin_role: {
-        Args: { p_user_id: string; p_venue_id: string; p_granted_by?: string }
-        Returns: Json
-      }
-      create_machine_admin_invitation: {
-        Args: { p_email: string; p_venue_id: string; p_invited_by: string }
-        Returns: Json
-      }
       has_role: {
         Args: {
           _user_id: string
           _role: Database["public"]["Enums"]["user_role"]
-          _venue_id?: string
-        }
-        Returns: boolean
-      }
-      has_simplified_role: {
-        Args: {
-          _user_id: string
-          _role: Database["public"]["Enums"]["simplified_user_role"]
           _venue_id?: string
         }
         Returns: boolean
@@ -1495,7 +1396,6 @@ export type Database = {
         | "owner_setup"
         | "system_configured"
         | "completed"
-      simplified_user_role: "super_admin" | "machine_admin"
       user_role: "super_admin" | "admin" | "machine_admin" | "setup_user"
     }
     CompositeTypes: {
@@ -1621,7 +1521,6 @@ export const Constants = {
         "system_configured",
         "completed",
       ],
-      simplified_user_role: ["super_admin", "machine_admin"],
       user_role: ["super_admin", "admin", "machine_admin", "setup_user"],
     },
   },

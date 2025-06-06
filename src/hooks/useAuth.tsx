@@ -99,7 +99,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -180,38 +179,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const signOut = async () => {
-    try {
-      console.log('Signing out user...');
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        console.error('Sign out error:', error);
-        toast({
-          variant: "destructive",
-          title: "Sign Out Failed",
-          description: error.message,
-        });
-      } else {
-        console.log('Sign out successful');
-        // Clear local state immediately
-        setUser(null);
-        setProfile(null);
-        setUserRoles([]);
-        setSession(null);
-        
-        toast({
-          title: "Signed Out",
-          description: "You have been signed out successfully.",
-        });
-      }
-    } catch (error) {
-      console.error('Unexpected sign out error:', error);
-      toast({
-        variant: "destructive",
-        title: "Sign Out Failed",
-        description: "An unexpected error occurred while signing out.",
-      });
-    }
+    await supabase.auth.signOut();
+    toast({
+      title: "Signed Out",
+      description: "You have been signed out successfully.",
+    });
   };
 
   const hasRole = (role: UserRole, venueId?: string): boolean => {

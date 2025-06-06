@@ -1,13 +1,12 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Lock, MapPin, Settings, UserPlus } from 'lucide-react';
+import { Building2, Lock, MapPin, Settings } from 'lucide-react';
 import { useMachineAuth } from '@/hooks/useMachineAuth';
 import { Venue } from '@/types/business';
 
@@ -22,7 +21,6 @@ const MachineAuthLogin = ({ onSuccess }: MachineAuthLoginProps) => {
   const [loadingVenues, setLoadingVenues] = useState(true);
   
   const { authenticateMachine, isLoading, fetchActiveVenues } = useMachineAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     loadVenues();
@@ -43,10 +41,6 @@ const MachineAuthLogin = ({ onSuccess }: MachineAuthLoginProps) => {
     if (success) {
       onSuccess();
     }
-  };
-
-  const handleSignup = () => {
-    navigate('/admin-signup');
   };
 
   const selectedVenueData = venues.find(v => v.id === selectedVenue);
@@ -146,21 +140,6 @@ const MachineAuthLogin = ({ onSuccess }: MachineAuthLoginProps) => {
             </Button>
           </form>
 
-          {/* Signup Option */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground mb-3">
-              Don't have an admin account yet?
-            </p>
-            <Button 
-              variant="outline" 
-              onClick={handleSignup}
-              className="w-full"
-            >
-              <UserPlus className="w-4 h-4 mr-2" />
-              Create Admin Account
-            </Button>
-          </div>
-
           {/* Sample Keys for Testing */}
           <div className="mt-6 p-4 bg-blue-50 rounded-lg">
             <p className="text-xs font-medium text-blue-800 mb-2">Sample Keys for Testing:</p>
@@ -170,8 +149,6 @@ const MachineAuthLogin = ({ onSuccess }: MachineAuthLoginProps) => {
               <div>Bangalore: AUTH-VRX003-BLR-5R2T</div>
               <div>Chennai: AUTH-VRX004-CHE-7W9Q</div>
               <div>Hyderabad: AUTH-VRX005-HYD-4L6X</div>
-              <div>Pune: AUTH-VRX006-PUN-8N4L</div>
-              <div>Kolkata: AUTH-VRX007-KOL-2M9P</div>
             </div>
           </div>
         </CardContent>

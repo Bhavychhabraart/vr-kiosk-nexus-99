@@ -1,20 +1,22 @@
 
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { SimplifiedAuthProvider } from "@/hooks/useSimplifiedAuth";
-import { SimplifiedProtectedRoute } from "@/components/auth/SimplifiedProtectedRoute";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "@/hooks/useAuth";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 // Page imports
-import SimplifiedIndex from "./pages/SimplifiedIndex";
+import Index from "./pages/Index";
 import Games from "./pages/Games";
 import GameDetail from "./pages/GameDetail";
 import LaunchOptions from "./pages/LaunchOptions";
 import PaymentSelection from "./pages/PaymentSelection";
 import Session from "./pages/Session";
-import SimplifiedSuperAdmin from "./pages/SimplifiedSuperAdmin";
-import SimplifiedMachineAdmin from "./pages/SimplifiedMachineAdmin";
-import SimplifiedMachineLogin from "./pages/SimplifiedMachineLogin";
+import Admin from "./pages/Admin";
+import SuperAdmin from "./pages/SuperAdmin";
+import MachineAdmin from "./pages/MachineAdmin";
+import SetupWizardPage from "./pages/SetupWizard";
+import AuthPage from "./components/auth/AuthPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -29,32 +31,55 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <SimplifiedAuthProvider>
+      <AuthProvider>
         <Router>
           <div className="min-h-screen bg-background">
             <Routes>
               {/* Public routes */}
-              <Route path="/" element={<SimplifiedIndex />} />
-              <Route path="/machine-login" element={<SimplifiedMachineLogin />} />
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<AuthPage />} />
               <Route path="/games" element={<Games />} />
               <Route path="/games/:id" element={<GameDetail />} />
-              <Route path="/launch-options" element={<LaunchOptions />} />
+              <Route path="/launch-options/:gameId" element={<LaunchOptions />} />
               <Route path="/payment/:gameId" element={<PaymentSelection />} />
               <Route path="/session/:sessionId" element={<Session />} />
 
               {/* Protected admin routes */}
               <Route 
+                path="/admin" 
+                element={
+                  <ProtectedRoute requiredRoles={['super_admin', 'admin']}>
+                    <Admin />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              <Route 
                 path="/super-admin" 
                 element={
-                  <SimplifiedProtectedRoute requiredRole="super_admin">
-                    <SimplifiedSuperAdmin />
-                  </SimplifiedProtectedRoute>
+                  <ProtectedRoute requiredRole="super_admin">
+                    <SuperAdmin />
+                  </ProtectedRoute>
                 } 
               />
               
               <Route 
                 path="/machine-admin" 
-                element={<SimplifiedMachineAdmin />} 
+                element={
+                  <ProtectedRoute requiredRoles={['super_admin', 'admin', 'machine_admin']}>
+                    <MachineAdmin />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* Protected setup route */}
+              <Route 
+                path="/setup" 
+                element={
+                  <ProtectedRoute requiredRoles={['super_admin', 'admin', 'setup_user']}>
+                    <SetupWizardPage />
+                  </ProtectedRoute>
+                } 
               />
 
               {/* Catch all route */}
@@ -63,7 +88,7 @@ function App() {
             <Toaster />
           </div>
         </Router>
-      </SimplifiedAuthProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

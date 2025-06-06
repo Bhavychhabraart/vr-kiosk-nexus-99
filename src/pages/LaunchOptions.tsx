@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,7 @@ import { useGames } from "@/hooks/useGames";
 import { useVenues } from "@/hooks/useVenues";
 import useCommandCenter from "@/hooks/useCommandCenter";
 import { useSessionTracking } from "@/hooks/useSessionTracking";
-import { RFIDScannerModal } from "@/components/ui/rfid-scanner-modal";
+import { InlineRFIDInput } from "@/components/ui/inline-rfid-input";
 
 const LaunchOptions = () => {
   const navigate = useNavigate();
@@ -44,7 +44,7 @@ const LaunchOptions = () => {
   const gameData = games?.find(game => game.id === gameId);
   
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showRfidScanner, setShowRfidScanner] = useState(false);
+  const [showRfidInput, setShowRfidInput] = useState(false);
 
   useEffect(() => {
     if (!gameId || !gameData) {
@@ -78,7 +78,7 @@ const LaunchOptions = () => {
     if (!gameData || !launchOptions || isProcessing || isLaunching) return;
 
     if (option === 'rfid') {
-      setShowRfidScanner(true);
+      setShowRfidInput(true);
       return;
     }
 
@@ -179,15 +179,10 @@ const LaunchOptions = () => {
         title: "RFID Launch Failed",
         description: "Failed to validate RFID card or start the game. Please try again.",
       });
-      setShowRfidScanner(false);
+      setShowRfidInput(false);
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  const handleCancelRfidScanner = () => {
-    setShowRfidScanner(false);
-    setIsProcessing(false);
   };
 
   if (isLoading || !gameData) {
@@ -328,14 +323,31 @@ const LaunchOptions = () => {
                     <div className="text-2xl font-bold text-vr-secondary">₹{calculatePrice()}</div>
                     <p className="text-sm text-gray-400">{launchOptions.default_duration_minutes} minutes gameplay</p>
                     
-                    <Button
-                      onClick={() => handleLaunchOption('rfid')}
-                      disabled={isProcessing || isLaunching}
-                      className="w-full bg-vr-secondary hover:bg-vr-secondary/90 text-black font-semibold"
-                    >
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Use RFID Card
-                    </Button>
+                    {!showRfidInput ? (
+                      <Button
+                        onClick={() => handleLaunchOption('rfid')}
+                        disabled={isProcessing || isLaunching}
+                        className="w-full bg-vr-secondary hover:bg-vr-secondary/90 text-black font-semibold"
+                      >
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        Use RFID Card
+                      </Button>
+                    ) : (
+                      <div className="space-y-2">
+                        <InlineRFIDInput
+                          onCardScanned={handleRfidScanned}
+                          isLoading={isProcessing}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowRfidInput(false)}
+                          className="text-gray-400 hover:text-white"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -387,17 +399,6 @@ const LaunchOptions = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* RFID Scanner Modal */}
-      <AnimatePresence>
-        {showRfidScanner && (
-          <RFIDScannerModal
-            onCardScanned={handleRfidScanned}
-            onCancel={handleCancelRfidScanner}
-            isProcessing={isProcessing}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 };
