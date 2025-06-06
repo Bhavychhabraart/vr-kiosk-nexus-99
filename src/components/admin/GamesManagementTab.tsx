@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -24,7 +23,11 @@ import { useGames } from "@/hooks/useGames";
 import { Game } from "@/types";
 import GameForm from "./GameForm";
 
-const GamesManagementTab = () => {
+interface GamesManagementTabProps {
+  selectedVenueId?: string | null;
+}
+
+const GamesManagementTab = ({ selectedVenueId }: GamesManagementTabProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddGameOpen, setIsAddGameOpen] = useState(false);
   const [isEditGameOpen, setIsEditGameOpen] = useState(false);
@@ -83,6 +86,14 @@ const GamesManagementTab = () => {
   
   return (
     <div className="vr-card">
+      {selectedVenueId && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <p className="text-sm text-blue-800">
+            <strong>Venue Filter Active:</strong> Showing games for selected venue
+          </p>
+        </div>
+      )}
+      
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold">Game Library</h2>
         <Button className="vr-button-secondary" onClick={() => setIsAddGameOpen(true)}>

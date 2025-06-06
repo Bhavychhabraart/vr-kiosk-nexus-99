@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,17 +5,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  HeadphonesIcon, 
-  MessageSquare, 
-  Phone, 
-  Mail, 
-  AlertCircle,
-  CheckCircle,
-  Clock,
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  HeadphonesIcon,
   Plus,
-  ExternalLink
+  MessageSquare,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Search,
+  Filter
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,7 +43,11 @@ interface SupportTicket {
   created_at: string;
 }
 
-const SupportTab = () => {
+interface SupportTabProps {
+  selectedVenueId?: string | null;
+}
+
+const SupportTab = ({ selectedVenueId }: SupportTabProps) => {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showNewTicketForm, setShowNewTicketForm] = useState(false);
@@ -131,6 +147,14 @@ const SupportTab = () => {
 
   return (
     <div className="space-y-6">
+      {selectedVenueId && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800">
+            <strong>Venue Filter Active:</strong> Showing support tickets for selected venue
+          </p>
+        </div>
+      )}
+      
       {/* Support Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="border-blue-200 bg-blue-50/50">

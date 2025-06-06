@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +23,11 @@ import {
   ResponsiveContainer 
 } from "recharts";
 
-const GamesShowcaseTab = () => {
+interface GamesShowcaseTabProps {
+  selectedVenueId?: string | null;
+}
+
+const GamesShowcaseTab = ({ selectedVenueId }: GamesShowcaseTabProps) => {
   const { popularGames, isLoading } = usePopularGames();
 
   if (isLoading) {
@@ -66,6 +69,14 @@ const GamesShowcaseTab = () => {
 
   return (
     <div className="space-y-6">
+      {selectedVenueId && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800">
+            <strong>Venue Filter Active:</strong> Showing game showcase for selected venue
+          </p>
+        </div>
+      )}
+      
       {/* Performance Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>

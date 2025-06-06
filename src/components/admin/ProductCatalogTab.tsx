@@ -1,22 +1,45 @@
-
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  Package, 
-  Calendar, 
-  DollarSign, 
-  Star, 
-  Play, 
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Package,
+  Plus,
+  Star,
+  Calendar,
+  DollarSign,
+  Eye,
+  Edit,
+  Trash2,
   Download,
-  Clock,
-  Gamepad2,
-  Zap
+  ExternalLink
 } from "lucide-react";
 import { useUpcomingProducts } from "@/hooks/useUpcomingProducts";
+import { toast } from "@/components/ui/use-toast";
 
-const ProductCatalogTab = () => {
+interface ProductCatalogTabProps {
+  selectedVenueId?: string | null;
+}
+
+const ProductCatalogTab = ({ selectedVenueId }: ProductCatalogTabProps) => {
   const { upcomingProducts, isLoading } = useUpcomingProducts();
 
   if (isLoading) {
@@ -76,6 +99,14 @@ const ProductCatalogTab = () => {
 
   return (
     <div className="space-y-6">
+      {selectedVenueId && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800">
+            <strong>Venue Filter Active:</strong> Showing product catalog for selected venue
+          </p>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

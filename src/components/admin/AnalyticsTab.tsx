@@ -55,12 +55,16 @@ import { useSessionAnalytics } from "@/hooks/useSessionAnalytics";
 
 type TimeFrame = "daily" | "weekly" | "monthly" | "yearly";
 
-const AnalyticsTab = () => {
+interface AnalyticsTabProps {
+  selectedVenueId?: string | null;
+}
+
+const AnalyticsTab = ({ selectedVenueId }: AnalyticsTabProps) => {
   const [timeFrame, setTimeFrame] = useState<TimeFrame>("daily");
   const [periodOffset, setPeriodOffset] = useState(0);
   
-  // Use shared analytics hook
-  const { sessions, stats, isLoading, refetchSessions } = useSessionAnalytics();
+  // Use shared analytics hook with venue filtering
+  const { sessions, stats, isLoading, refetchSessions } = useSessionAnalytics(selectedVenueId);
   
   // Calculate date ranges based on selected time frame and period offset
   const dateRange = useMemo(() => {
@@ -292,6 +296,14 @@ const AnalyticsTab = () => {
   
   return (
     <div className="space-y-6">
+      {selectedVenueId && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800">
+            <strong>Venue Filter Active:</strong> Showing analytics for selected venue only
+          </p>
+        </div>
+      )}
+      
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold">Session Analytics</h2>
