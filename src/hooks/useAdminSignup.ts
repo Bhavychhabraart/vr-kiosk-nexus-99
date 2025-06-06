@@ -32,6 +32,8 @@ export function useAdminSignup() {
 
   const validateProductKey = async (productKey: string): Promise<SignupValidationResult> => {
     try {
+      console.log('Validating product key:', productKey);
+      
       // Call the function using direct SQL execution approach
       const { data, error } = await supabase
         .from('machine_auth')
@@ -56,11 +58,14 @@ export function useAdminSignup() {
         .single();
 
       if (error || !data) {
+        console.error('Product key validation error:', error);
         return {
           success: false,
           error: 'Invalid or expired product key'
         };
       }
+
+      console.log('Product key validation successful:', data);
 
       // Check if machine already has an admin
       const { data: existingRole } = await supabase
@@ -72,6 +77,7 @@ export function useAdminSignup() {
         .maybeSingle();
 
       if (existingRole) {
+        console.log('Machine already has admin:', existingRole);
         return {
           success: false,
           error: 'This machine already has an assigned admin'
@@ -114,9 +120,12 @@ export function useAdminSignup() {
   ) => {
     setIsLoading(true);
     try {
-      // First validate the product key again
+      console.log('Starting admin signup process for:', email);
+
+      // Validate product key one more time to ensure it's still valid
       const validation = await validateProductKey(productKey);
       if (!validation.success) {
+        console.error('Product key validation failed during signup:', validation.error);
         toast({
           variant: "destructive",
           title: "Invalid Product Key",
@@ -124,6 +133,8 @@ export function useAdminSignup() {
         });
         return { error: validation.error };
       }
+
+      console.log('Product key validated, creating user account...');
 
       // Create the user account
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -138,6 +149,7 @@ export function useAdminSignup() {
       });
 
       if (authError) {
+        console.error('Auth signup error:', authError);
         toast({
           variant: "destructive",
           title: "Sign Up Failed",
@@ -146,37 +158,55 @@ export function useAdminSignup() {
         return { error: authError.message };
       }
 
-      // If user was created successfully, assign the machine admin role using the secure function
+      console.log('User account created successfully:', authData.user?.id);
+
+      // If user was created successfully, assign the machine admin role
       if (authData.user && validation.venue) {
+        console.log('Assigning machine admin role...');
+
         // Get the machine auth record to find venue_id
-        const { data: machineAuth } = await supabase
+        const { data: machineAuth, error: machineAuthError } = await supabase
           .from('machine_auth')
           .select('venue_id')
           .eq('product_key', productKey)
           .single();
 
-        if (machineAuth) {
-          // Use the secure database function to assign the role
-          const { data: roleResult, error: roleError } = await supabase.rpc(
-            'assign_machine_admin_role',
-            {
-              p_user_id: authData.user.id,
-              p_venue_id: machineAuth.venue_id,
-              p_granted_by: authData.user.id
-            }
-          );
+        if (machineAuthError || !machineAuth) {
+          console.error('Failed to get machine auth record:', machineAuthError);
+          toast({
+            variant: "destructive",
+            title: "Setup Error",
+            description: "Failed to retrieve machine information. Please contact support.",
+          });
+          return { error: "Failed to retrieve machine information" };
+        }
 
-          if (roleError) {
-            console.error('Role assignment error:', roleError);
-            toast({
-              variant: "destructive",
-              title: "Setup Incomplete",
-              description: "Account created but admin role assignment failed. Please contact support.",
-            });
-            return { error: "Role assignment failed" };
+        console.log('Machine auth record found, venue_id:', machineAuth.venue_id);
+
+        // Use the secure database function to assign the role
+        const { data: roleResult, error: roleError } = await supabase.rpc(
+          'assign_machine_admin_role',
+          {
+            p_user_id: authData.user.id,
+            p_venue_id: machineAuth.venue_id,
+            p_granted_by: authData.user.id
           }
+        );
 
-          // Check if the function returned an error by properly typing the result
+        if (roleError) {
+          console.error('Role assignment RPC error:', roleError);
+          toast({
+            variant: "destructive",
+            title: "Setup Incomplete",
+            description: "Account created but admin role assignment failed. Please contact support.",
+          });
+          return { error: "Role assignment failed" };
+        }
+
+        console.log('Role assignment function response:', roleResult);
+
+        // Check if the function returned an error
+        try {
           const result = roleResult as unknown as RoleAssignmentResult;
           if (result && !result.success) {
             console.error('Role assignment function error:', result.error);
@@ -187,23 +217,35 @@ export function useAdminSignup() {
             });
             return { error: result.error || "Role assignment failed" };
           }
-
-          // Update last used time for the auth record
-          await supabase
-            .from('machine_auth')
-            .update({ last_used_at: new Date().toISOString() })
-            .eq('product_key', productKey);
-
-          toast({
-            title: "Welcome!",
-            description: `Admin account created successfully for ${validatedVenue?.name}. Please check your email to verify your account.`,
-          });
-
-          return { success: true, user: authData.user };
+        } catch (parseError) {
+          console.error('Error parsing role assignment result:', parseError);
+          // If we can't parse the result, assume success since no RPC error occurred
+          console.log('Assuming role assignment succeeded due to no RPC error');
         }
+
+        // Update last used time for the auth record
+        const { error: updateError } = await supabase
+          .from('machine_auth')
+          .update({ last_used_at: new Date().toISOString() })
+          .eq('product_key', productKey);
+
+        if (updateError) {
+          console.error('Failed to update last_used_at:', updateError);
+          // Don't fail the signup for this
+        }
+
+        console.log('Admin signup completed successfully');
+
+        toast({
+          title: "Welcome!",
+          description: `Admin account created successfully for ${validatedVenue?.name}. Please check your email to verify your account.`,
+        });
+
+        return { success: true, user: authData.user };
       }
 
-      return { error: "Unknown error occurred" };
+      console.error('Missing user or venue data after signup');
+      return { error: "Incomplete signup data" };
     } catch (error: any) {
       console.error('Admin signup error:', error);
       toast({
