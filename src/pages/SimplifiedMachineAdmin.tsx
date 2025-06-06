@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Settings, 
   LogOut, 
@@ -10,14 +11,19 @@ import {
   Gamepad2,
   BarChart3,
   MapPin,
-  Crown
+  CreditCard
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useMachineAuth } from "@/hooks/useMachineAuth";
+import MachineGamesManagementTab from "@/components/machine-admin/MachineGamesManagementTab";
+import MachineAnalyticsTab from "@/components/machine-admin/MachineAnalyticsTab";
+import MachinePaymentsEarningsTab from "@/components/machine-admin/MachinePaymentsEarningsTab";
+import MachineSettingsTab from "@/components/machine-admin/MachineSettingsTab";
 
 const SimplifiedMachineAdmin = () => {
   const { isAuthenticated, machineSession, logout } = useMachineAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
     if (!isAuthenticated || !machineSession) {
@@ -79,115 +85,120 @@ const SimplifiedMachineAdmin = () => {
           </div>
         </div>
 
-        {/* Machine Overview */}
-        <div className="grid gap-6 mb-8">
-          <Card className="bg-black/60 border-gray-600">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-green-400" />
-                Machine Information
-              </CardTitle>
-              <CardDescription className="text-gray-300">
-                Current status and details for {venue.name}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-semibold text-white mb-3">Machine Details</h3>
-                  <div className="space-y-2 text-sm text-gray-300">
-                    <div className="flex justify-between">
-                      <span>Serial Number:</span>
-                      <span className="font-mono">{venue.serial_number}</span>
+        {/* Main Content with Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-5 bg-black/60 border-gray-600">
+            <TabsTrigger 
+              value="overview" 
+              className="flex items-center gap-2 data-[state=active]:bg-white/10 data-[state=active]:text-white"
+            >
+              <Building2 className="w-4 h-4" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger 
+              value="games" 
+              className="flex items-center gap-2 data-[state=active]:bg-white/10 data-[state=active]:text-white"
+            >
+              <Gamepad2 className="w-4 h-4" />
+              Games
+            </TabsTrigger>
+            <TabsTrigger 
+              value="analytics" 
+              className="flex items-center gap-2 data-[state=active]:bg-white/10 data-[state=active]:text-white"
+            >
+              <BarChart3 className="w-4 h-4" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger 
+              value="payments" 
+              className="flex items-center gap-2 data-[state=active]:bg-white/10 data-[state=active]:text-white"
+            >
+              <CreditCard className="w-4 h-4" />
+              Payments
+            </TabsTrigger>
+            <TabsTrigger 
+              value="settings" 
+              className="flex items-center gap-2 data-[state=active]:bg-white/10 data-[state=active]:text-white"
+            >
+              <Settings className="w-4 h-4" />
+              Settings
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6 mt-6">
+            <Card className="bg-black/60 border-gray-600">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-green-400" />
+                  Machine Information
+                </CardTitle>
+                <CardDescription className="text-gray-300">
+                  Current status and details for {venue.name}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="font-semibold text-white mb-3">Machine Details</h3>
+                    <div className="space-y-2 text-sm text-gray-300">
+                      <div className="flex justify-between">
+                        <span>Serial Number:</span>
+                        <span className="font-mono">{venue.serial_number}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Model:</span>
+                        <span>{venue.machine_model || 'VR-KIOSK-V1'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Location:</span>
+                        <span>{venue.city}, {venue.state}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Status:</span>
+                        <Badge variant="default">
+                          Active
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Model:</span>
-                      <span>{venue.machine_model || 'VR-KIOSK-V1'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Location:</span>
-                      <span>{venue.city}, {venue.state}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Status:</span>
-                      <Badge variant="default">
-                        Active
-                      </Badge>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white mb-3">Access Information</h3>
+                    <div className="space-y-2 text-sm text-gray-300">
+                      <div className="flex justify-between">
+                        <span>Product ID:</span>
+                        <span className="font-mono">{auth.product_id}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Access Level:</span>
+                        <span>{auth.access_level}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Expires:</span>
+                        <span>{auth.expires_at ? new Date(auth.expires_at).toLocaleDateString() : 'Never'}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-white mb-3">Access Information</h3>
-                  <div className="space-y-2 text-sm text-gray-300">
-                    <div className="flex justify-between">
-                      <span>Product ID:</span>
-                      <span className="font-mono">{auth.product_id}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Access Level:</span>
-                      <span>{auth.access_level}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Expires:</span>
-                      <span>{auth.expires_at ? new Date(auth.expires_at).toLocaleDateString() : 'Never'}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Quick Actions */}
-        <div className="grid md:grid-cols-3 gap-4">
-          <Card className="bg-black/60 border-gray-600">
-            <CardContent className="p-6 text-center">
-              <Gamepad2 className="h-8 w-8 text-blue-400 mx-auto mb-3" />
-              <h3 className="font-medium text-white mb-2">Game Management</h3>
-              <p className="text-sm text-gray-300 mb-4">
-                Manage games, settings, and configurations
-              </p>
-              <Button 
-                size="sm" 
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                Manage Games
-              </Button>
-            </CardContent>
-          </Card>
+          <TabsContent value="games" className="space-y-6 mt-6">
+            <MachineGamesManagementTab venueId={venue.id} />
+          </TabsContent>
 
-          <Card className="bg-black/60 border-gray-600">
-            <CardContent className="p-6 text-center">
-              <BarChart3 className="h-8 w-8 text-green-400 mx-auto mb-3" />
-              <h3 className="font-medium text-white mb-2">Analytics</h3>
-              <p className="text-sm text-gray-300 mb-4">
-                View performance metrics and reports
-              </p>
-              <Button 
-                size="sm" 
-                className="bg-green-600 hover:bg-green-700"
-              >
-                View Analytics
-              </Button>
-            </CardContent>
-          </Card>
+          <TabsContent value="analytics" className="space-y-6 mt-6">
+            <MachineAnalyticsTab />
+          </TabsContent>
 
-          <Card className="bg-black/60 border-gray-600">
-            <CardContent className="p-6 text-center">
-              <Settings className="h-8 w-8 text-orange-400 mx-auto mb-3" />
-              <h3 className="font-medium text-white mb-2">Settings</h3>
-              <p className="text-sm text-gray-300 mb-4">
-                Configure kiosk settings and preferences
-              </p>
-              <Button 
-                size="sm" 
-                className="bg-orange-600 hover:bg-orange-700"
-              >
-                Machine Settings
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+          <TabsContent value="payments" className="space-y-6 mt-6">
+            <MachinePaymentsEarningsTab venueId={venue.id} />
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-6 mt-6">
+            <MachineSettingsTab venueId={venue.id} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
