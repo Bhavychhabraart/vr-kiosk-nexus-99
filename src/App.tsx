@@ -13,6 +13,7 @@ import Admin from "./pages/Admin";
 import SuperAdmin from "./pages/SuperAdmin";
 import MachineAdmin from "./pages/MachineAdmin";
 import LaunchOptions from "./pages/LaunchOptions";
+import SetupWizard from "./pages/SetupWizard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ function App() {
             <Route path="/admin" element={<Admin />} />
             <Route path="/superadmin" element={<SuperAdmin />} />
             <Route path="/machine-admin" element={<MachineAdmin />} />
+            <Route path="/setup" element={<SetupWizard />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
