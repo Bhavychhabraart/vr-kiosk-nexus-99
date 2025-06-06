@@ -1,12 +1,12 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   BarChart3, 
   Database, 
   Settings, 
-  Shield, 
   CreditCard, 
   TrendingUp, 
   Package, 
@@ -19,127 +19,46 @@ import PaymentsEarningsTab from "@/components/admin/PaymentsEarningsTab";
 import GamesShowcaseTab from "@/components/admin/GamesShowcaseTab";
 import ProductCatalogTab from "@/components/admin/ProductCatalogTab";
 import SupportTab from "@/components/admin/SupportTab";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/use-toast";
-
-// Correct PIN code
-const ADMIN_PIN = "123321";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Admin = () => {
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState("games");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [pinValue, setPinValue] = useState("");
-  const [showPinDialog, setShowPinDialog] = useState(true);
-  const [pinError, setPinError] = useState(false);
 
-  const handlePinComplete = (value: string) => {
-    if (value === ADMIN_PIN) {
-      setIsAuthenticated(true);
-      setShowPinDialog(false);
-      toast({
-        title: "Access Granted",
-        description: "Welcome to the Admin Dashboard",
-      });
-    } else {
-      setPinError(true);
-      toast({
-        title: "Access Denied",
-        description: "Incorrect PIN code",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        setPinError(false);
-        setPinValue("");
-      }, 1000);
+  // Redirect to auth if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
     }
-  };
+  }, [user, loading, navigate]);
 
-  const renderNumpad = () => {
-    const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
-    
-    return (
-      <div className="grid grid-cols-3 gap-2 mt-6 w-full max-w-xs mx-auto">
-        {numbers.map((num) => (
-          <Button 
-            key={num} 
-            variant="outline"
-            className={`aspect-square text-xl font-bold ${num === 0 ? 'col-start-2' : ''}`}
-            onClick={() => {
-              if (pinValue.length < 6) {
-                const newPin = pinValue + num;
-                setPinValue(newPin);
-                if (newPin.length === 6) {
-                  handlePinComplete(newPin);
-                }
-              }
-            }}
-          >
-            {num}
-          </Button>
-        ))}
-        <Button 
-          variant="ghost" 
-          className="aspect-square col-start-3 text-xl font-bold"
-          onClick={() => setPinValue(prev => prev.slice(0, -1))}
-        >
-          ⌫
-        </Button>
-      </div>
-    );
-  };
-
-  // Render PIN entry dialog if not authenticated
-  if (!isAuthenticated) {
+  // Show loading while checking authentication
+  if (loading) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
-          <Dialog open={showPinDialog} onOpenChange={setShowPinDialog}>
-            <DialogContent className="sm:max-w-md">
-              <div className="flex flex-col items-center space-y-6 py-4">
-                <Shield className="h-12 w-12 text-vr-primary" />
-                <h2 className="text-2xl font-bold">Admin Authentication</h2>
-                <p className="text-vr-muted text-center">
-                  Enter the 6-digit PIN code to access the admin dashboard
-                </p>
-                
-                <div className={`transition-all duration-200 ${pinError ? 'animate-shake' : ''}`}>
-                  <InputOTP
-                    value={pinValue}
-                    onChange={setPinValue}
-                    maxLength={6}
-                    render={({ slots }) => (
-                      <InputOTPGroup className="gap-2">
-                        {Array(6).fill(0).map((_, index) => (
-                          <InputOTPSlot
-                            key={index}
-                            index={index}
-                            className={`w-10 h-14 text-2xl ${
-                              pinError ? 'border-red-500 bg-red-50/10' : ''
-                            }`}
-                          />
-                        ))}
-                      </InputOTPGroup>
-                    )}
-                  />
-                </div>
-                
-                {renderNumpad()}
-              </div>
-            </DialogContent>
-          </Dialog>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-vr-primary mx-auto mb-4"></div>
+            <p className="text-vr-muted">Loading...</p>
+          </div>
         </div>
       </MainLayout>
     );
   }
 
-  // Render admin dashboard if authenticated
+  // Don't render if not authenticated (will redirect)
+  if (!user) {
+    return null;
+  }
+
   return (
     <MainLayout>
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
-        <p className="text-vr-muted">Manage the VR system settings and content</p>
+        <p className="text-vr-muted">
+          Welcome back, {user.email} | Manage the VR system settings and content
+        </p>
       </div>
 
       <Tabs

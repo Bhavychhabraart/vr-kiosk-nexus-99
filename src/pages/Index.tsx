@@ -3,12 +3,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { VrIcon } from "@/components/icons/VrIcon";
-import { Play, Settings, Users } from "lucide-react";
+import { Play, Settings, Users, LogOut, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AnimatedBackground } from "@/components/ui/animated-background";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [showAdminOptions, setShowAdminOptions] = useState(false);
 
   const handleStartExperience = () => {
@@ -16,12 +18,39 @@ const Index = () => {
   };
 
   const handleAdminAccess = () => {
-    setShowAdminOptions(true);
+    if (user) {
+      setShowAdminOptions(true);
+    } else {
+      navigate('/auth');
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    setShowAdminOptions(false);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 relative overflow-hidden">
       <AnimatedBackground />
+      
+      {/* User info in top right if logged in */}
+      {user && (
+        <div className="absolute top-6 right-6 z-20 flex items-center space-x-4">
+          <div className="flex items-center space-x-2 bg-black/30 backdrop-blur-md rounded-lg px-4 py-2">
+            <User className="w-4 h-4 text-vr-primary" />
+            <span className="text-white text-sm">{user.email}</span>
+            <Button
+              onClick={handleSignOut}
+              variant="ghost"
+              size="sm"
+              className="text-gray-400 hover:text-white p-1"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
       
       {/* Main Content */}
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-8">
@@ -62,7 +91,7 @@ const Index = () => {
                 className="text-gray-400 hover:text-white text-sm"
               >
                 <Settings className="mr-2 h-4 w-4" />
-                Admin Access
+                {user ? 'Admin Dashboard' : 'Admin Login'}
               </Button>
             </div>
           </div>
