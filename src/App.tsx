@@ -17,6 +17,7 @@ import SuperAdmin from "./pages/SuperAdmin";
 import MachineAdmin from "./pages/MachineAdmin";
 import SetupWizardPage from "./pages/SetupWizard";
 import AuthPage from "./components/auth/AuthPage";
+import AdminSignupPage from "./pages/AdminSignup";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -38,6 +39,7 @@ function App() {
               {/* Public routes */}
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/admin-signup" element={<AdminSignupPage />} />
               <Route path="/games" element={<Games />} />
               <Route path="/games/:id" element={<GameDetail />} />
               <Route path="/launch-options/:gameId" element={<LaunchOptions />} />
