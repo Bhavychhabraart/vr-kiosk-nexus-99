@@ -7,13 +7,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Lock, Mail, User, ArrowRight, Crown, Settings, Building2, Info } from 'lucide-react';
+import { Lock, Mail, User, ArrowRight, Crown, Settings, Building2, Info, Key } from 'lucide-react';
 import { useSimplifiedAuth } from '@/hooks/useSimplifiedAuth';
+import { useAdminSignup } from '@/hooks/useAdminSignup';
 
 const SimplifiedAuthPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const { signIn, signUp, signUpWithInvitation, user } = useSimplifiedAuth();
+  const { signUpAdmin, validateProductKey, validatedVenue, isLoading: adminSignupLoading, clearValidation } = useAdminSignup();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -64,6 +66,41 @@ const SimplifiedAuthPage = () => {
     setIsLoading(false);
   };
 
+  const handleMachineAdminSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError('');
+
+    const formData = new FormData(e.currentTarget);
+    const machineId = formData.get('machineId') as string;
+    const productKey = formData.get('productKey') as string;
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const fullName = formData.get('fullName') as string;
+
+    // Validate product key first
+    if (!validatedVenue) {
+      const validation = await validateProductKey(productKey);
+      if (!validation.success) {
+        setError(validation.error || 'Invalid product key');
+        return;
+      }
+      
+      // Check if machine ID matches the validated venue
+      if (validation.venue && validation.venue.serial_number !== machineId) {
+        setError('Machine ID does not match the product key');
+        clearValidation();
+        return;
+      }
+    }
+
+    // Proceed with signup
+    const result = await signUpAdmin(email, password, fullName, productKey);
+    
+    if (result.error) {
+      setError(result.error);
+    }
+  };
+
   const handleInvitationSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -90,8 +127,29 @@ const SimplifiedAuthPage = () => {
   };
 
   const handleContactSupport = () => {
-    // Could be enhanced to open a support form or redirect to support email
     window.location.href = 'mailto:support@arcadiavr.com?subject=Machine Admin Access Request';
+  };
+
+  const handleProductKeyValidation = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError('');
+
+    const formData = new FormData(e.currentTarget);
+    const productKey = formData.get('productKey') as string;
+    const machineId = formData.get('machineId') as string;
+
+    const validation = await validateProductKey(productKey);
+    if (!validation.success) {
+      setError(validation.error || 'Invalid product key');
+      return;
+    }
+
+    // Check if machine ID matches
+    if (validation.venue && validation.venue.serial_number !== machineId) {
+      setError('Machine ID does not match the product key');
+      clearValidation();
+      return;
+    }
   };
 
   return (
@@ -107,7 +165,7 @@ const SimplifiedAuthPage = () => {
           <CardDescription>
             {invitationToken 
               ? 'Complete your machine admin registration'
-              : 'Sign in to access your VR kiosk management dashboard'
+              : 'Sign in or create your admin account'
             }
           </CardDescription>
         </CardHeader>
@@ -186,9 +244,10 @@ const SimplifiedAuthPage = () => {
           ) : (
             // Regular auth tabs
             <Tabs defaultValue="signin" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Super Admin</TabsTrigger>
+                <TabsTrigger value="machine-admin">Machine Admin</TabsTrigger>
+                <TabsTrigger value="super-admin">Super Admin</TabsTrigger>
               </TabsList>
 
               {error && (
@@ -240,7 +299,136 @@ const SimplifiedAuthPage = () => {
                 </form>
               </TabsContent>
 
-              <TabsContent value="signup">
+              <TabsContent value="machine-admin">
+                <div className="text-center mb-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                    <Key className="w-4 h-4" />
+                    Machine Admin Registration
+                  </div>
+                </div>
+
+                {!validatedVenue ? (
+                  <form onSubmit={handleProductKeyValidation} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="machine-id">Machine ID</Label>
+                      <div className="relative">
+                        <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="machine-id"
+                          name="machineId"
+                          type="text"
+                          placeholder="e.g., VRX001DEL"
+                          className="pl-10"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="product-key">Product Key</Label>
+                      <div className="relative">
+                        <Key className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="product-key"
+                          name="productKey"
+                          type="text"
+                          placeholder="e.g., AUTH-VRX001-DEL-9K7M"
+                          className="pl-10"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={adminSignupLoading}
+                    >
+                      {adminSignupLoading ? 'Validating...' : 'Validate Machine'}
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </form>
+                ) : (
+                  <div className="space-y-4">
+                    <Alert>
+                      <Building2 className="h-4 w-4" />
+                      <AlertDescription>
+                        Machine validated: <strong>{validatedVenue.name}</strong> in {validatedVenue.city}, {validatedVenue.state}
+                      </AlertDescription>
+                    </Alert>
+
+                    <form onSubmit={handleMachineAdminSignUp} className="space-y-4">
+                      <input type="hidden" name="machineId" value={validatedVenue.serial_number} />
+                      <input type="hidden" name="productKey" value="" />
+
+                      <div className="space-y-2">
+                        <Label htmlFor="machine-admin-name">Full Name</Label>
+                        <div className="relative">
+                          <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="machine-admin-name"
+                            name="fullName"
+                            type="text"
+                            placeholder="Enter your full name"
+                            className="pl-10"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="machine-admin-email">Email</Label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="machine-admin-email"
+                            name="email"
+                            type="email"
+                            placeholder="Enter your email"
+                            className="pl-10"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="machine-admin-password">Password</Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="machine-admin-password"
+                            name="password"
+                            type="password"
+                            placeholder="Create a password"
+                            className="pl-10"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <Button 
+                        type="submit" 
+                        className="w-full" 
+                        disabled={adminSignupLoading}
+                      >
+                        {adminSignupLoading ? 'Creating Account...' : 'Create Machine Admin Account'}
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        className="w-full" 
+                        onClick={clearValidation}
+                      >
+                        Back to Validation
+                      </Button>
+                    </form>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="super-admin">
                 <div className="text-center mb-4">
                   <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
                     <Crown className="w-4 h-4" />
@@ -307,18 +495,20 @@ const SimplifiedAuthPage = () => {
             </Tabs>
           )}
 
-          {/* Machine Admin Access Information */}
+          {/* Information Section */}
           <div className="mt-6 space-y-3">
             <div className="border-t pt-4">
               <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
                 <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                 <div className="text-sm">
                   <p className="font-medium text-blue-900 mb-1">
-                    Need Machine Admin Access?
+                    How to Get Admin Access
                   </p>
-                  <p className="text-blue-700 mb-2">
-                    Machine Admins receive invitation emails from Super Admins or can contact support for access.
-                  </p>
+                  <ul className="text-blue-700 mb-2 space-y-1 list-disc list-inside">
+                    <li><strong>Machine Admins:</strong> Use your Machine ID and Product Key provided with your VR kiosk</li>
+                    <li><strong>Invitations:</strong> Accept invitation emails from Super Admins</li>
+                    <li><strong>Support:</strong> Contact support for assistance</li>
+                  </ul>
                   <Button
                     variant="outline"
                     size="sm"
