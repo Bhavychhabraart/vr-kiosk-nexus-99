@@ -7,10 +7,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { QrCode, Smartphone, ArrowRight, Zap } from "lucide-react";
 import { useMachineSetup } from "@/hooks/useMachineSetup";
 import { toast } from "@/components/ui/use-toast";
+import type { ValidateTokenResponse } from "@/types/setup";
 
 interface WelcomeStepProps {
   onNext: () => void;
-  setupStatus: any;
+  onPrevious: () => void;
+  setupStatus: ValidateTokenResponse | null;
 }
 
 export const WelcomeStep = ({ onNext, setupStatus }: WelcomeStepProps) => {

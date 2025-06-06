@@ -57,3 +57,22 @@ export interface SetupWizardStep {
   isCompleted: boolean;
   isActive: boolean;
 }
+
+// Database function response types
+export interface InitializeSetupResponse {
+  success: boolean;
+  setup_id: string;
+  serial_number: string;
+  current_status: SetupStatus;
+  setup_token: string;
+  completed_steps: string[];
+}
+
+export interface ValidateTokenResponse {
+  success: boolean;
+  serial_number?: string;
+  current_status?: SetupStatus;
+  setup_data?: Record<string, any>;
+  completed_steps?: string[];
+  error?: string;
+}

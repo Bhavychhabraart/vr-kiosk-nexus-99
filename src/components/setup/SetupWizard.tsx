@@ -17,7 +17,7 @@ import {
   PlayCircle
 } from "lucide-react";
 import { useMachineSetup } from "@/hooks/useMachineSetup";
-import type { SetupStatus } from "@/types/setup";
+import type { SetupStatus, ValidateTokenResponse } from "@/types/setup";
 
 // Import step components
 import { WelcomeStep } from "./steps/WelcomeStep";

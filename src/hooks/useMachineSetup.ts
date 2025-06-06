@@ -3,7 +3,13 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
-import type { SetupStatus, MachineSetupStatus, OwnerRegistration } from "@/types/setup";
+import type { 
+  SetupStatus, 
+  MachineSetupStatus, 
+  OwnerRegistration,
+  InitializeSetupResponse,
+  ValidateTokenResponse
+} from "@/types/setup";
 
 export const useMachineSetup = () => {
   const queryClient = useQueryClient();
@@ -25,7 +31,7 @@ export const useMachineSetup = () => {
         throw error;
       }
 
-      return data;
+      return data as InitializeSetupResponse;
     },
     onSuccess: (data) => {
       console.log('Setup initialized:', data);
@@ -66,7 +72,7 @@ export const useMachineSetup = () => {
         throw error;
       }
 
-      return data;
+      return data as ValidateTokenResponse;
     },
     enabled: !!setupToken,
     retry: 1,
@@ -123,7 +129,7 @@ export const useMachineSetup = () => {
 
   // Save owner registration
   const saveOwnerRegistration = useMutation({
-    mutationFn: async (ownerData: Partial<OwnerRegistration>) => {
+    mutationFn: async (ownerData: Omit<OwnerRegistration, 'id' | 'created_at' | 'updated_at' | 'verification_status' | 'email_verified_at' | 'phone_verified_at'>) => {
       console.log('Saving owner registration:', ownerData);
       
       const { data, error } = await supabase
