@@ -38,7 +38,7 @@ function App() {
               <Route path="/auth" element={<SimplifiedAuthPage />} />
               <Route path="/games" element={<Games />} />
               <Route path="/games/:id" element={<GameDetail />} />
-              <Route path="/launch-options/:gameId" element={<LaunchOptions />} />
+              <Route path="/launch-options" element={<LaunchOptions />} />
               <Route path="/payment/:gameId" element={<PaymentSelection />} />
               <Route path="/session/:sessionId" element={<Session />} />
 
