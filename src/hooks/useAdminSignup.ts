@@ -20,6 +20,12 @@ interface SignupValidationResult {
   error?: string;
 }
 
+interface RoleAssignmentResult {
+  success: boolean;
+  error?: string;
+  message?: string;
+}
+
 export function useAdminSignup() {
   const [isLoading, setIsLoading] = useState(false);
   const [validatedVenue, setValidatedVenue] = useState<SignupValidationResult['venue'] | null>(null);
@@ -170,15 +176,16 @@ export function useAdminSignup() {
             return { error: "Role assignment failed" };
           }
 
-          // Check if the function returned an error
-          if (roleResult && !roleResult.success) {
-            console.error('Role assignment function error:', roleResult.error);
+          // Check if the function returned an error by properly typing the result
+          const result = roleResult as RoleAssignmentResult;
+          if (result && !result.success) {
+            console.error('Role assignment function error:', result.error);
             toast({
               variant: "destructive",
               title: "Role Assignment Failed",
-              description: roleResult.error || "Failed to assign admin role",
+              description: result.error || "Failed to assign admin role",
             });
-            return { error: roleResult.error || "Role assignment failed" };
+            return { error: result.error || "Role assignment failed" };
           }
 
           // Update last used time for the auth record
