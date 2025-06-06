@@ -9,50 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      admin_audit_log: {
-        Row: {
-          action: string
-          created_at: string | null
-          details: Json | null
-          id: string
-          ip_address: string | null
-          resource_id: string | null
-          resource_type: string | null
-          user_agent: string | null
-          user_id: string | null
-        }
-        Insert: {
-          action: string
-          created_at?: string | null
-          details?: Json | null
-          id?: string
-          ip_address?: string | null
-          resource_id?: string | null
-          resource_type?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          action?: string
-          created_at?: string | null
-          details?: Json | null
-          id?: string
-          ip_address?: string | null
-          resource_id?: string | null
-          resource_type?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "admin_audit_log_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       admin_users: {
         Row: {
           created_at: string | null
@@ -530,36 +486,6 @@ export type Database = {
           },
         ]
       }
-      machine_setup_status: {
-        Row: {
-          completed_steps: string[] | null
-          created_at: string | null
-          current_status: Database["public"]["Enums"]["setup_status"] | null
-          id: string
-          machine_serial_number: string
-          setup_data: Json | null
-          updated_at: string | null
-        }
-        Insert: {
-          completed_steps?: string[] | null
-          created_at?: string | null
-          current_status?: Database["public"]["Enums"]["setup_status"] | null
-          id?: string
-          machine_serial_number: string
-          setup_data?: Json | null
-          updated_at?: string | null
-        }
-        Update: {
-          completed_steps?: string[] | null
-          created_at?: string | null
-          current_status?: Database["public"]["Enums"]["setup_status"] | null
-          id?: string
-          machine_serial_number?: string
-          setup_data?: Json | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       notifications: {
         Row: {
           created_at: string | null
@@ -605,66 +531,6 @@ export type Database = {
           target_type?: string
           title?: string
           type?: string
-        }
-        Relationships: []
-      }
-      owner_registration: {
-        Row: {
-          business_address: string | null
-          business_city: string | null
-          business_name: string
-          business_pin_code: string | null
-          business_state: string | null
-          business_type: string | null
-          created_at: string | null
-          email_verified_at: string | null
-          expected_hours: Json | null
-          id: string
-          machine_serial_number: string
-          owner_email: string
-          owner_name: string
-          owner_phone: string | null
-          phone_verified_at: string | null
-          updated_at: string | null
-          verification_status: string | null
-        }
-        Insert: {
-          business_address?: string | null
-          business_city?: string | null
-          business_name: string
-          business_pin_code?: string | null
-          business_state?: string | null
-          business_type?: string | null
-          created_at?: string | null
-          email_verified_at?: string | null
-          expected_hours?: Json | null
-          id?: string
-          machine_serial_number: string
-          owner_email: string
-          owner_name: string
-          owner_phone?: string | null
-          phone_verified_at?: string | null
-          updated_at?: string | null
-          verification_status?: string | null
-        }
-        Update: {
-          business_address?: string | null
-          business_city?: string | null
-          business_name?: string
-          business_pin_code?: string | null
-          business_state?: string | null
-          business_type?: string | null
-          created_at?: string | null
-          email_verified_at?: string | null
-          expected_hours?: Json | null
-          id?: string
-          machine_serial_number?: string
-          owner_email?: string
-          owner_name?: string
-          owner_phone?: string | null
-          phone_verified_at?: string | null
-          updated_at?: string | null
-          verification_status?: string | null
         }
         Relationships: []
       }
@@ -788,33 +654,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      profiles: {
-        Row: {
-          avatar_url: string | null
-          created_at: string | null
-          email: string | null
-          full_name: string | null
-          id: string
-          updated_at: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
-          id: string
-          updated_at?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
-          id?: string
-          updated_at?: string | null
-        }
-        Relationships: []
       }
       rfid_cards: {
         Row: {
@@ -1008,36 +847,6 @@ export type Database = {
         }
         Relationships: []
       }
-      setup_tokens: {
-        Row: {
-          created_at: string | null
-          expires_at: string
-          id: string
-          machine_serial_number: string
-          token: string
-          token_type: string
-          used_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          expires_at: string
-          id?: string
-          machine_serial_number: string
-          token: string
-          token_type?: string
-          used_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          expires_at?: string
-          id?: string
-          machine_serial_number?: string
-          token?: string
-          token_type?: string
-          used_at?: string | null
-        }
-        Relationships: []
-      }
       subscriptions: {
         Row: {
           billing_history: Json | null
@@ -1221,73 +1030,16 @@ export type Database = {
         }
         Relationships: []
       }
-      user_roles: {
-        Row: {
-          expires_at: string | null
-          granted_at: string | null
-          granted_by: string | null
-          id: string
-          is_active: boolean | null
-          role: Database["public"]["Enums"]["user_role"]
-          user_id: string
-          venue_id: string | null
-        }
-        Insert: {
-          expires_at?: string | null
-          granted_at?: string | null
-          granted_by?: string | null
-          id?: string
-          is_active?: boolean | null
-          role: Database["public"]["Enums"]["user_role"]
-          user_id: string
-          venue_id?: string | null
-        }
-        Update: {
-          expires_at?: string | null
-          granted_at?: string | null
-          granted_by?: string | null
-          id?: string
-          is_active?: boolean | null
-          role?: Database["public"]["Enums"]["user_role"]
-          user_id?: string
-          venue_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_roles_granted_by_fkey"
-            columns: ["granted_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_roles_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_roles_venue_id_fkey"
-            columns: ["venue_id"]
-            isOneToOne: false
-            referencedRelation: "venues"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       venues: {
         Row: {
           address: string
           city: string
           created_at: string | null
-          first_boot_completed: boolean | null
           id: string
           installation_date: string | null
           last_maintenance: string | null
           latitude: number | null
           longitude: number | null
-          machine_mode: Database["public"]["Enums"]["machine_mode"] | null
           machine_model: string | null
           manager_email: string | null
           manager_name: string | null
@@ -1295,7 +1047,6 @@ export type Database = {
           name: string
           pin_code: string
           serial_number: string | null
-          setup_completed_at: string | null
           state: string
           status: string | null
           updated_at: string | null
@@ -1304,13 +1055,11 @@ export type Database = {
           address: string
           city: string
           created_at?: string | null
-          first_boot_completed?: boolean | null
           id?: string
           installation_date?: string | null
           last_maintenance?: string | null
           latitude?: number | null
           longitude?: number | null
-          machine_mode?: Database["public"]["Enums"]["machine_mode"] | null
           machine_model?: string | null
           manager_email?: string | null
           manager_name?: string | null
@@ -1318,7 +1067,6 @@ export type Database = {
           name: string
           pin_code: string
           serial_number?: string | null
-          setup_completed_at?: string | null
           state: string
           status?: string | null
           updated_at?: string | null
@@ -1327,13 +1075,11 @@ export type Database = {
           address?: string
           city?: string
           created_at?: string | null
-          first_boot_completed?: boolean | null
           id?: string
           installation_date?: string | null
           last_maintenance?: string | null
           latitude?: number | null
           longitude?: number | null
-          machine_mode?: Database["public"]["Enums"]["machine_mode"] | null
           machine_model?: string | null
           manager_email?: string | null
           manager_name?: string | null
@@ -1341,7 +1087,6 @@ export type Database = {
           name?: string
           pin_code?: string
           serial_number?: string | null
-          setup_completed_at?: string | null
           state?: string
           status?: string | null
           updated_at?: string | null
@@ -1353,26 +1098,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      has_role: {
-        Args: {
-          _user_id: string
-          _role: Database["public"]["Enums"]["user_role"]
-          _venue_id?: string
-        }
-        Returns: boolean
-      }
-      initialize_machine_setup: {
-        Args: { p_serial_number: string; p_model?: string }
-        Returns: Json
-      }
-      update_setup_progress: {
-        Args: {
-          p_serial_number: string
-          p_status: Database["public"]["Enums"]["setup_status"]
-          p_step_data?: Json
-        }
-        Returns: Json
-      }
       validate_machine_auth: {
         Args: {
           p_venue_id: string
@@ -1382,21 +1107,9 @@ export type Database = {
         }
         Returns: Json
       }
-      validate_setup_token: {
-        Args: { p_token: string }
-        Returns: Json
-      }
     }
     Enums: {
-      machine_mode: "setup" | "customer" | "admin"
-      setup_status:
-        | "not_started"
-        | "network_configured"
-        | "machine_registered"
-        | "owner_setup"
-        | "system_configured"
-        | "completed"
-      user_role: "super_admin" | "admin" | "machine_admin" | "setup_user"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1511,17 +1224,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      machine_mode: ["setup", "customer", "admin"],
-      setup_status: [
-        "not_started",
-        "network_configured",
-        "machine_registered",
-        "owner_setup",
-        "system_configured",
-        "completed",
-      ],
-      user_role: ["super_admin", "admin", "machine_admin", "setup_user"],
-    },
+    Enums: {},
   },
 } as const
