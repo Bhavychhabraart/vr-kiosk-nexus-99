@@ -129,7 +129,7 @@ export const useMachineSetup = () => {
 
   // Save owner registration
   const saveOwnerRegistration = useMutation({
-    mutationFn: async (ownerData: Omit<OwnerRegistration, 'id' | 'created_at' | 'updated_at' | 'verification_status' | 'email_verified_at' | 'phone_verified_at'>) => {
+    mutationFn: async (ownerData: Omit<OwnerRegistration, 'id' | 'created_at' | 'updated_at' | 'verification_status'>) => {
       console.log('Saving owner registration:', ownerData);
       
       const { data, error } = await supabase
