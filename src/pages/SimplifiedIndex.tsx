@@ -124,22 +124,32 @@ const SimplifiedIndex = () => {
 
             {/* Admin Access Card */}
             <ModernActionCard 
-              title="Admin Access" 
-              description={user ? "Access your management dashboard" : "Sign in to manage the kiosk"} 
+              title="Kiosk Management" 
+              description={user ? "Access your management dashboard" : "Sign in or create your machine admin account"} 
               icon={Settings} 
               variant="admin" 
               onClick={() => !user ? navigate('/auth') : undefined}
             >
               {!user ? (
-                <KioskButton 
-                  onClick={() => navigate('/auth')} 
-                  variant="admin" 
-                  size="large" 
-                  className="w-full"
-                >
-                  <Settings className="h-5 w-5" />
-                  Admin Sign In
-                </KioskButton>
+                <div className="space-y-3 w-full">
+                  <KioskButton 
+                    onClick={() => navigate('/auth')} 
+                    variant="admin" 
+                    size="large" 
+                    className="w-full"
+                  >
+                    <Settings className="h-5 w-5" />
+                    Machine Owner Signup
+                  </KioskButton>
+                  <KioskButton 
+                    onClick={() => navigate('/auth')} 
+                    variant="ghost" 
+                    size="default" 
+                    className="w-full"
+                  >
+                    Existing User Sign In
+                  </KioskButton>
+                </div>
               ) : (
                 <div className="space-y-3 w-full">
                   {/* Super Admin Access */}
@@ -162,15 +172,13 @@ const SimplifiedIndex = () => {
                       size="default" 
                       className="w-full"
                     >
-                      Machine Panel
+                      Machine Admin Panel
                     </KioskButton>
                   )}
                 </div>
               )}
             </ModernActionCard>
           </div>
-
-          {/* Minimal Feature Highlights - removed empty grid */}
         </div>
       </div>
 
