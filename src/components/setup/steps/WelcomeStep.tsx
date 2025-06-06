@@ -7,15 +7,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { QrCode, Smartphone, ArrowRight, Zap } from "lucide-react";
 import { useMachineSetup } from "@/hooks/useMachineSetup";
 import { toast } from "@/components/ui/use-toast";
-import type { ValidateTokenResponse } from "@/types/setup";
+import type { StandardStepProps } from "../SetupWizard";
 
-interface WelcomeStepProps {
-  onNext: () => void;
-  onPrevious: () => void;
-  setupStatus: ValidateTokenResponse | null;
-}
-
-export const WelcomeStep = ({ onNext, setupStatus }: WelcomeStepProps) => {
+export const WelcomeStep = ({ onNext, setupStatus }: StandardStepProps) => {
   const [serialNumber, setSerialNumber] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const { initializeSetup, isInitializing } = useMachineSetup();
@@ -32,7 +26,14 @@ export const WelcomeStep = ({ onNext, setupStatus }: WelcomeStepProps) => {
 
     try {
       await initializeSetup(serialNumber.trim());
-      onNext();
+      toast({
+        title: "Setup Initialized",
+        description: "Machine setup has been successfully initialized.",
+      });
+      // Small delay to allow status to update, then proceed
+      setTimeout(() => {
+        onNext();
+      }, 1000);
     } catch (error) {
       console.error('Failed to initialize setup:', error);
     }
@@ -51,6 +52,43 @@ export const WelcomeStep = ({ onNext, setupStatus }: WelcomeStepProps) => {
       });
     }, 2000);
   };
+
+  // If already initialized, show success and allow proceeding
+  if (setupStatus?.serial_number && setupStatus.current_status !== 'not_started') {
+    return (
+      <div className="space-y-6">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
+            <Zap className="h-8 w-8 text-green-400" />
+          </div>
+          <h3 className="text-2xl font-bold text-white">
+            Setup Already Initialized!
+          </h3>
+          <p className="text-gray-300 max-w-2xl mx-auto">
+            Your machine with serial number <strong>{setupStatus.serial_number}</strong> has 
+            already been initialized. You can continue with the setup process.
+          </p>
+        </div>
+
+        <Card className="bg-green-900/20 border-green-500/30">
+          <CardContent className="pt-6 text-center">
+            <div className="space-y-4">
+              <p className="text-green-300">
+                Current Status: <strong>{setupStatus.current_status}</strong>
+              </p>
+              <Button 
+                onClick={onNext}
+                className="bg-vr-primary hover:bg-vr-primary/90 text-black"
+              >
+                Continue Setup
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

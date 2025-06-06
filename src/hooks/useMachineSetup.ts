@@ -34,7 +34,7 @@ export const useMachineSetup = () => {
       return data as unknown as InitializeSetupResponse;
     },
     onSuccess: (data) => {
-      console.log('Setup initialized:', data);
+      console.log('Setup initialized successfully:', data);
       if (data.setup_token) {
         localStorage.setItem('machine_setup_token', data.setup_token);
         setSetupToken(data.setup_token);
@@ -75,7 +75,8 @@ export const useMachineSetup = () => {
       return data as unknown as ValidateTokenResponse;
     },
     enabled: !!setupToken,
-    retry: 1,
+    retry: 2,
+    refetchInterval: false, // Don't auto-refetch to avoid loops
   });
 
   // Update setup progress
@@ -105,7 +106,9 @@ export const useMachineSetup = () => {
       return data;
     },
     onSuccess: (data, variables) => {
-      console.log('Progress updated:', data);
+      console.log('Progress updated successfully:', data);
+      
+      // Invalidate and refetch the setup status
       queryClient.invalidateQueries({ queryKey: ['machineSetup'] });
       
       if (variables.status === 'completed') {
@@ -114,6 +117,11 @@ export const useMachineSetup = () => {
         toast({
           title: "Setup Complete!",
           description: "Your machine is now ready for operation.",
+        });
+      } else {
+        toast({
+          title: "Progress Updated",
+          description: `Setup step completed: ${variables.status.replace('_', ' ')}`,
         });
       }
     },
@@ -167,9 +175,14 @@ export const useMachineSetup = () => {
 
   // Reset setup (for testing)
   const resetSetup = () => {
+    console.log('Resetting setup...');
     localStorage.removeItem('machine_setup_token');
     setSetupToken(null);
     queryClient.invalidateQueries({ queryKey: ['machineSetup'] });
+    toast({
+      title: "Setup Reset",
+      description: "Setup has been reset. You can start over.",
+    });
   };
 
   return {

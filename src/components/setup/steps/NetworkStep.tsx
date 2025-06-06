@@ -16,13 +16,9 @@ import {
 } from "lucide-react";
 import { useMachineSetup } from "@/hooks/useMachineSetup";
 import { toast } from "@/components/ui/use-toast";
+import type { StandardStepProps } from "../SetupWizard";
 
-interface NetworkStepProps {
-  onNext: () => void;
-  setupStatus: any;
-}
-
-export const NetworkStep = ({ onNext, setupStatus }: NetworkStepProps) => {
+export const NetworkStep = ({ onNext, setupStatus }: StandardStepProps) => {
   const [wifiCredentials, setWifiCredentials] = useState({
     ssid: "",
     password: "",
@@ -35,19 +31,29 @@ export const NetworkStep = ({ onNext, setupStatus }: NetworkStepProps) => {
   const [isConnecting, setIsConnecting] = useState(false);
   const { updateProgress, isUpdating } = useMachineSetup();
 
+  // Check if network step is already completed
+  const isNetworkConfigured = setupStatus?.current_status && 
+    ['network_configured', 'machine_registered', 'owner_setup', 'system_configured', 'completed']
+    .includes(setupStatus.current_status);
+
   // Simulate network detection and connection
   useEffect(() => {
-    // Simulate detecting available networks
-    const mockNetworks = [
-      "VR_Kiosk_Setup",
-      "Business_WiFi", 
-      "Guest_Network",
-      "Mobile_Hotspot"
-    ];
-    
-    // Auto-detect if we're connected
-    simulateConnectionCheck();
-  }, []);
+    if (isNetworkConfigured) {
+      // If already configured, show connected status
+      setConnectionStatus({
+        wifi: 'connected',
+        internet: 'connected',
+        server: 'connected',
+      });
+      setWifiCredentials({
+        ssid: "Connected Network",
+        password: "••••••••",
+      });
+    } else {
+      // Auto-detect if we're connected
+      simulateConnectionCheck();
+    }
+  }, [isNetworkConfigured]);
 
   const simulateConnectionCheck = async () => {
     setConnectionStatus(prev => ({ ...prev, internet: 'testing', server: 'testing' }));
@@ -91,7 +97,14 @@ export const NetworkStep = ({ onNext, setupStatus }: NetworkStepProps) => {
   };
 
   const handleContinue = async () => {
-    if (!setupStatus?.serial_number) return;
+    if (!setupStatus?.serial_number) {
+      toast({
+        variant: "destructive",
+        title: "Setup Error",
+        description: "No serial number found. Please restart the setup process.",
+      });
+      return;
+    }
 
     try {
       await updateProgress({
@@ -105,9 +118,23 @@ export const NetworkStep = ({ onNext, setupStatus }: NetworkStepProps) => {
           }
         }
       });
-      onNext();
+      
+      toast({
+        title: "Network Configuration Saved",
+        description: "Proceeding to machine registration...",
+      });
+      
+      // Small delay to allow status to update, then proceed
+      setTimeout(() => {
+        onNext();
+      }, 1000);
     } catch (error) {
       console.error('Failed to update network progress:', error);
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: "Failed to save network configuration. Please try again.",
+      });
     }
   };
 
@@ -136,6 +163,44 @@ export const NetworkStep = ({ onNext, setupStatus }: NetworkStepProps) => {
   };
 
   const allConnected = Object.values(connectionStatus).every(status => status === 'connected');
+
+  if (isNetworkConfigured) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center space-y-2">
+          <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+          <h3 className="text-xl font-bold text-white">Network Already Configured</h3>
+          <p className="text-gray-300">
+            Your network settings have been configured successfully.
+          </p>
+        </div>
+
+        <Card className="bg-green-900/20 border-green-500/30">
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-black/20 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <span className="text-white">Network Status</span>
+                </div>
+                <Badge className="bg-green-500 text-white">Configured</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-end">
+          <Button 
+            onClick={onNext}
+            className="bg-vr-primary hover:bg-vr-primary/90 text-black"
+          >
+            Continue to Registration
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -14,9 +14,11 @@ import {
   Server,
   User,
   Settings,
-  PlayCircle
+  PlayCircle,
+  AlertCircle
 } from "lucide-react";
 import { useMachineSetup } from "@/hooks/useMachineSetup";
+import { toast } from "@/components/ui/use-toast";
 import type { SetupStatus, ValidateTokenResponse } from "@/types/setup";
 
 // Import step components
@@ -26,6 +28,14 @@ import { RegistrationStep } from "./steps/RegistrationStep";
 import { OwnerSetupStep } from "./steps/OwnerSetupStep";
 import { SystemConfigStep } from "./steps/SystemConfigStep";
 import { CompletionStep } from "./steps/CompletionStep";
+
+export interface StandardStepProps {
+  onNext: () => void;
+  onPrevious: () => void;
+  setupStatus: ValidateTokenResponse | null;
+  isActive: boolean;
+  canProceed: boolean;
+}
 
 const setupSteps = [
   {
@@ -79,17 +89,43 @@ const setupSteps = [
 ];
 
 export const SetupWizard = () => {
-  const { setupStatus, isLoading } = useMachineSetup();
+  const { setupStatus, isLoading, error } = useMachineSetup();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [manualNavigation, setManualNavigation] = useState(false);
 
+  // Improved step detection logic
   useEffect(() => {
-    if (setupStatus?.current_status) {
-      const stepIndex = setupSteps.findIndex(step => step.status === setupStatus.current_status);
-      if (stepIndex >= 0) {
-        setCurrentStepIndex(stepIndex);
+    if (setupStatus?.current_status && !manualNavigation) {
+      let targetIndex = 0;
+      
+      // Map current status to step index
+      switch (setupStatus.current_status) {
+        case 'not_started':
+          targetIndex = 0;
+          break;
+        case 'network_configured':
+          targetIndex = 2; // Move to registration step
+          break;
+        case 'machine_registered':
+          targetIndex = 3; // Move to owner setup
+          break;
+        case 'owner_setup':
+          targetIndex = 4; // Move to system config
+          break;
+        case 'system_configured':
+          targetIndex = 5; // Move to completion
+          break;
+        case 'completed':
+          targetIndex = 5;
+          break;
+        default:
+          targetIndex = 0;
       }
+      
+      console.log('Auto-navigating from status:', setupStatus.current_status, 'to step:', targetIndex);
+      setCurrentStepIndex(targetIndex);
     }
-  }, [setupStatus]);
+  }, [setupStatus?.current_status, manualNavigation]);
 
   const currentStep = setupSteps[currentStepIndex];
   const CurrentStepComponent = currentStep.component;
@@ -97,13 +133,25 @@ export const SetupWizard = () => {
 
   const goToNextStep = () => {
     if (currentStepIndex < setupSteps.length - 1) {
+      setManualNavigation(true);
       setCurrentStepIndex(currentStepIndex + 1);
+      console.log('Manual navigation to next step:', currentStepIndex + 1);
     }
   };
 
   const goToPreviousStep = () => {
     if (currentStepIndex > 0) {
+      setManualNavigation(true);
       setCurrentStepIndex(currentStepIndex - 1);
+      console.log('Manual navigation to previous step:', currentStepIndex - 1);
+    }
+  };
+
+  const goToStep = (stepIndex: number) => {
+    if (isStepAccessible(stepIndex)) {
+      setManualNavigation(true);
+      setCurrentStepIndex(stepIndex);
+      console.log('Manual navigation to step:', stepIndex);
     }
   };
 
@@ -117,6 +165,16 @@ export const SetupWizard = () => {
            (stepIndex === currentStatusIndex && setupStatus.current_status === 'completed');
   };
 
+  const isStepAccessible = (stepIndex: number) => {
+    // Allow access to current step and all previous completed steps
+    return stepIndex <= currentStepIndex || isStepCompleted(stepIndex);
+  };
+
+  const canProceedFromCurrentStep = () => {
+    // Allow proceeding if current step is completed or if it's the current active step
+    return isStepCompleted(currentStepIndex) || setupStatus?.current_status === currentStep.status;
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
@@ -124,6 +182,26 @@ export const SetupWizard = () => {
           <CardContent className="pt-6 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-vr-primary mx-auto mb-4"></div>
             <p className="text-white">Initializing setup wizard...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
+        <Card className="w-full max-w-md bg-black/80 border-red-500/30">
+          <CardContent className="pt-6 text-center">
+            <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
+            <p className="text-white mb-4">Setup initialization failed</p>
+            <p className="text-gray-300 text-sm">{error.message}</p>
+            <Button 
+              onClick={() => window.location.reload()} 
+              className="mt-4 bg-vr-primary hover:bg-vr-primary/90 text-black"
+            >
+              Retry
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -158,14 +236,20 @@ export const SetupWizard = () => {
                 const Icon = step.icon;
                 const isCompleted = isStepCompleted(index);
                 const isCurrent = index === currentStepIndex;
+                const isAccessible = isStepAccessible(index);
                 
                 return (
-                  <div key={step.id} className="flex flex-col items-center">
+                  <div 
+                    key={step.id} 
+                    className="flex flex-col items-center cursor-pointer"
+                    onClick={() => isAccessible && goToStep(index)}
+                  >
                     <div className={`
                       w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-colors
                       ${isCompleted ? 'bg-green-500 text-white' : 
                         isCurrent ? 'bg-vr-primary text-black' : 
-                        'bg-gray-600 text-gray-300'}
+                        isAccessible ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' :
+                        'bg-gray-700 text-gray-500'}
                     `}>
                       {isCompleted ? (
                         <CheckCircle className="h-5 w-5" />
@@ -174,7 +258,8 @@ export const SetupWizard = () => {
                       )}
                     </div>
                     <span className={`text-xs text-center max-w-16 ${
-                      isCurrent ? 'text-vr-primary' : 'text-gray-400'
+                      isCurrent ? 'text-vr-primary' : 
+                      isAccessible ? 'text-gray-300' : 'text-gray-500'
                     }`}>
                       {step.title}
                     </span>
@@ -184,6 +269,21 @@ export const SetupWizard = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Debug Info (Development Only) */}
+        {process.env.NODE_ENV === 'development' && (
+          <Card className="mb-4 bg-yellow-900/20 border-yellow-500/30">
+            <CardContent className="pt-4">
+              <div className="text-yellow-300 text-sm">
+                <p>Debug Info:</p>
+                <p>Current Status: {setupStatus?.current_status || 'Unknown'}</p>
+                <p>Current Step Index: {currentStepIndex}</p>
+                <p>Manual Navigation: {manualNavigation.toString()}</p>
+                <p>Can Proceed: {canProceedFromCurrentStep().toString()}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Current Step Content */}
         <AnimatePresence mode="wait">
@@ -207,6 +307,8 @@ export const SetupWizard = () => {
                   onNext={goToNextStep}
                   onPrevious={goToPreviousStep}
                   setupStatus={setupStatus}
+                  isActive={true}
+                  canProceed={canProceedFromCurrentStep()}
                 />
               </CardContent>
             </Card>
