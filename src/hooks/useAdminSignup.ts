@@ -29,12 +29,12 @@ interface RoleAssignmentResult {
 export function useAdminSignup() {
   const [isLoading, setIsLoading] = useState(false);
   const [validatedVenue, setValidatedVenue] = useState<SignupValidationResult['venue'] | null>(null);
+  const [isSendingConfirmation, setIsSendingConfirmation] = useState(false);
 
   const validateProductKey = async (productKey: string): Promise<SignupValidationResult> => {
     try {
       console.log('Validating product key:', productKey);
       
-      // Call the function using direct SQL execution approach
       const { data, error } = await supabase
         .from('machine_auth')
         .select(`
@@ -67,7 +67,6 @@ export function useAdminSignup() {
 
       console.log('Product key validation successful:', data);
 
-      // Check if machine already has an admin
       const { data: existingRole } = await supabase
         .from('user_roles')
         .select('id')
@@ -112,6 +111,51 @@ export function useAdminSignup() {
     }
   };
 
+  const sendConfirmationEmail = async (email: string, fullName: string, venueName: string) => {
+    setIsSendingConfirmation(true);
+    try {
+      console.log('Sending confirmation email to:', email);
+
+      const confirmationUrl = `${window.location.origin}/machine-admin`;
+
+      const { data, error } = await supabase.functions.invoke('send-confirmation-email', {
+        body: {
+          email,
+          fullName,
+          venueName,
+          confirmationUrl
+        }
+      });
+
+      if (error) {
+        console.error('Error sending confirmation email:', error);
+        toast({
+          variant: "destructive",
+          title: "Email Error",
+          description: "Failed to send confirmation email. Please contact support.",
+        });
+        return false;
+      }
+
+      console.log('Confirmation email sent successfully:', data);
+      toast({
+        title: "Confirmation Email Sent",
+        description: "Please check your email for account confirmation instructions.",
+      });
+      return true;
+    } catch (error: any) {
+      console.error('Confirmation email error:', error);
+      toast({
+        variant: "destructive",
+        title: "Email Error",
+        description: "Failed to send confirmation email. Please try again.",
+      });
+      return false;
+    } finally {
+      setIsSendingConfirmation(false);
+    }
+  };
+
   const signUpAdmin = async (
     email: string, 
     password: string, 
@@ -122,7 +166,6 @@ export function useAdminSignup() {
     try {
       console.log('Starting admin signup process for:', email);
 
-      // Validate product key one more time to ensure it's still valid
       const validation = await validateProductKey(productKey);
       if (!validation.success) {
         console.error('Product key validation failed during signup:', validation.error);
@@ -136,7 +179,6 @@ export function useAdminSignup() {
 
       console.log('Product key validated, creating user account...');
 
-      // Create the user account
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -160,11 +202,9 @@ export function useAdminSignup() {
 
       console.log('User account created successfully:', authData.user?.id);
 
-      // If user was created successfully, assign the machine admin role
       if (authData.user && validation.venue) {
         console.log('Assigning machine admin role...');
 
-        // Get the machine auth record to find venue_id
         const { data: machineAuth, error: machineAuthError } = await supabase
           .from('machine_auth')
           .select('venue_id')
@@ -183,7 +223,6 @@ export function useAdminSignup() {
 
         console.log('Machine auth record found, venue_id:', machineAuth.venue_id);
 
-        // Use the secure database function to assign the role
         const { data: roleResult, error: roleError } = await supabase.rpc(
           'assign_machine_admin_role',
           {
@@ -205,7 +244,6 @@ export function useAdminSignup() {
 
         console.log('Role assignment function response:', roleResult);
 
-        // Check if the function returned an error
         try {
           const result = roleResult as unknown as RoleAssignmentResult;
           if (result && !result.success) {
@@ -219,11 +257,9 @@ export function useAdminSignup() {
           }
         } catch (parseError) {
           console.error('Error parsing role assignment result:', parseError);
-          // If we can't parse the result, assume success since no RPC error occurred
           console.log('Assuming role assignment succeeded due to no RPC error');
         }
 
-        // Update last used time for the auth record
         const { error: updateError } = await supabase
           .from('machine_auth')
           .update({ last_used_at: new Date().toISOString() })
@@ -231,8 +267,10 @@ export function useAdminSignup() {
 
         if (updateError) {
           console.error('Failed to update last_used_at:', updateError);
-          // Don't fail the signup for this
         }
+
+        // Send confirmation email
+        await sendConfirmationEmail(email, fullName, validation.venue.name);
 
         console.log('Admin signup completed successfully');
 
@@ -261,9 +299,11 @@ export function useAdminSignup() {
 
   return {
     isLoading,
+    isSendingConfirmation,
     validatedVenue,
     validateProductKey,
     signUpAdmin,
+    sendConfirmationEmail,
     clearValidation: () => setValidatedVenue(null)
   };
 }
