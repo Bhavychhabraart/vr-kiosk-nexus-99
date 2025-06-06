@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,14 +6,31 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Lock, Mail, User, ArrowRight, Crown, Settings, Building2, Info, Key } from 'lucide-react';
+import { Lock, Mail, User, ArrowRight, Crown, Settings, Building2, Info, Key, Copy, CheckCheck } from 'lucide-react';
 import { useSimplifiedAuth } from '@/hooks/useSimplifiedAuth';
 import { useAdminSignup } from '@/hooks/useAdminSignup';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
+
+interface MachineInfo {
+  id: string;
+  name: string;
+  city: string;
+  state: string;
+  serial_number: string;
+  machine_model: string;
+  product_key: string;
+  product_id: string;
+}
 
 const SimplifiedAuthPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [validatedProductKey, setValidatedProductKey] = useState<string>('');
+  const [availableMachines, setAvailableMachines] = useState<MachineInfo[]>([]);
+  const [loadingMachines, setLoadingMachines] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string>('');
   const { signIn, signUp, signUpWithInvitation, user } = useSimplifiedAuth();
   const { signUpAdmin, validateProductKey, validatedVenue, isLoading: adminSignupLoading, clearValidation } = useAdminSignup();
   const navigate = useNavigate();
@@ -29,6 +45,66 @@ const SimplifiedAuthPage = () => {
       navigate(from, { replace: true });
     }
   }, [user, navigate, from]);
+
+  useEffect(() => {
+    loadAvailableMachines();
+  }, []);
+
+  const loadAvailableMachines = async () => {
+    setLoadingMachines(true);
+    try {
+      const { data: machinesData, error } = await supabase
+        .from('venues')
+        .select(`
+          id,
+          name,
+          city,
+          state,
+          serial_number,
+          machine_model,
+          machine_auth!inner (
+            product_key,
+            product_id
+          )
+        `)
+        .eq('status', 'active')
+        .eq('machine_auth.is_active', true)
+        .order('name');
+
+      if (error) throw error;
+
+      const machines: MachineInfo[] = machinesData?.map(venue => ({
+        id: venue.id,
+        name: venue.name,
+        city: venue.city,
+        state: venue.state,
+        serial_number: venue.serial_number || '',
+        machine_model: venue.machine_model || 'VR-KIOSK-V1',
+        product_key: venue.machine_auth[0]?.product_key || '',
+        product_id: venue.machine_auth[0]?.product_id || '',
+      })) || [];
+
+      setAvailableMachines(machines);
+    } catch (error) {
+      console.error('Error loading machines:', error);
+    } finally {
+      setLoadingMachines(false);
+    }
+  };
+
+  const copyToClipboard = async (text: string, type: 'key' | 'id') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(text);
+      toast({
+        title: "Copied!",
+        description: `${type === 'key' ? 'Product key' : 'Machine ID'} copied to clipboard`,
+      });
+      setTimeout(() => setCopiedKey(''), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+    }
+  };
 
   // Normalize machine ID for comparison (remove hyphens, convert to uppercase)
   const normalizeMachineId = (id: string) => {
@@ -81,7 +157,6 @@ const SimplifiedAuthPage = () => {
     const password = formData.get('password') as string;
     const fullName = formData.get('fullName') as string;
 
-    // Use the validated product key that was stored during validation
     const result = await signUpAdmin(email, password, fullName, validatedProductKey);
     
     if (result.error) {
@@ -132,7 +207,6 @@ const SimplifiedAuthPage = () => {
       return;
     }
 
-    // Normalize both the entered machine ID and the venue serial number for comparison
     const normalizedInput = normalizeMachineId(machineId);
     const normalizedVenueSerial = normalizeMachineId(validation.venue?.serial_number || '');
 
@@ -144,14 +218,12 @@ const SimplifiedAuthPage = () => {
       match: normalizedInput === normalizedVenueSerial
     });
 
-    // Check if machine ID matches (using normalized comparison)
     if (validation.venue && normalizedInput !== normalizedVenueSerial) {
       setError(`Machine ID "${machineId}" does not match the product key. Expected: ${validation.venue.serial_number}`);
       clearValidation();
       return;
     }
 
-    // Store the validated product key for use in signup
     setValidatedProductKey(productKey);
   };
 
@@ -163,7 +235,7 @@ const SimplifiedAuthPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-vr-primary/10 to-vr-secondary/10 p-4">
-      <Card className="w-full max-w-md shadow-2xl">
+      <Card className="w-full max-w-4xl shadow-2xl">
         <CardHeader className="text-center pb-4">
           <div className="flex justify-center mb-4">
             <div className="p-3 bg-vr-primary/10 rounded-full">
@@ -317,53 +389,145 @@ const SimplifiedAuthPage = () => {
                 </div>
 
                 {!validatedVenue ? (
-                  <form onSubmit={handleProductKeyValidation} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="machine-id">Machine ID</Label>
-                      <div className="relative">
-                        <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="machine-id"
-                          name="machineId"
-                          type="text"
-                          placeholder="e.g., VRX001DEL or VRX001-DEL"
-                          className="pl-10"
-                          required
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Enter your machine's serial number (case insensitive, hyphens optional)
-                      </p>
-                    </div>
+                  <div className="space-y-6">
+                    {/* Available Machines Reference Table */}
+                    <Card className="mb-6">
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Building2 className="w-5 h-5" />
+                          Available Machines
+                        </CardTitle>
+                        <CardDescription>
+                          Find your machine and copy its details below
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {loadingMachines ? (
+                          <div className="text-center py-4">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                            <p className="text-sm text-muted-foreground mt-2">Loading machines...</p>
+                          </div>
+                        ) : availableMachines.length > 0 ? (
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Venue</TableHead>
+                                  <TableHead>Location</TableHead>
+                                  <TableHead>Machine ID</TableHead>
+                                  <TableHead>Product Key</TableHead>
+                                  <TableHead>Actions</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {availableMachines.map((machine) => (
+                                  <TableRow key={machine.id}>
+                                    <TableCell className="font-medium">
+                                      {machine.name}
+                                    </TableCell>
+                                    <TableCell>
+                                      {machine.city}, {machine.state}
+                                    </TableCell>
+                                    <TableCell>
+                                      <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                                        {machine.serial_number}
+                                      </code>
+                                    </TableCell>
+                                    <TableCell>
+                                      <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                                        {machine.product_key}
+                                      </code>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex gap-1">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => copyToClipboard(machine.serial_number, 'id')}
+                                        >
+                                          {copiedKey === machine.serial_number ? (
+                                            <CheckCheck className="w-3 h-3" />
+                                          ) : (
+                                            <Copy className="w-3 h-3" />
+                                          )}
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => copyToClipboard(machine.product_key, 'key')}
+                                        >
+                                          {copiedKey === machine.product_key ? (
+                                            <CheckCheck className="w-3 h-3" />
+                                          ) : (
+                                            <Copy className="w-3 h-3" />
+                                          )}
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        ) : (
+                          <div className="text-center py-4">
+                            <Building2 className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                            <p className="text-muted-foreground">No machines found</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="product-key">Product Key</Label>
-                      <div className="relative">
-                        <Key className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="product-key"
-                          name="productKey"
-                          type="text"
-                          placeholder="e.g., AUTH-VRX001-DEL-9K7M"
-                          className="pl-10"
-                          required
-                        />
+                    {/* Validation Form */}
+                    <form onSubmit={handleProductKeyValidation} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="machine-id">Machine ID</Label>
+                        <div className="relative">
+                          <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="machine-id"
+                            name="machineId"
+                            type="text"
+                            placeholder="e.g., VRX001DEL or VRX001-DEL"
+                            className="pl-10"
+                            required
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Copy from the table above or enter your machine's serial number
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        Product key provided with your VR kiosk
-                      </p>
-                    </div>
 
-                    <Button 
-                      type="submit" 
-                      className="w-full" 
-                      disabled={adminSignupLoading}
-                    >
-                      {adminSignupLoading ? 'Validating...' : 'Validate Machine'}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </form>
+                      <div className="space-y-2">
+                        <Label htmlFor="product-key">Product Key</Label>
+                        <div className="relative">
+                          <Key className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="product-key"
+                            name="productKey"
+                            type="text"
+                            placeholder="e.g., AUTH-VRX001-DEL-9K7M"
+                            className="pl-10"
+                            required
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Copy from the table above or use the key provided with your VR kiosk
+                        </p>
+                      </div>
+
+                      <Button 
+                        type="submit" 
+                        className="w-full" 
+                        disabled={adminSignupLoading}
+                      >
+                        {adminSignupLoading ? 'Validating...' : 'Validate Machine'}
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </form>
+                  </div>
                 ) : (
+                  // Validated venue form
                   <div className="space-y-4">
                     <Alert>
                       <Building2 className="h-4 w-4" />
@@ -519,7 +683,7 @@ const SimplifiedAuthPage = () => {
                     How to Get Admin Access
                   </p>
                   <ul className="text-blue-700 mb-2 space-y-1 list-disc list-inside">
-                    <li><strong>Machine Admins:</strong> Use your Machine ID and Product Key provided with your VR kiosk</li>
+                    <li><strong>Machine Admins:</strong> Use your Machine ID and Product Key from the table above</li>
                     <li><strong>Invitations:</strong> Accept invitation emails from Super Admins</li>
                     <li><strong>Support:</strong> Contact support for assistance</li>
                   </ul>
