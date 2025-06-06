@@ -110,8 +110,8 @@ const SimplifiedMachineAdmin = () => {
                     </div>
                     <div className="flex justify-between">
                       <span>Status:</span>
-                      <Badge variant={venue.status === 'active' ? 'default' : 'secondary'}>
-                        {venue.status}
+                      <Badge variant="default">
+                        Active
                       </Badge>
                     </div>
                   </div>

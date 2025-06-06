@@ -66,8 +66,7 @@ export function useMachineAuth() {
         auth: {
           product_id: venueData.serial_number,
           access_level: 'machine_admin',
-          expires_at: null,
-          is_active: true
+          expires_at: null
         },
         authenticated: true
       };
