@@ -143,7 +143,7 @@ const SimplifiedIndex = () => {
                   </KioskButton>
                   <KioskButton 
                     onClick={() => navigate('/auth')} 
-                    variant="ghost" 
+                    variant="secondary" 
                     size="default" 
                     className="w-full"
                   >
