@@ -1,4 +1,3 @@
-
 import { Play, Settings, LogOut, Clock, Wifi } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSimplifiedAuth } from "@/hooks/useSimplifiedAuth";
@@ -8,19 +7,23 @@ import { AnimatedOrbs } from "@/components/ui/animated-orbs";
 import { ModernActionCard } from "@/components/ui/modern-action-card";
 import { MinimalStatus } from "@/components/ui/minimal-status";
 import { Button } from "@/components/ui/button";
-
 const SimplifiedIndex = () => {
   const navigate = useNavigate();
-  const { user, profile, isSuperAdmin, isMachineAdmin, signOut } = useSimplifiedAuth();
-
+  const {
+    user,
+    profile,
+    isSuperAdmin,
+    isMachineAdmin,
+    signOut
+  } = useSimplifiedAuth();
   const handleLogout = async () => {
     await signOut();
   };
-
-  const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-vr-dark via-gray-900 to-vr-dark relative overflow-hidden">
+  const currentTime = new Date().toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  return <div className="min-h-screen bg-gradient-to-br from-vr-dark via-gray-900 to-vr-dark relative overflow-hidden">
       {/* Animated Background */}
       <AnimatedOrbs intensity="medium" orbCount={6} />
       
@@ -43,23 +46,16 @@ const SimplifiedIndex = () => {
           </div>
 
           {/* User Info & Logout - Minimal */}
-          {user && (
-            <div className="flex items-center gap-3">
+          {user && <div className="flex items-center gap-3">
               <div className="text-white/70 text-right text-xs">
                 <p className="opacity-60">Signed in as</p>
                 <p className="font-medium">{profile?.full_name || profile?.email}</p>
               </div>
-              <Button 
-                onClick={handleLogout}
-                variant="ghost"
-                size="sm"
-                className="text-white/60 hover:text-white hover:bg-white/10 h-8 px-3"
-              >
+              <Button onClick={handleLogout} variant="ghost" size="sm" className="text-white/60 hover:text-white hover:bg-white/10 h-8 px-3">
                 <LogOut className="h-3 w-3 mr-1.5" />
                 Sign Out
               </Button>
-            </div>
-          )}
+            </div>}
         </div>
       </div>
 
@@ -95,103 +91,39 @@ const SimplifiedIndex = () => {
           {/* Modern Action Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-4xl">
             {/* Browse Games Card */}
-            <ModernActionCard
-              title="VR Games"
-              description="Explore immersive virtual reality experiences"
-              icon={Play}
-              variant="primary"
-              onClick={() => navigate('/games')}
-            >
-              <KioskButton 
-                onClick={() => navigate('/games')}
-                variant="primary"
-                size="large"
-                className="w-full"
-              >
+            <ModernActionCard title="VR Games" description="Explore immersive virtual reality experiences" icon={Play} variant="primary" onClick={() => navigate('/games')}>
+              <KioskButton onClick={() => navigate('/games')} variant="primary" size="large" className="w-full">
                 <Play className="h-5 w-5" />
                 Browse Games
               </KioskButton>
             </ModernActionCard>
 
             {/* Admin Access Card */}
-            <ModernActionCard
-              title="Admin Access"
-              description={user ? "Access your management dashboard" : "Sign in to manage the kiosk"}
-              icon={Settings}
-              variant="admin"
-              onClick={() => !user ? navigate('/auth') : undefined}
-            >
-              {!user ? (
-                <KioskButton 
-                  onClick={() => navigate('/auth')}
-                  variant="admin"
-                  size="large"
-                  className="w-full"
-                >
+            <ModernActionCard title="Admin Access" description={user ? "Access your management dashboard" : "Sign in to manage the kiosk"} icon={Settings} variant="admin" onClick={() => !user ? navigate('/auth') : undefined}>
+              {!user ? <KioskButton onClick={() => navigate('/auth')} variant="admin" size="large" className="w-full">
                   <Settings className="h-5 w-5" />
                   Admin Sign In
-                </KioskButton>
-              ) : (
-                <div className="space-y-3 w-full">
+                </KioskButton> : <div className="space-y-3 w-full">
                   {/* Super Admin Access */}
-                  {isSuperAdmin() && (
-                    <KioskButton 
-                      onClick={() => navigate('/super-admin')}
-                      variant="admin"
-                      size="default"
-                      className="w-full"
-                    >
+                  {isSuperAdmin() && <KioskButton onClick={() => navigate('/super-admin')} variant="admin" size="default" className="w-full">
                       Super Admin Panel
-                    </KioskButton>
-                  )}
+                    </KioskButton>}
                   
                   {/* Machine Admin Access */}
-                  {(isMachineAdmin() || isSuperAdmin()) && (
-                    <KioskButton 
-                      onClick={() => navigate('/machine-admin')}
-                      variant="admin"
-                      size="default"
-                      className="w-full"
-                    >
+                  {(isMachineAdmin() || isSuperAdmin()) && <KioskButton onClick={() => navigate('/machine-admin')} variant="admin" size="default" className="w-full">
                       Machine Panel
-                    </KioskButton>
-                  )}
-                </div>
-              )}
+                    </KioskButton>}
+                </div>}
             </ModernActionCard>
           </div>
 
           {/* Minimal Feature Highlights */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl mt-12">
-            <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 text-center hover:bg-white/10 transition-all duration-300">
-              <div className="w-8 h-8 bg-vr-primary/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Play className="w-4 h-4 text-vr-primary" />
-              </div>
-              <h3 className="text-sm font-semibold text-white mb-1">Immersive VR</h3>
-              <p className="text-white/60 text-xs leading-relaxed">
-                Next-generation virtual reality with stunning visuals
-              </p>
-            </div>
             
-            <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 text-center hover:bg-white/10 transition-all duration-300">
-              <div className="w-8 h-8 bg-vr-secondary/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Settings className="w-4 h-4 text-vr-secondary" />
-              </div>
-              <h3 className="text-sm font-semibold text-white mb-1">Easy Operation</h3>
-              <p className="text-white/60 text-xs leading-relaxed">
-                Intuitive touch interface for seamless interaction
-              </p>
-            </div>
             
-            <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-4 text-center hover:bg-white/10 transition-all duration-300">
-              <div className="w-8 h-8 bg-vr-accent/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Wifi className="w-4 h-4 text-vr-accent" />
-              </div>
-              <h3 className="text-sm font-semibold text-white mb-1">Always Connected</h3>
-              <p className="text-white/60 text-xs leading-relaxed">
-                Real-time updates and cloud-based management
-              </p>
-            </div>
+            
+            
+            
           </div>
         </div>
       </div>
@@ -199,8 +131,6 @@ const SimplifiedIndex = () => {
       {/* Enhanced ambient lighting effects */}
       <div className="absolute bottom-0 left-0 w-80 h-80 bg-vr-primary/8 rounded-full blur-[120px] -translate-x-1/2 translate-y-1/2" />
       <div className="absolute top-0 right-0 w-80 h-80 bg-vr-accent/8 rounded-full blur-[120px] translate-x-1/2 -translate-y-1/2" />
-    </div>
-  );
+    </div>;
 };
-
 export default SimplifiedIndex;
