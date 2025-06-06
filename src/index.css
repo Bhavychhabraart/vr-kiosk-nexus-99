@@ -150,9 +150,35 @@
   .shadow-glow-sm {
     box-shadow: 0 0 10px 1px rgba(99, 102, 241, 0.2);
   }
+
+  /* Kiosk-specific components */
+  .kiosk-touch-target {
+    @apply min-h-[60px] min-w-[60px] relative overflow-hidden;
+  }
+
+  .kiosk-touch-target::before {
+    content: '';
+    @apply absolute inset-0 bg-white/10 opacity-0 transition-opacity duration-200;
+  }
+
+  .kiosk-touch-target:active::before {
+    @apply opacity-100;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-vr-primary via-vr-accent to-vr-secondary bg-clip-text text-transparent;
+  }
+
+  .neon-glow {
+    text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 40px currentColor;
+  }
+
+  .glass-morphism {
+    @apply backdrop-blur-xl bg-white/10 border border-white/20;
+  }
 }
 
-/* Particle animation */
+/* Enhanced animations for kiosk experience */
 @keyframes float {
   0% {
     transform: translateY(0) translateX(0);
@@ -195,6 +221,29 @@
 @keyframes ripple {
   0% { transform: scale(0); opacity: 1; }
   100% { transform: scale(4); opacity: 0; }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%) skewX(-25deg); }
+  100% { transform: translateX(200%) skewX(-25deg); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 5px rgba(99, 102, 241, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.8));
+  }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
 }
 
 .particle {
@@ -254,4 +303,33 @@
 /* Blurred orbs */
 .orb {
   @apply absolute rounded-full opacity-0 transition-opacity duration-700;
+}
+
+/* Kiosk-specific animations */
+.animate-glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s ease-in-out infinite;
+}
+
+/* Touch feedback animations */
+@keyframes touch-feedback {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  }
+}
+
+.animate-touch-feedback {
+  animation: touch-feedback 0.6s ease-out;
 }
