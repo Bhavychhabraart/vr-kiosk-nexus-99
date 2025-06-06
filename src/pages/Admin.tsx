@@ -1,212 +1,174 @@
 
-import React, { useState } from "react";
-import MainLayout from "@/components/layout/MainLayout";
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
   BarChart3, 
-  Database, 
   Settings, 
-  Shield, 
+  Users, 
+  Gamepad2, 
   CreditCard, 
-  TrendingUp, 
-  Package, 
-  HeadphonesIcon 
+  HeadphonesIcon,
+  Store,
+  LogOut,
+  Crown
 } from "lucide-react";
-import GamesManagementTab from "@/components/admin/GamesManagementTab";
-import SettingsTab from "@/components/admin/SettingsTab";
-import AnalyticsTab from "@/components/admin/AnalyticsTab";
-import PaymentsEarningsTab from "@/components/admin/PaymentsEarningsTab";
-import GamesShowcaseTab from "@/components/admin/GamesShowcaseTab";
-import ProductCatalogTab from "@/components/admin/ProductCatalogTab";
-import SupportTab from "@/components/admin/SupportTab";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
-// Correct PIN code
-const ADMIN_PIN = "123321";
+// Import existing admin components
+import { GamesManagementTab } from "@/components/admin/GamesManagementTab";
+import { AnalyticsTab } from "@/components/admin/AnalyticsTab";
+import { PaymentsEarningsTab } from "@/components/admin/PaymentsEarningsTab";
+import { SettingsTab } from "@/components/admin/SettingsTab";
+import { SupportTab } from "@/components/admin/SupportTab";
+import { ProductCatalogTab } from "@/components/admin/ProductCatalogTab";
+import { GamesShowcaseTab } from "@/components/admin/GamesShowcaseTab";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState("games");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [pinValue, setPinValue] = useState("");
-  const [showPinDialog, setShowPinDialog] = useState(true);
-  const [pinError, setPinError] = useState(false);
+  const { user, profile, signOut, isSuperAdmin, isAdmin } = useAuth();
+  const navigate = useNavigate();
 
-  const handlePinComplete = (value: string) => {
-    if (value === ADMIN_PIN) {
-      setIsAuthenticated(true);
-      setShowPinDialog(false);
-      toast({
-        title: "Access Granted",
-        description: "Welcome to the Admin Dashboard",
-      });
-    } else {
-      setPinError(true);
-      toast({
-        title: "Access Denied",
-        description: "Incorrect PIN code",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        setPinError(false);
-        setPinValue("");
-      }, 1000);
-    }
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/');
   };
 
-  const renderNumpad = () => {
-    const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
-    
-    return (
-      <div className="grid grid-cols-3 gap-2 mt-6 w-full max-w-xs mx-auto">
-        {numbers.map((num) => (
-          <Button 
-            key={num} 
-            variant="outline"
-            className={`aspect-square text-xl font-bold ${num === 0 ? 'col-start-2' : ''}`}
-            onClick={() => {
-              if (pinValue.length < 6) {
-                const newPin = pinValue + num;
-                setPinValue(newPin);
-                if (newPin.length === 6) {
-                  handlePinComplete(newPin);
-                }
-              }
-            }}
-          >
-            {num}
-          </Button>
-        ))}
-        <Button 
-          variant="ghost" 
-          className="aspect-square col-start-3 text-xl font-bold"
-          onClick={() => setPinValue(prev => prev.slice(0, -1))}
-        >
-          ⌫
-        </Button>
-      </div>
-    );
-  };
-
-  // Render PIN entry dialog if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <MainLayout>
-        <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
-          <Dialog open={showPinDialog} onOpenChange={setShowPinDialog}>
-            <DialogContent className="sm:max-w-md">
-              <div className="flex flex-col items-center space-y-6 py-4">
-                <Shield className="h-12 w-12 text-vr-primary" />
-                <h2 className="text-2xl font-bold">Admin Authentication</h2>
-                <p className="text-vr-muted text-center">
-                  Enter the 6-digit PIN code to access the admin dashboard
-                </p>
-                
-                <div className={`transition-all duration-200 ${pinError ? 'animate-shake' : ''}`}>
-                  <InputOTP
-                    value={pinValue}
-                    onChange={setPinValue}
-                    maxLength={6}
-                    render={({ slots }) => (
-                      <InputOTPGroup className="gap-2">
-                        {Array(6).fill(0).map((_, index) => (
-                          <InputOTPSlot
-                            key={index}
-                            index={index}
-                            className={`w-10 h-14 text-2xl ${
-                              pinError ? 'border-red-500 bg-red-50/10' : ''
-                            }`}
-                          />
-                        ))}
-                      </InputOTPGroup>
-                    )}
-                  />
-                </div>
-                
-                {renderNumpad()}
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </MainLayout>
-    );
-  }
-
-  // Render admin dashboard if authenticated
   return (
-    <MainLayout>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
-        <p className="text-vr-muted">Manage the VR system settings and content</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-2">
+              Venue Admin Dashboard
+            </h1>
+            <p className="text-gray-300">
+              Welcome back, {profile?.full_name || profile?.email}
+            </p>
+            <div className="flex gap-2 mt-2">
+              {isSuperAdmin() && (
+                <Badge variant="outline" className="border-purple-500 text-purple-400">
+                  <Crown className="h-3 w-3 mr-1" />
+                  Super Admin
+                </Badge>
+              )}
+              {isAdmin() && (
+                <Badge variant="outline" className="border-green-500 text-green-400">
+                  Venue Admin
+                </Badge>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex gap-4">
+            {isSuperAdmin() && (
+              <Button 
+                onClick={() => navigate('/super-admin')}
+                variant="outline"
+                className="border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white"
+              >
+                <Crown className="h-4 w-4 mr-2" />
+                Super Admin
+              </Button>
+            )}
+            <Button 
+              onClick={() => navigate('/')}
+              variant="outline"
+              className="border-white/20 text-white hover:bg-white/10"
+            >
+              Back to Home
+            </Button>
+            <Button 
+              onClick={handleLogout}
+              variant="outline"
+              className="border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
+        </div>
 
-      <Tabs
-        value={activeTab}
-        onValueChange={setActiveTab}
-        className="w-full"
-      >
-        <TabsList className="w-full grid grid-cols-7 mb-8">
-          <TabsTrigger value="games" className="py-3">
-            <Database className="h-4 w-4 mr-2" />
-            Games
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="py-3">
-            <BarChart3 className="h-4 w-4 mr-2" />
-            Analytics
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="py-3">
-            <Settings className="h-4 w-4 mr-2" />
-            Kiosk Settings
-          </TabsTrigger>
-          <TabsTrigger value="payments" className="py-3">
-            <CreditCard className="h-4 w-4 mr-2" />
-            Payments
-          </TabsTrigger>
-          <TabsTrigger value="showcase" className="py-3">
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Showcase
-          </TabsTrigger>
-          <TabsTrigger value="catalog" className="py-3">
-            <Package className="h-4 w-4 mr-2" />
-            Catalog
-          </TabsTrigger>
-          <TabsTrigger value="support" className="py-3">
-            <HeadphonesIcon className="h-4 w-4 mr-2" />
-            Support
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="games" className="mt-0">
-          <GamesManagementTab />
-        </TabsContent>
-        
-        <TabsContent value="analytics" className="mt-0">
-          <AnalyticsTab />
-        </TabsContent>
-        
-        <TabsContent value="settings" className="mt-0">
-          <SettingsTab />
-        </TabsContent>
-        
-        <TabsContent value="payments" className="mt-0">
-          <PaymentsEarningsTab />
-        </TabsContent>
-        
-        <TabsContent value="showcase" className="mt-0">
-          <GamesShowcaseTab />
-        </TabsContent>
-        
-        <TabsContent value="catalog" className="mt-0">
-          <ProductCatalogTab />
-        </TabsContent>
-        
-        <TabsContent value="support" className="mt-0">
-          <SupportTab />
-        </TabsContent>
-      </Tabs>
-    </MainLayout>
+        {/* Main Admin Interface */}
+        <Card className="bg-black/60 border-gray-600">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2">
+              <Settings className="h-5 w-5 text-vr-primary" />
+              Admin Control Panel
+            </CardTitle>
+            <CardDescription className="text-gray-300">
+              Manage your VR kiosk games, settings, and analytics
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+              <TabsList className="grid w-full grid-cols-7 bg-gray-800">
+                <TabsTrigger value="games" className="data-[state=active]:bg-vr-primary data-[state=active]:text-black">
+                  <Gamepad2 className="h-4 w-4 mr-2" />
+                  Games
+                </TabsTrigger>
+                <TabsTrigger value="showcase" className="data-[state=active]:bg-vr-primary data-[state=active]:text-black">
+                  <Store className="h-4 w-4 mr-2" />
+                  Showcase
+                </TabsTrigger>
+                <TabsTrigger value="analytics" className="data-[state=active]:bg-vr-primary data-[state=active]:text-black">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Analytics
+                </TabsTrigger>
+                <TabsTrigger value="payments" className="data-[state=active]:bg-vr-primary data-[state=active]:text-black">
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Payments
+                </TabsTrigger>
+                <TabsTrigger value="catalog" className="data-[state=active]:bg-vr-primary data-[state=active]:text-black">
+                  <Store className="h-4 w-4 mr-2" />
+                  Catalog
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="data-[state=active]:bg-vr-primary data-[state=active]:text-black">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </TabsTrigger>
+                <TabsTrigger value="support" className="data-[state=active]:bg-vr-primary data-[state=active]:text-black">
+                  <HeadphonesIcon className="h-4 w-4 mr-2" />
+                  Support
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="games">
+                <GamesManagementTab />
+              </TabsContent>
+              
+              <TabsContent value="showcase">
+                <GamesShowcaseTab />
+              </TabsContent>
+
+              <TabsContent value="analytics">
+                <AnalyticsTab />
+              </TabsContent>
+
+              <TabsContent value="payments">
+                <PaymentsEarningsTab />
+              </TabsContent>
+
+              <TabsContent value="catalog">
+                <ProductCatalogTab />
+              </TabsContent>
+
+              <TabsContent value="settings">
+                <SettingsTab />
+              </TabsContent>
+
+              <TabsContent value="support">
+                <SupportTab />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 };
 
