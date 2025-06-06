@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { 
   BarChart3, 
   Database, 
@@ -22,13 +23,16 @@ import SupportTab from "@/components/admin/SupportTab";
 import VenueFilter from "@/components/admin/VenueFilter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles } from "@/hooks/useUserRoles";
+import { assignSuperAdminRole } from "@/utils/roleAssignment";
+import { toast } from "@/components/ui/use-toast";
 
 const Admin = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-  const { userVenues, isSuperAdmin, isLoading: rolesLoading } = useUserRoles();
+  const { userVenues, userRoles, isSuperAdmin, isLoading: rolesLoading, error } = useUserRoles();
   const [activeTab, setActiveTab] = useState("games");
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
+  const [isAssigningRole, setIsAssigningRole] = useState(false);
 
   // Redirect to auth if not authenticated
   useEffect(() => {
@@ -37,7 +41,39 @@ const Admin = () => {
     }
   }, [user, loading, navigate]);
 
-  // Show loading while checking authentication
+  // Handle role assignment for users with no roles
+  const handleAssignSuperAdmin = async () => {
+    if (!user?.email) return;
+    
+    setIsAssigningRole(true);
+    try {
+      const result = await assignSuperAdminRole(user.email);
+      if (result.success) {
+        toast({
+          title: "Role Assigned",
+          description: result.message,
+        });
+        // Refresh the page to update the roles
+        window.location.reload();
+      } else {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to assign role",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAssigningRole(false);
+    }
+  };
+
+  // Show loading while checking authentication or roles
   if (loading || rolesLoading) {
     return (
       <MainLayout>
@@ -54,6 +90,48 @@ const Admin = () => {
   // Don't render if not authenticated (will redirect)
   if (!user) {
     return null;
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+          <div className="text-center">
+            <p className="text-red-500 mb-4">Error loading user data: {error.message}</p>
+            <Button onClick={() => window.location.reload()}>
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // Handle users with no roles
+  if (userRoles && userRoles.length === 0) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+          <div className="text-center max-w-md">
+            <h2 className="text-2xl font-bold mb-4">No Access Permissions</h2>
+            <p className="text-vr-muted mb-6">
+              Your account doesn't have any assigned roles yet. You need admin permissions to access this dashboard.
+            </p>
+            <Button 
+              onClick={handleAssignSuperAdmin}
+              disabled={isAssigningRole}
+              className="mb-4"
+            >
+              {isAssigningRole ? 'Assigning...' : 'Assign Super Admin Role'}
+            </Button>
+            <p className="text-sm text-vr-muted">
+              Contact your system administrator if you believe you should have access.
+            </p>
+          </div>
+        </div>
+      </MainLayout>
+    );
   }
 
   return (

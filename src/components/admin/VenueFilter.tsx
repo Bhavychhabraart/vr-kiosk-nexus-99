@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, Building } from "lucide-react";
+import { MapPin, Building, AlertCircle } from "lucide-react";
 import { useUserRoles } from "@/hooks/useUserRoles";
 
 interface VenueFilterProps {
@@ -11,7 +11,25 @@ interface VenueFilterProps {
 }
 
 const VenueFilter = ({ selectedVenueId, onVenueChange }: VenueFilterProps) => {
-  const { userVenues, isSuperAdmin, isLoading } = useUserRoles();
+  const { userVenues, isSuperAdmin, isLoading, error } = useUserRoles();
+
+  if (error) {
+    return (
+      <Card className="mb-6 border-red-200 bg-red-50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm text-red-800 flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            Error Loading Venues
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <p className="text-sm text-red-700">
+            {error.message || 'Failed to load venue data'}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isLoading) {
     return (

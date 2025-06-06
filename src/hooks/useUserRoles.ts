@@ -21,52 +21,67 @@ export interface UserVenue {
 export function useUserRoles() {
   const { user } = useAuth();
 
-  const { data: userRoles, isLoading: rolesLoading } = useQuery({
+  // First query: Get user roles
+  const { data: userRoles, isLoading: rolesLoading, error: rolesError } = useQuery({
     queryKey: ['user-roles', user?.id],
     queryFn: async (): Promise<UserRole[]> => {
       if (!user?.id) return [];
 
+      console.log('Fetching user roles for:', user.id);
+      
       const { data, error } = await supabase
         .from('simplified_user_roles')
         .select('*')
         .eq('user_id', user.id)
         .eq('is_active', true);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching user roles:', error);
+        throw error;
+      }
+      
+      console.log('User roles fetched:', data);
       return data || [];
     },
     enabled: !!user?.id
   });
 
-  const { data: userVenues, isLoading: venuesLoading } = useQuery({
-    queryKey: ['user-venues', user?.id],
+  // Check if user is super admin
+  const isSuperAdmin = userRoles?.some(role => role.role === 'super_admin') || false;
+  const isMachineAdmin = userRoles?.some(role => role.role === 'machine_admin') || false;
+
+  // Second query: Get user venues (independent of first query)
+  const { data: userVenues, isLoading: venuesLoading, error: venuesError } = useQuery({
+    queryKey: ['user-venues', user?.id, isSuperAdmin],
     queryFn: async (): Promise<UserVenue[]> => {
       if (!user?.id) return [];
 
-      // Get venue IDs for this user
-      const { data: roleData, error: roleError } = await supabase
-        .from('simplified_user_roles')
-        .select('venue_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .not('venue_id', 'is', null);
+      console.log('Fetching user venues. Is super admin:', isSuperAdmin);
 
-      if (roleError) throw roleError;
+      // If user is super admin, get all venues
+      if (isSuperAdmin) {
+        console.log('Fetching all venues for super admin');
+        const { data: allVenues, error: venuesError } = await supabase
+          .from('venues')
+          .select('id, name, city, state, status')
+          .eq('status', 'active');
 
-      const venueIds = roleData?.map(r => r.venue_id).filter(Boolean) || [];
+        if (venuesError) {
+          console.error('Error fetching all venues:', venuesError);
+          throw venuesError;
+        }
+        
+        console.log('All venues fetched:', allVenues);
+        return allVenues || [];
+      }
+
+      // For non-super admins, get venue IDs from roles
+      const venueIds = userRoles?.map(r => r.venue_id).filter(Boolean) || [];
+      
+      console.log('Venue IDs from roles:', venueIds);
       
       if (venueIds.length === 0) {
-        // If user has super_admin role, they can see all venues
-        const isSuperAdmin = userRoles?.some(role => role.role === 'super_admin');
-        if (isSuperAdmin) {
-          const { data: allVenues, error: venuesError } = await supabase
-            .from('venues')
-            .select('id, name, city, state, status')
-            .eq('status', 'active');
-
-          if (venuesError) throw venuesError;
-          return allVenues || [];
-        }
+        console.log('No venue IDs found, returning empty array');
         return [];
       }
 
@@ -76,20 +91,35 @@ export function useUserRoles() {
         .in('id', venueIds)
         .eq('status', 'active');
 
-      if (venuesError) throw venuesError;
+      if (venuesError) {
+        console.error('Error fetching user venues:', venuesError);
+        throw venuesError;
+      }
+      
+      console.log('User venues fetched:', venues);
       return venues || [];
     },
-    enabled: !!user?.id && !!userRoles
+    enabled: !!user?.id && rolesLoading === false // Only run after roles are loaded
   });
 
-  const isSuperAdmin = userRoles?.some(role => role.role === 'super_admin') || false;
-  const isMachineAdmin = userRoles?.some(role => role.role === 'machine_admin') || false;
+  const isLoading = rolesLoading || venuesLoading;
+  const error = rolesError || venuesError;
+
+  console.log('useUserRoles state:', {
+    isLoading,
+    userRoles: userRoles?.length || 0,
+    userVenues: userVenues?.length || 0,
+    isSuperAdmin,
+    isMachineAdmin,
+    error
+  });
 
   return {
     userRoles,
     userVenues,
     isSuperAdmin,
     isMachineAdmin,
-    isLoading: rolesLoading || venuesLoading
+    isLoading,
+    error
   };
 }
