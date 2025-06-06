@@ -32,6 +32,23 @@ export function useAdminSignup() {
       const cleanedProductKey = productKey.trim().toUpperCase();
       console.log('Validating product key:', cleanedProductKey);
       
+      // Enhanced format validation
+      if (!cleanedProductKey.startsWith('AUTH-')) {
+        return {
+          success: false,
+          error: 'Product key must start with "AUTH-". Please enter the complete product key.',
+          debugInfo: { reason: 'invalid_format', providedKey: cleanedProductKey }
+        };
+      }
+
+      if (cleanedProductKey.length < 15) {
+        return {
+          success: false,
+          error: 'Product key appears incomplete. Expected format: AUTH-XXX-XXX-XXXX',
+          debugInfo: { reason: 'incomplete_key', providedKey: cleanedProductKey }
+        };
+      }
+      
       // First, check if the product key exists at all
       const { data: authCheck, error: authError } = await supabase
         .from('machine_auth')
@@ -53,7 +70,7 @@ export function useAdminSignup() {
         console.log('No matching product key found');
         return {
           success: false,
-          error: 'Product key not found in database. Please check the key and try again.',
+          error: 'Product key not found in database. Please check that you copied the complete key from the table above.',
           debugInfo: { searchedKey: cleanedProductKey }
         };
       }

@@ -208,16 +208,45 @@ const SimplifiedAuthPage = () => {
       return;
     }
 
-    // Basic format validation for product key
-    if (!productKey.includes('AUTH-') || productKey.length < 15) {
-      setError('Product key format appears invalid. Expected format: AUTH-XXX-XXX-XXXX');
+    // Enhanced format validation for product key
+    if (!productKey.startsWith('AUTH-')) {
+      setError('Product key must start with "AUTH-". Please copy the complete product key from the table above.');
+      return;
+    }
+
+    if (productKey.length < 15) {
+      setError('Product key appears incomplete. Please copy the complete product key from the table above (e.g., AUTH-VRX001-DEL-9K7M).');
+      return;
+    }
+
+    // Check if user might have copied just part of the product key
+    const matchingMachine = availableMachines.find(machine => 
+      machine.product_key.includes(productKey) || productKey.includes(machine.serial_number)
+    );
+
+    if (matchingMachine && productKey !== matchingMachine.product_key) {
+      setError(`You may have copied only part of the product key. The complete key for ${matchingMachine.name} is: ${matchingMachine.product_key}`);
       return;
     }
 
     const validation = await validateProductKey(productKey);
     if (!validation.success) {
       console.error('Product key validation failed:', validation);
-      setError(validation.error || 'Invalid product key');
+      
+      // Enhanced error message based on the validation response
+      let errorMessage = validation.error || 'Invalid product key';
+      
+      // Suggest the correct product key if we can find a partial match
+      const partialMatch = availableMachines.find(machine => 
+        machine.serial_number.includes(machineId) || 
+        machine.name.toLowerCase().includes(machineId.toLowerCase())
+      );
+      
+      if (partialMatch) {
+        errorMessage += ` Did you mean to use the product key for ${partialMatch.name}: ${partialMatch.product_key}?`;
+      }
+      
+      setError(errorMessage);
       return;
     }
 
@@ -413,7 +442,7 @@ const SimplifiedAuthPage = () => {
                           Available Machines
                         </CardTitle>
                         <CardDescription>
-                          Find your machine and copy its details below
+                          Find your machine and copy the <strong>complete</strong> Machine ID and Product Key below
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
@@ -444,12 +473,12 @@ const SimplifiedAuthPage = () => {
                                       {machine.city}, {machine.state}
                                     </TableCell>
                                     <TableCell>
-                                      <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                                      <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
                                         {machine.serial_number}
                                       </code>
                                     </TableCell>
                                     <TableCell>
-                                      <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                                      <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
                                         {machine.product_key}
                                       </code>
                                     </TableCell>
@@ -459,6 +488,7 @@ const SimplifiedAuthPage = () => {
                                           variant="outline"
                                           size="sm"
                                           onClick={() => copyToClipboard(machine.serial_number, 'id')}
+                                          title="Copy Machine ID"
                                         >
                                           {copiedKey === machine.serial_number ? (
                                             <CheckCheck className="w-3 h-3" />
@@ -470,6 +500,7 @@ const SimplifiedAuthPage = () => {
                                           variant="outline"
                                           size="sm"
                                           onClick={() => copyToClipboard(machine.product_key, 'key')}
+                                          title="Copy Product Key"
                                         >
                                           {copiedKey === machine.product_key ? (
                                             <CheckCheck className="w-3 h-3" />
@@ -493,7 +524,7 @@ const SimplifiedAuthPage = () => {
                       </CardContent>
                     </Card>
 
-                    {/* Validation Form */}
+                    {/* Enhanced Validation Form */}
                     <form onSubmit={handleProductKeyValidation} className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="machine-id">Machine ID</Label>
@@ -504,7 +535,7 @@ const SimplifiedAuthPage = () => {
                             name="machineId"
                             type="text"
                             placeholder="e.g., VRX001DEL or VRX001-DEL"
-                            className="pl-10 uppercase"
+                            className="pl-10 uppercase font-mono"
                             required
                             onChange={(e) => {
                               e.target.value = e.target.value.toUpperCase();
@@ -512,7 +543,7 @@ const SimplifiedAuthPage = () => {
                           />
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Copy from the table above or enter your machine's serial number
+                          Copy the complete Machine ID from the table above
                         </p>
                       </div>
 
@@ -525,7 +556,7 @@ const SimplifiedAuthPage = () => {
                             name="productKey"
                             type="text"
                             placeholder="e.g., AUTH-VRX001-DEL-9K7M"
-                            className="pl-10 uppercase"
+                            className="pl-10 uppercase font-mono"
                             required
                             onChange={(e) => {
                               e.target.value = e.target.value.toUpperCase();
@@ -533,7 +564,7 @@ const SimplifiedAuthPage = () => {
                           />
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Copy from the table above or use the key provided with your VR kiosk
+                          Copy the <strong>complete</strong> Product Key from the table above (must start with "AUTH-")
                         </p>
                       </div>
 
