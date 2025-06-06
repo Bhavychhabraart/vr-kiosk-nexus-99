@@ -26,19 +26,71 @@ export function useAdminSignup() {
 
   const validateProductKey = async (productKey: string): Promise<SignupValidationResult> => {
     try {
-      const { data, error } = await supabase.rpc('validate_signup_product_key', {
-        p_product_key: productKey
-      });
+      // Call the function using direct SQL execution approach
+      const { data, error } = await supabase
+        .from('machine_auth')
+        .select(`
+          id,
+          product_id,
+          access_level,
+          venue_id,
+          venues!inner (
+            id,
+            name,
+            city,
+            state,
+            machine_model,
+            serial_number,
+            status
+          )
+        `)
+        .eq('product_key', productKey)
+        .eq('is_active', true)
+        .eq('venues.status', 'active')
+        .single();
 
-      if (error) throw error;
-
-      const result = typeof data === 'string' ? JSON.parse(data) : data;
-      
-      if (result.success) {
-        setValidatedVenue(result.venue);
+      if (error || !data) {
+        return {
+          success: false,
+          error: 'Invalid or expired product key'
+        };
       }
-      
-      return result;
+
+      // Check if machine already has an admin
+      const { data: existingRole } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('venue_id', data.venue_id)
+        .eq('role', 'machine_admin')
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (existingRole) {
+        return {
+          success: false,
+          error: 'This machine already has an assigned admin'
+        };
+      }
+
+      const venue = {
+        id: data.venues.id,
+        name: data.venues.name,
+        city: data.venues.city,
+        state: data.venues.state,
+        machine_model: data.venues.machine_model,
+        serial_number: data.venues.serial_number
+      };
+
+      setValidatedVenue(venue);
+
+      return {
+        success: true,
+        venue,
+        auth: {
+          product_id: data.product_id,
+          access_level: data.access_level
+        }
+      };
     } catch (error) {
       console.error('Product key validation error:', error);
       return {
@@ -88,40 +140,50 @@ export function useAdminSignup() {
         return { error: authError.message };
       }
 
-      // If user was created successfully, complete the admin signup
-      if (authData.user) {
-        const { data: roleData, error: roleError } = await supabase.rpc('complete_admin_signup', {
-          p_user_id: authData.user.id,
-          p_product_key: productKey
-        });
+      // If user was created successfully, assign the machine admin role
+      if (authData.user && validation.venue) {
+        // Get the machine auth record to find venue_id
+        const { data: machineAuth } = await supabase
+          .from('machine_auth')
+          .select('venue_id')
+          .eq('product_key', productKey)
+          .single();
 
-        if (roleError) {
-          console.error('Role assignment error:', roleError);
+        if (machineAuth) {
+          // Assign machine_admin role
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert({
+              user_id: authData.user.id,
+              role: 'machine_admin',
+              venue_id: machineAuth.venue_id,
+              granted_by: authData.user.id,
+              is_active: true
+            });
+
+          if (roleError) {
+            console.error('Role assignment error:', roleError);
+            toast({
+              variant: "destructive",
+              title: "Setup Incomplete",
+              description: "Account created but admin role assignment failed. Please contact support.",
+            });
+            return { error: "Role assignment failed" };
+          }
+
+          // Update last used time for the auth record
+          await supabase
+            .from('machine_auth')
+            .update({ last_used_at: new Date().toISOString() })
+            .eq('product_key', productKey);
+
           toast({
-            variant: "destructive",
-            title: "Setup Incomplete",
-            description: "Account created but admin role assignment failed. Please contact support.",
+            title: "Welcome!",
+            description: `Admin account created successfully for ${validatedVenue?.name}. Please check your email to verify your account.`,
           });
-          return { error: "Role assignment failed" };
+
+          return { success: true, user: authData.user };
         }
-
-        const roleResult = typeof roleData === 'string' ? JSON.parse(roleData) : roleData;
-        
-        if (!roleResult.success) {
-          toast({
-            variant: "destructive",
-            title: "Setup Failed",
-            description: roleResult.error,
-          });
-          return { error: roleResult.error };
-        }
-
-        toast({
-          title: "Welcome!",
-          description: `Admin account created successfully for ${validatedVenue?.name}. Please check your email to verify your account.`,
-        });
-
-        return { success: true, user: authData.user };
       }
 
       return { error: "Unknown error occurred" };
