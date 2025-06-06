@@ -206,8 +206,6 @@ export const SetupWizard = () => {
                 <CurrentStepComponent 
                   onNext={goToNextStep}
                   onPrevious={goToPreviousStep}
-                  canGoNext={currentStepIndex < setupSteps.length - 1}
-                  canGoPrevious={currentStepIndex > 0}
                   setupStatus={setupStatus}
                 />
               </CardContent>

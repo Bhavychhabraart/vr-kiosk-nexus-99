@@ -31,7 +31,7 @@ export const useMachineSetup = () => {
         throw error;
       }
 
-      return data as InitializeSetupResponse;
+      return data as unknown as InitializeSetupResponse;
     },
     onSuccess: (data) => {
       console.log('Setup initialized:', data);
@@ -72,7 +72,7 @@ export const useMachineSetup = () => {
         throw error;
       }
 
-      return data as ValidateTokenResponse;
+      return data as unknown as ValidateTokenResponse;
     },
     enabled: !!setupToken,
     retry: 1,

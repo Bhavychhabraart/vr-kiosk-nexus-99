@@ -137,7 +137,6 @@ export const OwnerSetupStep = ({ onNext, setupStatus }: OwnerSetupStepProps) => 
       await saveOwnerRegistration({
         machine_serial_number: setupStatus?.serial_number,
         ...ownerData,
-        verification_status: 'pending',
         email_verified_at: emailVerified ? new Date().toISOString() : null,
         phone_verified_at: phoneVerified ? new Date().toISOString() : null,
       });
