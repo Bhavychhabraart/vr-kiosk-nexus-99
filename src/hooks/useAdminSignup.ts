@@ -140,7 +140,7 @@ export function useAdminSignup() {
         return { error: authError.message };
       }
 
-      // If user was created successfully, assign the machine admin role
+      // If user was created successfully, assign the machine admin role using the secure function
       if (authData.user && validation.venue) {
         // Get the machine auth record to find venue_id
         const { data: machineAuth } = await supabase
@@ -150,16 +150,15 @@ export function useAdminSignup() {
           .single();
 
         if (machineAuth) {
-          // Assign machine_admin role
-          const { error: roleError } = await supabase
-            .from('user_roles')
-            .insert({
-              user_id: authData.user.id,
-              role: 'machine_admin',
-              venue_id: machineAuth.venue_id,
-              granted_by: authData.user.id,
-              is_active: true
-            });
+          // Use the secure database function to assign the role
+          const { data: roleResult, error: roleError } = await supabase.rpc(
+            'assign_machine_admin_role',
+            {
+              p_user_id: authData.user.id,
+              p_venue_id: machineAuth.venue_id,
+              p_granted_by: authData.user.id
+            }
+          );
 
           if (roleError) {
             console.error('Role assignment error:', roleError);
@@ -169,6 +168,17 @@ export function useAdminSignup() {
               description: "Account created but admin role assignment failed. Please contact support.",
             });
             return { error: "Role assignment failed" };
+          }
+
+          // Check if the function returned an error
+          if (roleResult && !roleResult.success) {
+            console.error('Role assignment function error:', roleResult.error);
+            toast({
+              variant: "destructive",
+              title: "Role Assignment Failed",
+              description: roleResult.error || "Failed to assign admin role",
+            });
+            return { error: roleResult.error || "Role assignment failed" };
           }
 
           // Update last used time for the auth record

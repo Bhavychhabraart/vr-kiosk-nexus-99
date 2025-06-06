@@ -1353,6 +1353,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_machine_admin_role: {
+        Args: { p_user_id: string; p_venue_id: string; p_granted_by?: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _user_id: string
