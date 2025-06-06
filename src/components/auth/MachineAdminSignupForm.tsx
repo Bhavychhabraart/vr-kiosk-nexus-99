@@ -1,39 +1,62 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Lock, Mail, User, Building2, ArrowRight } from 'lucide-react';
+import { Lock, Mail, User, Building2, ArrowRight, Info } from 'lucide-react';
 import { useSimplifiedMachineAdmin } from '@/hooks/useSimplifiedMachineAdmin';
 import { useNavigate } from 'react-router-dom';
+import { isDefaultCredential } from '@/utils/defaultCredentials';
 
-export const MachineAdminSignupForm = () => {
+interface PrefillData {
+  email?: string;
+  password?: string;
+  serialNumber?: string;
+}
+
+interface MachineAdminSignupFormProps {
+  prefillData?: PrefillData;
+}
+
+export const MachineAdminSignupForm = ({ prefillData }: MachineAdminSignupFormProps) => {
   const [error, setError] = useState<string>('');
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: prefillData?.email || '',
+    password: prefillData?.password || '',
+    machineSerialNumber: prefillData?.serialNumber || ''
+  });
+  
   const { isLoading, signUpMachineAdmin } = useSimplifiedMachineAdmin();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (prefillData) {
+      setFormData(prev => ({
+        ...prev,
+        email: prefillData.email || prev.email,
+        password: prefillData.password || prev.password,
+        machineSerialNumber: prefillData.serialNumber || prev.machineSerialNumber
+      }));
+    }
+  }, [prefillData]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-    const fullName = formData.get('fullName') as string;
-    const machineSerialNumber = formData.get('machineSerialNumber') as string;
-
-    if (!email || !password || !fullName || !machineSerialNumber) {
+    if (!formData.email || !formData.password || !formData.fullName || !formData.machineSerialNumber) {
       setError('Please fill in all fields');
       return;
     }
 
     const result = await signUpMachineAdmin({
-      email,
-      password,
-      fullName,
-      machineSerialNumber
+      email: formData.email,
+      password: formData.password,
+      fullName: formData.fullName,
+      machineSerialNumber: formData.machineSerialNumber
     });
 
     if (result.success) {
@@ -43,6 +66,16 @@ export const MachineAdminSignupForm = () => {
       setError(result.error);
     }
   };
+
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const isUsingDefaultCredentials = isDefaultCredential(
+    formData.email, 
+    formData.password, 
+    formData.machineSerialNumber
+  );
 
   return (
     <Card className="w-full max-w-md">
@@ -54,6 +87,16 @@ export const MachineAdminSignupForm = () => {
       </CardHeader>
 
       <CardContent>
+        {isUsingDefaultCredentials && (
+          <Alert className="mb-4">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Using default credentials for {formData.machineSerialNumber}. 
+              You can change your password after signup.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {error && (
           <Alert variant="destructive" className="mb-4">
             <AlertDescription>{error}</AlertDescription>
@@ -67,10 +110,11 @@ export const MachineAdminSignupForm = () => {
               <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 id="fullName"
-                name="fullName"
                 type="text"
                 placeholder="Enter your full name"
                 className="pl-10"
+                value={formData.fullName}
+                onChange={(e) => handleInputChange('fullName', e.target.value)}
                 required
               />
             </div>
@@ -82,10 +126,11 @@ export const MachineAdminSignupForm = () => {
               <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 id="email"
-                name="email"
                 type="email"
                 placeholder="Enter your email"
                 className="pl-10"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
                 required
               />
             </div>
@@ -97,10 +142,11 @@ export const MachineAdminSignupForm = () => {
               <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 id="password"
-                name="password"
                 type="password"
                 placeholder="Create a password"
                 className="pl-10"
+                value={formData.password}
+                onChange={(e) => handleInputChange('password', e.target.value)}
                 required
               />
             </div>
@@ -112,14 +158,12 @@ export const MachineAdminSignupForm = () => {
               <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 id="machineSerialNumber"
-                name="machineSerialNumber"
                 type="text"
                 placeholder="e.g., VRX001DEL"
                 className="pl-10 uppercase font-mono"
+                value={formData.machineSerialNumber}
+                onChange={(e) => handleInputChange('machineSerialNumber', e.target.value.toUpperCase())}
                 required
-                onChange={(e) => {
-                  e.target.value = e.target.value.toUpperCase();
-                }}
               />
             </div>
             <p className="text-xs text-muted-foreground">

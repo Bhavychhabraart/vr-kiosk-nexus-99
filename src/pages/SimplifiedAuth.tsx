@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Lock, Mail, ArrowRight, Building2 } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Building2, FileText } from 'lucide-react';
 import { useSimplifiedAuth } from '@/hooks/useSimplifiedAuth';
 import { MachineAdminSignupForm } from '@/components/auth/MachineAdminSignupForm';
 
@@ -19,6 +19,8 @@ const SimplifiedAuth = () => {
   const location = useLocation();
   
   const from = location.state?.from?.pathname || '/';
+  const prefillData = location.state?.prefillData;
+  const defaultTab = location.state?.defaultTab || 'machine-signup';
 
   useEffect(() => {
     if (user) {
@@ -57,7 +59,7 @@ const SimplifiedAuth = () => {
           <p className="text-muted-foreground">Sign in to your account or create a new machine admin account</p>
         </div>
 
-        <Tabs defaultValue="machine-signup" className="w-full max-w-2xl mx-auto">
+        <Tabs defaultValue={defaultTab} className="w-full max-w-2xl mx-auto">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="machine-signup" className="flex items-center gap-2">
               <Building2 className="w-4 h-4" />
@@ -67,7 +69,7 @@ const SimplifiedAuth = () => {
           </TabsList>
 
           <TabsContent value="machine-signup" className="flex justify-center">
-            <MachineAdminSignupForm />
+            <MachineAdminSignupForm prefillData={prefillData} />
           </TabsContent>
 
           <TabsContent value="signin" className="flex justify-center">
@@ -131,8 +133,18 @@ const SimplifiedAuth = () => {
           </TabsContent>
         </Tabs>
 
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>Need help? Contact support at support@arcadiavr.com</p>
+        <div className="mt-6 text-center space-y-2">
+          <Button 
+            variant="link" 
+            onClick={() => navigate('/default-credentials')}
+            className="flex items-center gap-2 mx-auto"
+          >
+            <FileText className="h-4 w-4" />
+            View Default Machine Credentials
+          </Button>
+          <p className="text-sm text-muted-foreground">
+            Need help? Contact support at support@arcadiavr.com
+          </p>
         </div>
       </div>
     </div>
