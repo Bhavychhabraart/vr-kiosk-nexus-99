@@ -7,13 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Lock, Mail, User, ArrowRight } from 'lucide-react';
+import { Lock, Mail, User, ArrowRight, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 import { useEffect } from 'react';
 
 const AuthPage = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isSendingConfirmation, setIsSendingConfirmation] = useState(false);
   const [error, setError] = useState<string>('');
+  const [lastSignupEmail, setLastSignupEmail] = useState<string>('');
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,6 +29,51 @@ const AuthPage = () => {
       navigate(from, { replace: true });
     }
   }, [user, navigate, from]);
+
+  const sendConfirmationEmail = async (email: string, fullName?: string) => {
+    setIsSendingConfirmation(true);
+    try {
+      console.log('Sending confirmation email to:', email);
+
+      const confirmationUrl = `${window.location.origin}/auth`;
+
+      const { data, error } = await supabase.functions.invoke('send-confirmation-email', {
+        body: {
+          email,
+          fullName: fullName || email.split('@')[0],
+          venueName: 'VR Kiosk Admin',
+          confirmationUrl
+        }
+      });
+
+      if (error) {
+        console.error('Error sending confirmation email:', error);
+        toast({
+          variant: "destructive",
+          title: "Email Error",
+          description: "Failed to send confirmation email. Please contact support.",
+        });
+        return false;
+      }
+
+      console.log('Confirmation email sent successfully:', data);
+      toast({
+        title: "Confirmation Email Sent",
+        description: "Please check your email for account confirmation instructions.",
+      });
+      return true;
+    } catch (error: any) {
+      console.error('Confirmation email error:', error);
+      toast({
+        variant: "destructive",
+        title: "Email Error",
+        description: "Failed to send confirmation email. Please try again.",
+      });
+      return false;
+    } finally {
+      setIsSendingConfirmation(false);
+    }
+  };
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -39,6 +88,10 @@ const AuthPage = () => {
     
     if (error) {
       setError(error.message);
+      // If the error is about email not being confirmed, store the email for resending
+      if (error.message.includes('Email not confirmed')) {
+        setLastSignupEmail(email);
+      }
     }
     
     setIsLoading(false);
@@ -54,13 +107,25 @@ const AuthPage = () => {
     const password = formData.get('password') as string;
     const fullName = formData.get('fullName') as string;
 
+    // Store email for potential confirmation resend
+    setLastSignupEmail(email);
+
     const { error } = await signUp(email, password, fullName);
     
     if (error) {
       setError(error.message);
+    } else {
+      // Send confirmation email after successful signup
+      await sendConfirmationEmail(email, fullName);
     }
     
     setIsLoading(false);
+  };
+
+  const handleResendConfirmation = async () => {
+    if (lastSignupEmail) {
+      await sendConfirmationEmail(lastSignupEmail);
+    }
   };
 
   return (
@@ -87,7 +152,32 @@ const AuthPage = () => {
 
             {error && (
               <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>
+                  {error}
+                  {error.includes('Email not confirmed') && lastSignupEmail && (
+                    <div className="mt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResendConfirmation}
+                        disabled={isSendingConfirmation}
+                        className="w-full"
+                      >
+                        {isSendingConfirmation ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="w-4 h-4 mr-2" />
+                            Resend Confirmation Email
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </AlertDescription>
               </Alert>
             )}
 
