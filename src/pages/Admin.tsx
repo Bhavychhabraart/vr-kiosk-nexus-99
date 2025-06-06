@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,14 +17,14 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 
-// Import existing admin components
-import { GamesManagementTab } from "@/components/admin/GamesManagementTab";
-import { AnalyticsTab } from "@/components/admin/AnalyticsTab";
-import { PaymentsEarningsTab } from "@/components/admin/PaymentsEarningsTab";
-import { SettingsTab } from "@/components/admin/SettingsTab";
-import { SupportTab } from "@/components/admin/SupportTab";
-import { ProductCatalogTab } from "@/components/admin/ProductCatalogTab";
-import { GamesShowcaseTab } from "@/components/admin/GamesShowcaseTab";
+// Import existing admin components with correct default import syntax
+import GamesManagementTab from "@/components/admin/GamesManagementTab";
+import AnalyticsTab from "@/components/admin/AnalyticsTab";
+import PaymentsEarningsTab from "@/components/admin/PaymentsEarningsTab";
+import SettingsTab from "@/components/admin/SettingsTab";
+import SupportTab from "@/components/admin/SupportTab";
+import ProductCatalogTab from "@/components/admin/ProductCatalogTab";
+import GamesShowcaseTab from "@/components/admin/GamesShowcaseTab";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState("games");
