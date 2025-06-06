@@ -3,7 +3,7 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import { Button, ButtonProps } from "@/components/ui/button";
 
-interface KioskButtonProps extends Omit<ButtonProps, 'variant'> {
+interface KioskButtonProps extends Omit<ButtonProps, 'variant' | 'size'> {
   variant?: "primary" | "secondary" | "admin";
   glowEffect?: boolean;
   size?: "default" | "large" | "xl";
