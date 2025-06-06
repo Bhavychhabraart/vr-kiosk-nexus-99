@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { 
   BarChart3, 
   Database, 
@@ -11,7 +12,8 @@ import {
   CreditCard, 
   TrendingUp, 
   Package, 
-  HeadphonesIcon 
+  HeadphonesIcon,
+  UserPlus 
 } from "lucide-react";
 import GamesManagementTab from "@/components/admin/GamesManagementTab";
 import SettingsTab from "@/components/admin/SettingsTab";
@@ -23,16 +25,25 @@ import SupportTab from "@/components/admin/SupportTab";
 import VenueFilter from "@/components/admin/VenueFilter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles } from "@/hooks/useUserRoles";
-import { assignSuperAdminRole } from "@/utils/roleAssignment";
+import { assignSuperAdminRole, assignMachineAdminRole, createPendingRoleAssignment } from "@/utils/roleAssignment";
 import { toast } from "@/components/ui/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useVenues } from "@/hooks/useVenues";
 
 const Admin = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const { userVenues, userRoles, isSuperAdmin, isLoading: rolesLoading, error } = useUserRoles();
+  const { venues } = useVenues();
   const [activeTab, setActiveTab] = useState("games");
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
   const [isAssigningRole, setIsAssigningRole] = useState(false);
+  
+  // Role assignment form state
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserRole, setNewUserRole] = useState<"super_admin" | "machine_admin">("machine_admin");
+  const [newUserVenueId, setNewUserVenueId] = useState<string>("");
 
   // Redirect to auth if not authenticated
   useEffect(() => {
@@ -55,6 +66,67 @@ const Admin = () => {
         });
         // Refresh the page to update the roles
         window.location.reload();
+      } else {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to assign role",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAssigningRole(false);
+    }
+  };
+
+  // Handle assigning roles to new users
+  const handleAssignRoleToUser = async () => {
+    if (!newUserEmail || !newUserRole) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newUserRole === "machine_admin" && !newUserVenueId) {
+      toast({
+        title: "Missing Venue",
+        description: "Please select a venue for machine admin role",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAssigningRole(true);
+    try {
+      let result;
+      
+      if (newUserRole === "super_admin") {
+        result = await assignSuperAdminRole(newUserEmail);
+      } else {
+        result = await assignMachineAdminRole(newUserEmail, newUserVenueId);
+      }
+
+      // If user doesn't exist yet, create pending assignment
+      if (!result.success && result.error?.includes("not found")) {
+        result = await createPendingRoleAssignment(newUserEmail, newUserRole, newUserVenueId);
+      }
+
+      if (result.success) {
+        toast({
+          title: "Role Assignment",
+          description: result.message,
+        });
+        setNewUserEmail("");
+        setNewUserRole("machine_admin");
+        setNewUserVenueId("");
       } else {
         toast({
           title: "Error",
@@ -142,6 +214,56 @@ const Admin = () => {
           Welcome back, {user.email} | {isSuperAdmin ? 'Super Admin' : 'Admin'} Access
         </p>
       </div>
+
+      {/* Super Admin Role Management Section */}
+      {isSuperAdmin && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              Assign User Roles
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Input
+                placeholder="User email"
+                value={newUserEmail}
+                onChange={(e) => setNewUserEmail(e.target.value)}
+              />
+              <Select value={newUserRole} onValueChange={(value: "super_admin" | "machine_admin") => setNewUserRole(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="super_admin">Super Admin</SelectItem>
+                  <SelectItem value="machine_admin">Machine Admin</SelectItem>
+                </SelectContent>
+              </Select>
+              {newUserRole === "machine_admin" && (
+                <Select value={newUserVenueId} onValueChange={setNewUserVenueId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select venue" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {venues?.map((venue) => (
+                      <SelectItem key={venue.id} value={venue.id}>
+                        {venue.name} - {venue.city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button 
+                onClick={handleAssignRoleToUser}
+                disabled={isAssigningRole}
+              >
+                {isAssigningRole ? 'Assigning...' : 'Assign Role'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <VenueFilter 
         selectedVenueId={selectedVenueId}

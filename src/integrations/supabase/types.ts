@@ -1500,6 +1500,10 @@ export type Database = {
         Args: { p_email: string; p_venue_id: string; p_invited_by: string }
         Returns: Json
       }
+      get_current_user_simplified_role: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Enums"]["simplified_user_role"]
+      }
       has_role: {
         Args: {
           _user_id: string
