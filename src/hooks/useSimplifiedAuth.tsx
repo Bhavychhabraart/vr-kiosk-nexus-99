@@ -200,8 +200,11 @@ export function SimplifiedAuthProvider({ children }: SimplifiedAuthProviderProps
 
         if (inviteError) throw inviteError;
 
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to accept invitation');
+        // Type cast the result to access properties
+        const typedResult = result as { success: boolean; error?: string };
+
+        if (!typedResult.success) {
+          throw new Error(typedResult.error || 'Failed to accept invitation');
         }
 
         toast({
@@ -281,8 +284,11 @@ export function SimplifiedAuthProvider({ children }: SimplifiedAuthProviderProps
 
       if (error) throw error;
 
-      if (!result.success) {
-        return { success: false, error: result.error };
+      // Type cast the result to access properties
+      const typedResult = result as { success: boolean; error?: string };
+
+      if (!typedResult.success) {
+        return { success: false, error: typedResult.error };
       }
 
       toast({
