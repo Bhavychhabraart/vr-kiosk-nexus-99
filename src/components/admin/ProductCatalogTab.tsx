@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,11 @@ import {
   Edit,
   Trash2,
   Download,
-  ExternalLink
+  ExternalLink,
+  Clock,
+  Play,
+  Gamepad,
+  Zap
 } from "lucide-react";
 import { useUpcomingProducts } from "@/hooks/useUpcomingProducts";
 import { toast } from "@/components/ui/use-toast";
@@ -85,7 +90,7 @@ const ProductCatalogTab = ({ selectedVenueId }: ProductCatalogTabProps) => {
 
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {
-      case 'simulation': return <Gamepad2 className="h-4 w-4" />;
+      case 'simulation': return <Gamepad className="h-4 w-4" />;
       case 'adventure': return <Star className="h-4 w-4" />;
       case 'fitness': return <Zap className="h-4 w-4" />;
       default: return <Package className="h-4 w-4" />;

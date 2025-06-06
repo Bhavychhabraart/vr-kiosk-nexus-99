@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,10 @@ import {
   CheckCircle,
   AlertCircle,
   Search,
-  Filter
+  Filter,
+  Phone,
+  Mail,
+  ExternalLink
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";

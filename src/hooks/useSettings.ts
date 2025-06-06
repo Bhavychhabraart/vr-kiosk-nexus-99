@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +14,87 @@ interface KioskSettingsRaw {
   name: string;
   location: string;
   idle_timeout: number;
+}
+
+interface VenueSettings {
+  venue_id: string;
+  rfid_enabled?: boolean;
+  upi_enabled?: boolean;
+  upi_merchant_id?: string;
+  theme?: string;
+  brightness?: number;
+  volume?: number;
+  sound_effects_enabled?: boolean;
+  password_protection_enabled?: boolean;
+  admin_password?: string;
+}
+
+export function useSettings(venueId?: string | null) {
+  const queryClient = useQueryClient();
+  
+  const fetchSettings = async (): Promise<VenueSettings | null> => {
+    if (!venueId) return null;
+    
+    const { data, error } = await supabase
+      .from('venue_settings')
+      .select('*')
+      .eq('venue_id', venueId)
+      .single();
+      
+    if (error && error.code !== 'PGRST116') throw error;
+    
+    return data || {
+      venue_id: venueId,
+      rfid_enabled: true,
+      upi_enabled: true,
+      upi_merchant_id: '',
+      theme: 'light',
+      brightness: 100,
+      volume: 50,
+      sound_effects_enabled: true,
+      password_protection_enabled: false,
+      admin_password: ''
+    };
+  };
+  
+  const { data: settings, isLoading, error } = useQuery({
+    queryKey: ['venue-settings', venueId],
+    queryFn: fetchSettings,
+    enabled: !!venueId
+  });
+  
+  const updateSettings = useMutation({
+    mutationFn: async (newSettings: Partial<VenueSettings>) => {
+      const { error } = await supabase
+        .from('venue_settings')
+        .upsert(newSettings);
+      
+      if (error) throw error;
+      return newSettings;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['venue-settings', venueId] });
+      toast({
+        title: "Settings updated",
+        description: "Venue settings have been saved",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error updating settings",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  return {
+    settings,
+    isLoading,
+    error,
+    updateSettings: (newSettings: Partial<VenueSettings>) => updateSettings.mutate(newSettings),
+    isUpdating: updateSettings.isPending
+  };
 }
 
 export function useWebSocketSettings() {
