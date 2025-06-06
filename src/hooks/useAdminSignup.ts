@@ -18,6 +18,7 @@ interface SignupValidationResult {
     access_level: string;
   };
   error?: string;
+  debugInfo?: any;
 }
 
 export function useAdminSignup() {
@@ -27,81 +28,146 @@ export function useAdminSignup() {
 
   const validateProductKey = async (productKey: string): Promise<SignupValidationResult> => {
     try {
-      console.log('Validating product key:', productKey);
+      // Clean and normalize the product key
+      const cleanedProductKey = productKey.trim().toUpperCase();
+      console.log('Validating product key:', cleanedProductKey);
       
-      const { data, error } = await supabase
+      // First, check if the product key exists at all
+      const { data: authCheck, error: authError } = await supabase
         .from('machine_auth')
-        .select(`
-          id,
-          product_id,
-          access_level,
-          venue_id,
-          venues!inner (
-            id,
-            name,
-            city,
-            state,
-            machine_model,
-            serial_number,
-            status
-          )
-        `)
-        .eq('product_key', productKey)
-        .eq('is_active', true)
-        .eq('venues.status', 'active')
-        .single();
+        .select('*')
+        .eq('product_key', cleanedProductKey);
 
-      if (error || !data) {
-        console.error('Product key validation error:', error);
+      console.log('Auth check result:', { authCheck, authError });
+
+      if (authError) {
+        console.error('Database error during auth check:', authError);
         return {
           success: false,
-          error: 'Invalid or expired product key'
+          error: 'Database error occurred while validating product key',
+          debugInfo: { authError }
         };
       }
 
-      console.log('Product key validation successful:', data);
+      if (!authCheck || authCheck.length === 0) {
+        console.log('No matching product key found');
+        return {
+          success: false,
+          error: 'Product key not found in database. Please check the key and try again.',
+          debugInfo: { searchedKey: cleanedProductKey }
+        };
+      }
 
-      // Check if machine already has an admin using simplified_user_roles
-      const { data: existingRole } = await supabase
+      const authRecord = authCheck[0];
+      console.log('Found auth record:', authRecord);
+
+      // Check if the auth record is active
+      if (!authRecord.is_active) {
+        return {
+          success: false,
+          error: 'This product key has been deactivated. Please contact support.',
+          debugInfo: { reason: 'auth_inactive' }
+        };
+      }
+
+      // Check if the auth record has expired
+      if (authRecord.expires_at && new Date(authRecord.expires_at) < new Date()) {
+        return {
+          success: false,
+          error: 'This product key has expired. Please contact support for renewal.',
+          debugInfo: { reason: 'auth_expired', expires_at: authRecord.expires_at }
+        };
+      }
+
+      // Now get the venue information
+      const { data: venueData, error: venueError } = await supabase
+        .from('venues')
+        .select('*')
+        .eq('id', authRecord.venue_id)
+        .maybeSingle();
+
+      console.log('Venue check result:', { venueData, venueError });
+
+      if (venueError) {
+        console.error('Database error during venue check:', venueError);
+        return {
+          success: false,
+          error: 'Database error occurred while validating venue',
+          debugInfo: { venueError }
+        };
+      }
+
+      if (!venueData) {
+        return {
+          success: false,
+          error: 'Associated venue not found in database',
+          debugInfo: { venue_id: authRecord.venue_id }
+        };
+      }
+
+      if (venueData.status !== 'active') {
+        return {
+          success: false,
+          error: 'The venue associated with this product key is not active',
+          debugInfo: { venue_status: venueData.status }
+        };
+      }
+
+      // Check if machine already has an admin
+      const { data: existingRole, error: roleError } = await supabase
         .from('simplified_user_roles')
         .select('id')
-        .eq('venue_id', data.venue_id)
+        .eq('venue_id', authRecord.venue_id)
         .eq('role', 'machine_admin')
         .eq('is_active', true)
         .maybeSingle();
 
-      if (existingRole) {
-        console.log('Machine already has admin:', existingRole);
+      console.log('Existing role check:', { existingRole, roleError });
+
+      if (roleError) {
+        console.error('Error checking existing roles:', roleError);
         return {
           success: false,
-          error: 'This machine already has an assigned admin'
+          error: 'Error checking existing admin assignments',
+          debugInfo: { roleError }
+        };
+      }
+
+      if (existingRole) {
+        return {
+          success: false,
+          error: 'This machine already has an assigned admin. Please contact support if you need to change the admin.',
+          debugInfo: { reason: 'admin_exists' }
         };
       }
 
       const venue = {
-        id: data.venues.id,
-        name: data.venues.name,
-        city: data.venues.city,
-        state: data.venues.state,
-        machine_model: data.venues.machine_model,
-        serial_number: data.venues.serial_number
+        id: venueData.id,
+        name: venueData.name,
+        city: venueData.city,
+        state: venueData.state,
+        machine_model: venueData.machine_model || 'VR-KIOSK-V1',
+        serial_number: venueData.serial_number || ''
       };
 
       setValidatedVenue(venue);
+
+      console.log('Validation successful:', venue);
 
       return {
         success: true,
         venue,
         auth: {
-          product_id: data.product_id,
-          access_level: data.access_level
+          product_id: authRecord.product_id,
+          access_level: authRecord.access_level || 'admin'
         }
       };
     } catch (error) {
-      console.error('Product key validation error:', error);
+      console.error('Unexpected error during product key validation:', error);
       return {
         success: false,
-        error: 'Failed to validate product key. Please try again.'
+        error: 'An unexpected error occurred during validation. Please try again.',
+        debugInfo: { unexpectedError: error }
       };
     }
   };
@@ -161,8 +227,11 @@ export function useAdminSignup() {
     try {
       console.log('Starting admin signup process for:', email);
 
+      // Clean the product key before validation
+      const cleanedProductKey = productKey.trim().toUpperCase();
+
       // Re-validate the product key to ensure it's still valid
-      const validation = await validateProductKey(productKey);
+      const validation = await validateProductKey(cleanedProductKey);
       if (!validation.success) {
         console.error('Product key validation failed during signup:', validation.error);
         toast({
@@ -225,7 +294,7 @@ export function useAdminSignup() {
         const { error: updateError } = await supabase
           .from('machine_auth')
           .update({ last_used_at: new Date().toISOString() })
-          .eq('product_key', productKey);
+          .eq('product_key', cleanedProductKey);
 
         if (updateError) {
           console.error('Failed to update last_used_at:', updateError);

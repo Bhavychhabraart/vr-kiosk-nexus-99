@@ -198,11 +198,25 @@ const SimplifiedAuthPage = () => {
     setError('');
 
     const formData = new FormData(e.currentTarget);
-    const productKey = formData.get('productKey') as string;
-    const machineId = formData.get('machineId') as string;
+    const productKey = (formData.get('productKey') as string).trim().toUpperCase();
+    const machineId = (formData.get('machineId') as string).trim().toUpperCase();
+
+    console.log('Form submission:', { productKey, machineId });
+
+    if (!productKey || !machineId) {
+      setError('Please fill in both Machine ID and Product Key');
+      return;
+    }
+
+    // Basic format validation for product key
+    if (!productKey.includes('AUTH-') || productKey.length < 15) {
+      setError('Product key format appears invalid. Expected format: AUTH-XXX-XXX-XXXX');
+      return;
+    }
 
     const validation = await validateProductKey(productKey);
     if (!validation.success) {
+      console.error('Product key validation failed:', validation);
       setError(validation.error || 'Invalid product key');
       return;
     }
@@ -225,6 +239,7 @@ const SimplifiedAuthPage = () => {
     }
 
     setValidatedProductKey(productKey);
+    console.log('Validation successful, product key set:', productKey);
   };
 
   const handleClearValidation = () => {
@@ -489,8 +504,11 @@ const SimplifiedAuthPage = () => {
                             name="machineId"
                             type="text"
                             placeholder="e.g., VRX001DEL or VRX001-DEL"
-                            className="pl-10"
+                            className="pl-10 uppercase"
                             required
+                            onChange={(e) => {
+                              e.target.value = e.target.value.toUpperCase();
+                            }}
                           />
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -507,8 +525,11 @@ const SimplifiedAuthPage = () => {
                             name="productKey"
                             type="text"
                             placeholder="e.g., AUTH-VRX001-DEL-9K7M"
-                            className="pl-10"
+                            className="pl-10 uppercase"
                             required
+                            onChange={(e) => {
+                              e.target.value = e.target.value.toUpperCase();
+                            }}
                           />
                         </div>
                         <p className="text-xs text-muted-foreground">
