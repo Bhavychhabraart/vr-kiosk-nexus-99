@@ -3,20 +3,26 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { EarningsSummary } from '@/types/business';
 
-export function useEarnings() {
+export function useEarnings(selectedVenueId?: string | null) {
   const fetchEarnings = async (): Promise<EarningsSummary[]> => {
-    const { data, error } = await supabase
+    let query = supabase
       .from('earnings_summary')
       .select('*')
       .order('date', { ascending: false })
       .limit(30);
+
+    // Filter by venue if specified
+    if (selectedVenueId) {
+      query = query.eq('venue_id', selectedVenueId);
+    }
       
+    const { data, error } = await query;
     if (error) throw error;
     return data || [];
   };
   
   const { data: earnings, isLoading, error } = useQuery({
-    queryKey: ['earnings'],
+    queryKey: ['earnings', selectedVenueId],
     queryFn: fetchEarnings
   });
   

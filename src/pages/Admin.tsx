@@ -19,12 +19,16 @@ import PaymentsEarningsTab from "@/components/admin/PaymentsEarningsTab";
 import GamesShowcaseTab from "@/components/admin/GamesShowcaseTab";
 import ProductCatalogTab from "@/components/admin/ProductCatalogTab";
 import SupportTab from "@/components/admin/SupportTab";
+import VenueFilter from "@/components/admin/VenueFilter";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 const Admin = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { userVenues, isSuperAdmin, isLoading: rolesLoading } = useUserRoles();
   const [activeTab, setActiveTab] = useState("games");
+  const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
 
   // Redirect to auth if not authenticated
   useEffect(() => {
@@ -34,7 +38,7 @@ const Admin = () => {
   }, [user, loading, navigate]);
 
   // Show loading while checking authentication
-  if (loading) {
+  if (loading || rolesLoading) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
@@ -57,9 +61,14 @@ const Admin = () => {
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
         <p className="text-vr-muted">
-          Welcome back, {user.email} | Manage the VR system settings and content
+          Welcome back, {user.email} | {isSuperAdmin ? 'Super Admin' : 'Admin'} Access
         </p>
       </div>
+
+      <VenueFilter 
+        selectedVenueId={selectedVenueId}
+        onVenueChange={setSelectedVenueId}
+      />
 
       <Tabs
         value={activeTab}
@@ -98,31 +107,31 @@ const Admin = () => {
         </TabsList>
         
         <TabsContent value="games" className="mt-0">
-          <GamesManagementTab />
+          <GamesManagementTab selectedVenueId={selectedVenueId} />
         </TabsContent>
         
         <TabsContent value="analytics" className="mt-0">
-          <AnalyticsTab />
+          <AnalyticsTab selectedVenueId={selectedVenueId} />
         </TabsContent>
         
         <TabsContent value="settings" className="mt-0">
-          <SettingsTab />
+          <SettingsTab selectedVenueId={selectedVenueId} />
         </TabsContent>
         
         <TabsContent value="payments" className="mt-0">
-          <PaymentsEarningsTab />
+          <PaymentsEarningsTab selectedVenueId={selectedVenueId} />
         </TabsContent>
         
         <TabsContent value="showcase" className="mt-0">
-          <GamesShowcaseTab />
+          <GamesShowcaseTab selectedVenueId={selectedVenueId} />
         </TabsContent>
         
         <TabsContent value="catalog" className="mt-0">
-          <ProductCatalogTab />
+          <ProductCatalogTab selectedVenueId={selectedVenueId} />
         </TabsContent>
         
         <TabsContent value="support" className="mt-0">
-          <SupportTab />
+          <SupportTab selectedVenueId={selectedVenueId} />
         </TabsContent>
       </Tabs>
     </MainLayout>

@@ -24,12 +24,12 @@ interface UnifiedSession {
   game_title: string;
 }
 
-export const useSessionAnalytics = () => {
+export const useSessionAnalytics = (selectedVenueId?: string | null) => {
   const { data: sessions, isLoading: sessionsLoading, refetch: refetchSessions } = useQuery({
-    queryKey: ['sessionAnalytics'],
+    queryKey: ['sessionAnalytics', selectedVenueId],
     queryFn: async (): Promise<UnifiedSession[]> => {
-      // First try to get from session_tracking (active sessions)
-      const { data: trackingData, error: trackingError } = await supabase
+      // Build tracking query
+      let trackingQuery = supabase
         .from('session_tracking')
         .select(`
           *,
@@ -37,18 +37,27 @@ export const useSessionAnalytics = () => {
         `)
         .order('start_time', { ascending: false });
 
-      if (trackingError) {
-        console.error('Error fetching session tracking:', trackingError);
-      }
-
-      // Also get from session_history (completed sessions)
-      const { data: historyData, error: historyError } = await supabase
+      // Build history query
+      let historyQuery = supabase
         .from('session_history')
         .select(`
           *,
           games:game_id (title)
         `)
         .order('start_time', { ascending: false });
+
+      // Apply venue filter if specified
+      if (selectedVenueId) {
+        trackingQuery = trackingQuery.eq('venue_id', selectedVenueId);
+        historyQuery = historyQuery.eq('venue_id', selectedVenueId);
+      }
+
+      const { data: trackingData, error: trackingError } = await trackingQuery;
+      const { data: historyData, error: historyError } = await historyQuery;
+
+      if (trackingError) {
+        console.error('Error fetching session tracking:', trackingError);
+      }
 
       if (historyError) {
         console.error('Error fetching session history:', historyError);
@@ -104,16 +113,22 @@ export const useSessionAnalytics = () => {
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['sessionStats'],
+    queryKey: ['sessionStats', selectedVenueId],
     queryFn: async () => {
       const today = new Date().toISOString().split('T')[0];
       
       // Get today's sessions from session_tracking only (for revenue calculation)
-      const { data: todaySessions } = await supabase
+      let query = supabase
         .from('session_tracking')
         .select('*')
         .gte('start_time', today)
         .eq('status', 'completed');
+
+      if (selectedVenueId) {
+        query = query.eq('venue_id', selectedVenueId);
+      }
+
+      const { data: todaySessions } = await query;
 
       const totalSessions = todaySessions?.length || 0;
       const totalRevenue = todaySessions?.reduce((sum, session) => sum + (session.amount_paid || 0), 0) || 0;

@@ -26,8 +26,12 @@ import {
   Cell
 } from "recharts";
 
-const PaymentsEarningsTab = () => {
-  const { earnings, totals, isLoading } = useEarnings();
+interface PaymentsEarningsTabProps {
+  selectedVenueId?: string | null;
+}
+
+const PaymentsEarningsTab = ({ selectedVenueId }: PaymentsEarningsTabProps) => {
+  const { earnings, totals, isLoading } = useEarnings(selectedVenueId);
   const { paymentMethods } = usePaymentMethods();
 
   if (isLoading) {
@@ -71,6 +75,14 @@ const PaymentsEarningsTab = () => {
 
   return (
     <div className="space-y-6">
+      {selectedVenueId && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800">
+            <strong>Venue Filter Active:</strong> Showing data for selected venue only
+          </p>
+        </div>
+      )}
+
       {/* Payment Method Status */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className={`border-2 ${paymentMethods?.rfid_enabled ? 'border-green-500' : 'border-gray-300'}`}>
@@ -116,7 +128,7 @@ const PaymentsEarningsTab = () => {
               ₹{totals?.daily.toLocaleString() || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              Based on session prices
+              {selectedVenueId ? "Selected venue only" : "Based on session prices"}
             </p>
           </CardContent>
         </Card>
@@ -182,7 +194,7 @@ const PaymentsEarningsTab = () => {
           <CardHeader>
             <CardTitle>Revenue Trend</CardTitle>
             <CardDescription>
-              Daily revenue for the last 7 days
+              Daily revenue for the last 7 days {selectedVenueId ? "(selected venue)" : ""}
             </CardDescription>
           </CardHeader>
           <CardContent>
