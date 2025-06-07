@@ -28,6 +28,8 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
   const { data: sessions, isLoading: sessionsLoading, refetch: refetchSessions } = useQuery({
     queryKey: ['sessionAnalytics', selectedVenueId],
     queryFn: async (): Promise<UnifiedSession[]> => {
+      console.log('Fetching session analytics for venue:', selectedVenueId);
+      
       // Build tracking query
       let trackingQuery = supabase
         .from('session_tracking')
@@ -62,6 +64,9 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
       if (historyError) {
         console.error('Error fetching session history:', historyError);
       }
+
+      console.log('Session tracking data:', trackingData?.length || 0, 'records');
+      console.log('Session history data:', historyData?.length || 0, 'records');
 
       // Transform session_tracking data
       const trackingSessions: UnifiedSession[] = (trackingData || []).map(session => ({
@@ -107,6 +112,7 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
         index === self.findIndex(s => s.id === session.id)
       );
 
+      console.log('Total unique sessions found:', uniqueSessions.length);
       return uniqueSessions;
     },
     refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
@@ -115,32 +121,63 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
   const { data: stats } = useQuery({
     queryKey: ['sessionStats', selectedVenueId],
     queryFn: async () => {
+      console.log('Fetching session stats for venue:', selectedVenueId);
+      
       const today = new Date().toISOString().split('T')[0];
       
-      // Get today's sessions from session_tracking only (for revenue calculation)
-      let query = supabase
+      // Get today's sessions from both tables
+      let trackingQuery = supabase
         .from('session_tracking')
         .select('*')
-        .gte('start_time', today)
-        .eq('status', 'completed');
+        .gte('start_time', today);
 
+      let historyQuery = supabase
+        .from('session_history')
+        .select('*')
+        .gte('start_time', today);
+
+      // Apply venue filter if specified
       if (selectedVenueId) {
-        query = query.eq('venue_id', selectedVenueId);
+        trackingQuery = trackingQuery.eq('venue_id', selectedVenueId);
+        historyQuery = historyQuery.eq('venue_id', selectedVenueId);
       }
 
-      const { data: todaySessions } = await query;
+      const { data: trackingSessions } = await trackingQuery;
+      const { data: historySessions } = await historyQuery;
 
-      const totalSessions = todaySessions?.length || 0;
-      const totalRevenue = todaySessions?.reduce((sum, session) => sum + (session.amount_paid || 0), 0) || 0;
-      const avgDuration = todaySessions?.length > 0 
-        ? todaySessions.reduce((sum, session) => sum + (session.duration_seconds || 0), 0) / todaySessions.length 
+      // Combine both datasets
+      const allTodaySessions = [
+        ...(trackingSessions || []),
+        ...(historySessions || [])
+      ];
+
+      // Remove duplicates and count sessions
+      const uniqueSessionIds = new Set();
+      const uniqueSessions = allTodaySessions.filter(session => {
+        if (uniqueSessionIds.has(session.id)) {
+          return false;
+        }
+        uniqueSessionIds.add(session.id);
+        return true;
+      });
+
+      console.log('Today\'s unique sessions:', uniqueSessions.length);
+
+      const totalSessions = uniqueSessions.length;
+      const totalRevenue = uniqueSessions.reduce((sum, session) => sum + (session.amount_paid || 0), 0);
+      const completedSessions = uniqueSessions.filter(s => s.status === 'completed' && s.duration_seconds);
+      const avgDuration = completedSessions.length > 0 
+        ? completedSessions.reduce((sum, session) => sum + (session.duration_seconds || 0), 0) / completedSessions.length 
         : 0;
 
-      return {
+      const statsResult = {
         totalSessions,
         totalRevenue,
         avgDuration
       };
+
+      console.log('Session stats result:', statsResult);
+      return statsResult;
     },
     refetchInterval: 5000,
   });

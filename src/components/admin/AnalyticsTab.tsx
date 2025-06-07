@@ -36,6 +36,14 @@ const AnalyticsTab = ({ selectedVenueId }: AnalyticsTabProps) => {
   const { sessions, stats, isLoading } = useSessionAnalytics(selectedVenueId);
   const { earnings, totals } = useEarnings(selectedVenueId);
 
+  // Debug logging
+  React.useEffect(() => {
+    console.log('AnalyticsTab - selectedVenueId:', selectedVenueId);
+    console.log('AnalyticsTab - sessions:', sessions?.length || 0);
+    console.log('AnalyticsTab - stats:', stats);
+    console.log('AnalyticsTab - isLoading:', isLoading);
+  }, [selectedVenueId, sessions, stats, isLoading]);
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -71,7 +79,7 @@ const AnalyticsTab = ({ selectedVenueId }: AnalyticsTabProps) => {
     );
   }
 
-  // Prepare chart data
+  // Show analytics even if data is empty (for debugging)
   const recentSessions = sessions?.slice(0, 10) || [];
   const chartData = earnings?.slice(0, 7).reverse().map(earning => ({
     date: new Date(earning.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
@@ -97,18 +105,22 @@ const AnalyticsTab = ({ selectedVenueId }: AnalyticsTabProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Venue Selection Notice */}
+      {/* Debug Information */}
       <Card className="border-blue-200 bg-blue-50">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm text-blue-800 flex items-center gap-2">
             <Building2 className="h-4 w-4" />
-            Venue-Specific Analytics
+            Debug Information
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <p className="text-sm text-blue-700">
-            Showing analytics data for the selected venue only
-          </p>
+          <div className="text-sm text-blue-700 space-y-1">
+            <p>Selected Venue ID: {selectedVenueId || 'None'}</p>
+            <p>Sessions Found: {sessions?.length || 0}</p>
+            <p>Today's Sessions: {stats?.totalSessions || 0}</p>
+            <p>Today's Revenue: ₹{stats?.totalRevenue || 0}</p>
+            <p>Loading: {isLoading ? 'Yes' : 'No'}</p>
+          </div>
         </CardContent>
       </Card>
 
@@ -136,7 +148,7 @@ const AnalyticsTab = ({ selectedVenueId }: AnalyticsTabProps) => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-vr-secondary">
-              ₹{stats?.totalRevenue.toLocaleString() || 0}
+              ₹{stats?.totalRevenue?.toLocaleString() || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               Total earnings today
@@ -151,7 +163,7 @@ const AnalyticsTab = ({ selectedVenueId }: AnalyticsTabProps) => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              ₹{totals?.weekly.toLocaleString() || 0}
+              ₹{totals?.weekly?.toLocaleString() || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               Last 7 days
@@ -184,67 +196,40 @@ const AnalyticsTab = ({ selectedVenueId }: AnalyticsTabProps) => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis yAxisId="left" />
-              <YAxis yAxisId="right" orientation="right" />
-              <Tooltip 
-                formatter={(value, name) => [
-                  name === 'revenue' ? `₹${value}` : value,
-                  name === 'revenue' ? 'Revenue' : 'Sessions'
-                ]}
-              />
-              <Line 
-                yAxisId="left"
-                type="monotone" 
-                dataKey="revenue" 
-                stroke="#00eaff" 
-                strokeWidth={2}
-                dot={{ fill: "#00eaff" }}
-              />
-              <Line 
-                yAxisId="right"
-                type="monotone" 
-                dataKey="sessions" 
-                stroke="#ff6b6b" 
-                strokeWidth={2}
-                dot={{ fill: "#ff6b6b" }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Popular Games */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Popular Games</CardTitle>
-          <CardDescription>
-            Most played games at this venue
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {popularGames.length > 0 ? (
-            <div className="space-y-4">
-              {popularGames.map((game, index) => (
-                <div key={game.game} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Badge variant="outline">#{index + 1}</Badge>
-                    <span className="font-medium">{game.game}</span>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span>{game.sessions} sessions</span>
-                    <span>₹{game.revenue.toLocaleString()}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis yAxisId="left" />
+                <YAxis yAxisId="right" orientation="right" />
+                <Tooltip 
+                  formatter={(value, name) => [
+                    name === 'revenue' ? `₹${value}` : value,
+                    name === 'revenue' ? 'Revenue' : 'Sessions'
+                  ]}
+                />
+                <Line 
+                  yAxisId="left"
+                  type="monotone" 
+                  dataKey="revenue" 
+                  stroke="#00eaff" 
+                  strokeWidth={2}
+                  dot={{ fill: "#00eaff" }}
+                />
+                <Line 
+                  yAxisId="right"
+                  type="monotone" 
+                  dataKey="sessions" 
+                  stroke="#ff6b6b" 
+                  strokeWidth={2}
+                  dot={{ fill: "#ff6b6b" }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           ) : (
-            <div className="text-center py-8">
-              <Play className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">No game data available for this venue</p>
+            <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+              No revenue data available for chart
             </div>
           )}
         </CardContent>
@@ -279,7 +264,10 @@ const AnalyticsTab = ({ selectedVenueId }: AnalyticsTabProps) => {
           ) : (
             <div className="text-center py-8">
               <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">No recent sessions for this venue</p>
+              <p className="text-muted-foreground">No recent sessions found for this venue</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Start a gaming session to see analytics data appear here
+              </p>
             </div>
           )}
         </CardContent>
