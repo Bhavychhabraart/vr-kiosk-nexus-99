@@ -109,28 +109,41 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
 
       return uniqueSessions;
     },
-    refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
+    refetchInterval: 2000, // Refetch every 2 seconds for real-time updates
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['sessionStats', selectedVenueId],
+    queryKey: ['sessionStats', selectedVenueId, sessions],
     queryFn: async () => {
       const today = new Date().toISOString().split('T')[0];
       
-      // Use the same unified session data for stats calculation
       if (!sessions) return { totalSessions: 0, totalRevenue: 0, avgDuration: 0 };
 
-      // Filter today's completed sessions from unified data
+      // Filter today's sessions (both active and completed) from unified data
       const todaySessions = sessions.filter(session => {
         const sessionDate = new Date(session.start_time).toISOString().split('T')[0];
-        return sessionDate === today && session.status === 'completed';
+        return sessionDate === today;
       });
 
+      // Count all sessions for today (active + completed)
       const totalSessions = todaySessions.length;
-      const totalRevenue = todaySessions.reduce((sum, session) => sum + (session.amount_paid || 0), 0);
-      const avgDuration = todaySessions.length > 0 
-        ? todaySessions.reduce((sum, session) => sum + (session.duration_seconds || 0), 0) / todaySessions.length 
+      
+      // Only count revenue from completed sessions
+      const completedSessions = todaySessions.filter(session => session.status === 'completed');
+      const totalRevenue = completedSessions.reduce((sum, session) => sum + (session.amount_paid || 0), 0);
+      
+      // Calculate average duration only from completed sessions
+      const avgDuration = completedSessions.length > 0 
+        ? completedSessions.reduce((sum, session) => sum + (session.duration_seconds || 0), 0) / completedSessions.length 
         : 0;
+
+      console.log('Today sessions stats:', { 
+        totalSessions, 
+        completedSessions: completedSessions.length, 
+        totalRevenue, 
+        avgDuration,
+        venueId: selectedVenueId 
+      });
 
       return {
         totalSessions,
@@ -139,7 +152,7 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
       };
     },
     enabled: !!sessions, // Only run when sessions data is available
-    refetchInterval: 5000,
+    refetchInterval: 2000, // Real-time updates every 2 seconds
   });
 
   return {

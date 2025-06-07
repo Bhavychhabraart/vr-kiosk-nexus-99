@@ -19,12 +19,14 @@ export const useSessionTracking = () => {
     try {
       setIsTracking(true);
       
+      console.log('Starting session with data:', data);
+      
       const { error } = await supabase
         .from('session_tracking')
         .insert({
           session_id: data.sessionId,
           game_id: data.gameId,
-          venue_id: data.venueId,
+          venue_id: data.venueId, // Ensure venue_id is always set
           payment_method: data.paymentMethod,
           amount_paid: data.amountPaid,
           rfid_tag: data.rfidTag,
@@ -36,7 +38,14 @@ export const useSessionTracking = () => {
         throw error;
       }
 
-      console.log('Session tracking started:', data.sessionId);
+      console.log('Session tracking started successfully:', data.sessionId);
+      
+      // Show immediate feedback
+      toast({
+        title: "Session Started",
+        description: `Game session ${data.sessionId} has been started`,
+      });
+      
       return true;
     } catch (error) {
       console.error('Failed to start session tracking:', error);
@@ -45,6 +54,7 @@ export const useSessionTracking = () => {
         title: "Session Tracking Error",
         description: "Failed to start session tracking",
       });
+      setIsTracking(false);
       return false;
     }
   }, []);
@@ -88,27 +98,13 @@ export const useSessionTracking = () => {
         throw updateError;
       }
 
-      // Also insert into session_history for analytics
-      const { error: historyError } = await supabase
-        .from('session_history')
-        .insert({
-          id: session.id, // Use same ID to avoid duplicates
-          game_id: session.game_id,
-          venue_id: session.venue_id,
-          start_time: session.start_time,
-          end_time: endTime,
-          duration_seconds: durationSeconds,
-          rfid_tag: session.rfid_tag,
-          rating: rating,
-          status: 'completed'
-        });
-
-      if (historyError && historyError.code !== '23505') { // Ignore duplicate key errors
-        console.error('Error inserting session history:', historyError);
-        // Don't throw here as the main session update succeeded
-      }
-
-      console.log('Session tracking ended:', sessionId);
+      console.log('Session tracking ended successfully:', sessionId);
+      
+      toast({
+        title: "Session Completed",
+        description: `Game session completed (${Math.floor(durationSeconds / 60)}m ${durationSeconds % 60}s)`,
+      });
+      
       setIsTracking(false);
       return true;
     } catch (error) {
