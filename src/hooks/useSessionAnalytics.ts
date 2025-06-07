@@ -28,8 +28,6 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
   const { data: sessions, isLoading: sessionsLoading, refetch: refetchSessions } = useQuery({
     queryKey: ['sessionAnalytics', selectedVenueId],
     queryFn: async (): Promise<UnifiedSession[]> => {
-      console.log('Fetching sessions for venue:', selectedVenueId);
-      
       // Build tracking query
       let trackingQuery = supabase
         .from('session_tracking')
@@ -64,9 +62,6 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
       if (historyError) {
         console.error('Error fetching session history:', historyError);
       }
-
-      console.log('Raw tracking data:', trackingData);
-      console.log('Raw history data:', historyData);
 
       // Transform session_tracking data
       const trackingSessions: UnifiedSession[] = (trackingData || []).map(session => ({
@@ -106,71 +101,40 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
 
       // Combine and deduplicate sessions
       const allSessions = [...trackingSessions, ...historySessions];
-      console.log('All sessions combined:', allSessions);
 
       // Remove duplicates by ID (session_tracking takes precedence)
       const uniqueSessions = allSessions.filter((session, index, self) => 
         index === self.findIndex(s => s.id === session.id)
       );
 
-      console.log('Unique sessions:', uniqueSessions);
       return uniqueSessions;
     },
-    refetchInterval: 2000, // Refetch every 2 seconds for real-time updates
+    refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['sessionStats', selectedVenueId, sessions],
+    queryKey: ['sessionStats', selectedVenueId],
     queryFn: async () => {
-      console.log('Calculating stats for sessions:', sessions?.length);
+      const today = new Date().toISOString().split('T')[0];
       
-      if (!sessions || sessions.length === 0) {
-        console.log('No sessions found, returning zero stats');
-        return { totalSessions: 0, totalRevenue: 0, avgDuration: 0 };
+      // Get today's sessions from session_tracking only (for revenue calculation)
+      let query = supabase
+        .from('session_tracking')
+        .select('*')
+        .gte('start_time', today)
+        .eq('status', 'completed');
+
+      if (selectedVenueId) {
+        query = query.eq('venue_id', selectedVenueId);
       }
 
-      const today = new Date();
-      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
-      
-      console.log('Today range:', todayStart, 'to', todayEnd);
+      const { data: todaySessions } = await query;
 
-      // Filter today's sessions
-      const todaySessions = sessions.filter(session => {
-        const sessionDate = new Date(session.start_time);
-        const isToday = sessionDate >= todayStart && sessionDate < todayEnd;
-        console.log('Session date:', sessionDate, 'Is today:', isToday);
-        return isToday;
-      });
-
-      console.log('Today sessions found:', todaySessions.length);
-
-      // Count ALL sessions for today (both active and completed)
-      const totalSessions = todaySessions.length;
-      
-      // Only count revenue from completed sessions that have amount_paid
-      const completedSessions = todaySessions.filter(session => 
-        session.status === 'completed' && session.amount_paid && session.amount_paid > 0
-      );
-      
-      const totalRevenue = completedSessions.reduce((sum, session) => sum + (session.amount_paid || 0), 0);
-      
-      // Calculate average duration only from sessions that have duration
-      const sessionsWithDuration = todaySessions.filter(session => 
-        session.duration_seconds && session.duration_seconds > 0
-      );
-      
-      const avgDuration = sessionsWithDuration.length > 0 
-        ? sessionsWithDuration.reduce((sum, session) => sum + (session.duration_seconds || 0), 0) / sessionsWithDuration.length 
+      const totalSessions = todaySessions?.length || 0;
+      const totalRevenue = todaySessions?.reduce((sum, session) => sum + (session.amount_paid || 0), 0) || 0;
+      const avgDuration = todaySessions?.length > 0 
+        ? todaySessions.reduce((sum, session) => sum + (session.duration_seconds || 0), 0) / todaySessions.length 
         : 0;
-
-      console.log('Calculated stats:', { 
-        totalSessions, 
-        completedWithRevenue: completedSessions.length, 
-        totalRevenue, 
-        avgDuration,
-        venueId: selectedVenueId 
-      });
 
       return {
         totalSessions,
@@ -178,8 +142,7 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
         avgDuration
       };
     },
-    enabled: !!sessions, // Only run when sessions data is available
-    refetchInterval: 2000, // Real-time updates every 2 seconds
+    refetchInterval: 5000,
   });
 
   return {

@@ -2,7 +2,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { 
   Table, 
   TableBody, 
@@ -12,7 +11,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { format } from "date-fns";
-import { RefreshCw, TrendingUp, Clock, Users, DollarSign, Activity } from "lucide-react";
+import { RefreshCw, TrendingUp, Clock, Users, DollarSign } from "lucide-react";
 import { useSessionAnalytics } from "@/hooks/useSessionAnalytics";
 
 interface MachineAnalyticsTabProps {
@@ -36,22 +35,10 @@ const MachineAnalyticsTab = ({ venueId }: MachineAnalyticsTabProps) => {
     );
   }
 
-  // Count active sessions for today
-  const today = new Date().toISOString().split('T')[0];
-  const activeSessions = sessions?.filter(session => {
-    const sessionDate = new Date(session.start_time).toISOString().split('T')[0];
-    return sessionDate === today && session.status === 'active';
-  }).length || 0;
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Machine Analytics</h2>
-          <p className="text-sm text-muted-foreground">
-            Real-time analytics for venue: {venueId}
-          </p>
-        </div>
+        <h2 className="text-2xl font-bold">Machine Analytics</h2>
         <Button
           variant="outline"
           size="sm"
@@ -75,22 +62,7 @@ const MachineAnalyticsTab = ({ venueId }: MachineAnalyticsTabProps) => {
           <CardContent>
             <div className="text-3xl font-bold">{stats?.totalSessions || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Total sessions started today
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              Active Now
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-600">{activeSessions}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Currently playing
+              Sessions completed today
             </p>
           </CardContent>
         </Card>
@@ -105,7 +77,7 @@ const MachineAnalyticsTab = ({ venueId }: MachineAnalyticsTabProps) => {
           <CardContent>
             <div className="text-3xl font-bold">₹{stats?.totalRevenue || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Revenue from completed sessions
+              Revenue generated today
             </p>
           </CardContent>
         </Card>
@@ -126,6 +98,21 @@ const MachineAnalyticsTab = ({ venueId }: MachineAnalyticsTabProps) => {
             </p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Machine Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-green-600">Online</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              System operational
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Recent Sessions Table */}
@@ -133,7 +120,7 @@ const MachineAnalyticsTab = ({ venueId }: MachineAnalyticsTabProps) => {
         <CardHeader>
           <CardTitle>Recent Sessions</CardTitle>
           <CardDescription>
-            Latest VR gaming sessions on this machine (updates every 2 seconds)
+            Latest VR gaming sessions on this machine
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -159,15 +146,10 @@ const MachineAnalyticsTab = ({ venueId }: MachineAnalyticsTabProps) => {
                     <TableCell className="font-medium">{session.game_title}</TableCell>
                     <TableCell>{format(new Date(session.start_time), 'MMM d, HH:mm:ss')}</TableCell>
                     <TableCell>
-                      {session.status === 'active' ? (
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                          Playing...
-                        </Badge>
-                      ) : session.duration_seconds ? (
-                        `${Math.floor(session.duration_seconds / 60)}m ${session.duration_seconds % 60}s`
-                      ) : (
-                        'Unknown'
-                      )}
+                      {session.duration_seconds 
+                        ? `${Math.floor(session.duration_seconds / 60)}m ${session.duration_seconds % 60}s`
+                        : 'In progress'
+                      }
                     </TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded-full text-xs ${
@@ -204,7 +186,7 @@ const MachineAnalyticsTab = ({ venueId }: MachineAnalyticsTabProps) => {
         </CardContent>
       </Card>
 
-      {/* Game Performance */}
+      {/* Session History by Game */}
       {sessions && sessions.length > 0 && (
         <Card>
           <CardHeader>
@@ -219,7 +201,6 @@ const MachineAnalyticsTab = ({ venueId }: MachineAnalyticsTabProps) => {
                 <TableRow>
                   <TableHead>Game</TableHead>
                   <TableHead className="text-right">Total Sessions</TableHead>
-                  <TableHead className="text-right">Active Sessions</TableHead>
                   <TableHead className="text-right">Total Revenue</TableHead>
                   <TableHead className="text-right">Avg Duration</TableHead>
                   <TableHead className="text-right">Last Played</TableHead>
@@ -232,16 +213,12 @@ const MachineAnalyticsTab = ({ venueId }: MachineAnalyticsTabProps) => {
                     if (!acc[gameTitle]) {
                       acc[gameTitle] = {
                         sessions: 0,
-                        activeSessions: 0,
                         revenue: 0,
                         totalDuration: 0,
                         lastPlayed: session.start_time
                       };
                     }
                     acc[gameTitle].sessions += 1;
-                    if (session.status === 'active') {
-                      acc[gameTitle].activeSessions += 1;
-                    }
                     acc[gameTitle].revenue += session.amount_paid || 0;
                     acc[gameTitle].totalDuration += session.duration_seconds || 0;
                     if (new Date(session.start_time) > new Date(acc[gameTitle].lastPlayed)) {
@@ -253,18 +230,9 @@ const MachineAnalyticsTab = ({ venueId }: MachineAnalyticsTabProps) => {
                   <TableRow key={game}>
                     <TableCell className="font-medium">{game}</TableCell>
                     <TableCell className="text-right">{stats.sessions}</TableCell>
-                    <TableCell className="text-right">
-                      {stats.activeSessions > 0 ? (
-                        <Badge variant="outline" className="bg-green-50 text-green-700">
-                          {stats.activeSessions}
-                        </Badge>
-                      ) : (
-                        '0'
-                      )}
-                    </TableCell>
                     <TableCell className="text-right">₹{stats.revenue}</TableCell>
                     <TableCell className="text-right">
-                      {stats.sessions > 0 ? Math.floor(stats.totalDuration / stats.sessions / 60) : 0}m
+                      {Math.floor(stats.totalDuration / stats.sessions / 60)}m
                     </TableCell>
                     <TableCell className="text-right">
                       {format(new Date(stats.lastPlayed), 'MMM d, HH:mm')}
