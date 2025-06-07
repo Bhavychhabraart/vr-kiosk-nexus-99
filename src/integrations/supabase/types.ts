@@ -1575,6 +1575,14 @@ export type Database = {
         Args: { p_serial_number: string; p_model?: string }
         Returns: Json
       }
+      setup_existing_users: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      setup_user_venue: {
+        Args: { p_email: string; p_user_id: string }
+        Returns: Json
+      }
       update_setup_progress: {
         Args: {
           p_serial_number: string

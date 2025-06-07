@@ -27,7 +27,7 @@ export function useOnboarding() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch onboarding status
+  // Fetch onboarding status with real-time updates
   const { data: onboardingStatus, isLoading, error } = useQuery({
     queryKey: ['onboarding-status', user?.id],
     queryFn: async (): Promise<OnboardingStatus | null> => {
@@ -42,7 +42,11 @@ export function useOnboarding() {
       if (error) throw error;
       return data;
     },
-    enabled: !!user?.id
+    enabled: !!user?.id,
+    refetchInterval: (data) => {
+      // Refetch every 2 seconds if status is pending
+      return data?.status === 'pending' ? 2000 : false;
+    }
   });
 
   // Start automated setup
@@ -52,6 +56,28 @@ export function useOnboarding() {
         throw new Error('User not authenticated');
       }
 
+      console.log('Starting setup for user:', user.email);
+
+      // First create or update onboarding status to pending
+      const { error: statusError } = await supabase
+        .from('user_onboarding_status')
+        .upsert({
+          user_id: user.id,
+          status: 'pending',
+          setup_progress: {
+            venue_created: false,
+            games_assigned: 0,
+            settings_configured: false,
+            role_assigned: false
+          }
+        });
+
+      if (statusError) {
+        console.error('Error updating onboarding status:', statusError);
+        throw statusError;
+      }
+
+      // Trigger the edge function
       const { data, error } = await supabase.functions.invoke('auto-setup-user', {
         body: {
           user_id: user.id,
@@ -60,17 +86,19 @@ export function useOnboarding() {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Setup function error:', error);
+        throw error;
+      }
+
+      console.log('Setup function response:', data);
       return data;
     },
     onSuccess: () => {
+      console.log('Setup started successfully');
       queryClient.invalidateQueries({ queryKey: ['onboarding-status'] });
       queryClient.invalidateQueries({ queryKey: ['user-roles'] });
       queryClient.invalidateQueries({ queryKey: ['user-venues'] });
-      toast({
-        title: "Setup Complete!",
-        description: "Your VR arcade is ready to serve customers",
-      });
     },
     onError: (error) => {
       console.error('Setup failed:', error);
@@ -82,7 +110,7 @@ export function useOnboarding() {
     }
   });
 
-  // Setup existing users - call via edge function instead of RPC
+  // Setup existing users
   const setupExistingUsers = useMutation({
     mutationFn: async (): Promise<SetupResult> => {
       const { data, error } = await supabase.functions.invoke('setup-existing-users', {
@@ -109,8 +137,9 @@ export function useOnboarding() {
     }
   });
 
-  const needsOnboarding = onboardingStatus?.status === 'pending' || !onboardingStatus;
+  const needsOnboarding = !onboardingStatus || onboardingStatus.status === 'pending';
   const isCompleted = onboardingStatus?.status === 'completed';
+  const isInProgress = onboardingStatus?.status === 'pending';
 
   return {
     onboardingStatus,
@@ -118,6 +147,7 @@ export function useOnboarding() {
     error,
     needsOnboarding,
     isCompleted,
+    isInProgress,
     startSetup: () => startSetup.mutate(),
     setupExistingUsers: () => setupExistingUsers.mutate(),
     isSettingUp: startSetup.isPending,
