@@ -117,22 +117,18 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
     queryFn: async () => {
       const today = new Date().toISOString().split('T')[0];
       
-      // Get today's sessions from session_tracking only (for revenue calculation)
-      let query = supabase
-        .from('session_tracking')
-        .select('*')
-        .gte('start_time', today)
-        .eq('status', 'completed');
+      // Use the same unified session data for stats calculation
+      if (!sessions) return { totalSessions: 0, totalRevenue: 0, avgDuration: 0 };
 
-      if (selectedVenueId) {
-        query = query.eq('venue_id', selectedVenueId);
-      }
+      // Filter today's completed sessions from unified data
+      const todaySessions = sessions.filter(session => {
+        const sessionDate = new Date(session.start_time).toISOString().split('T')[0];
+        return sessionDate === today && session.status === 'completed';
+      });
 
-      const { data: todaySessions } = await query;
-
-      const totalSessions = todaySessions?.length || 0;
-      const totalRevenue = todaySessions?.reduce((sum, session) => sum + (session.amount_paid || 0), 0) || 0;
-      const avgDuration = todaySessions?.length > 0 
+      const totalSessions = todaySessions.length;
+      const totalRevenue = todaySessions.reduce((sum, session) => sum + (session.amount_paid || 0), 0);
+      const avgDuration = todaySessions.length > 0 
         ? todaySessions.reduce((sum, session) => sum + (session.duration_seconds || 0), 0) / todaySessions.length 
         : 0;
 
@@ -142,6 +138,7 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
         avgDuration
       };
     },
+    enabled: !!sessions, // Only run when sessions data is available
     refetchInterval: 5000,
   });
 
