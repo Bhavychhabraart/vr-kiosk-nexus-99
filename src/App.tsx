@@ -1,5 +1,7 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './contexts/AuthContext';
 import Index from './pages/Index';
 import Auth from './pages/Auth';
@@ -14,15 +16,15 @@ import SuperAdmin from './pages/SuperAdmin';
 import Onboarding from './pages/Onboarding';
 import NotFound from './pages/NotFound';
 import { Toaster } from '@/components/ui/toaster';
-import { QueryClient } from '@tanstack/react-query';
-
 import UserSetup from "@/pages/UserSetup";
+
+const queryClient = new QueryClient();
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <QueryClient>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <BrowserRouter>
           <Toaster />
           <Routes>
             <Route path="/" element={<Index />} />
@@ -39,9 +41,9 @@ function App() {
             <Route path="/user-setup" element={<UserSetup />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </QueryClient>
-      </BrowserRouter>
-    </AuthProvider>
+        </BrowserRouter>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 

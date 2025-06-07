@@ -5,9 +5,9 @@ import MainLayout from "@/components/layout/MainLayout";
 import ManualUserSetup from "@/components/admin/ManualUserSetup";
 
 const UserSetup = () => {
-  const { user, isLoading } = useAuth();
+  const { user, loading } = useAuth();
 
-  if (isLoading) {
+  if (loading) {
     return (
       <MainLayout backgroundVariant="grid" withPattern intensity="low">
         <div className="flex items-center justify-center min-h-[60vh]">
