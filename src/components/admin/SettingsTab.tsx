@@ -1,294 +1,412 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Settings,
+import { Switch } from "@/components/ui/switch";
+import { 
+  Settings, 
+  Save,
+  Building2,
   CreditCard,
   Smartphone,
-  Clock,
-  DollarSign,
-  Save,
-  Monitor,
-  Palette,
+  Shield,
   Volume2,
-  Shield
+  Sun
 } from "lucide-react";
-import { useSettings } from "@/hooks/useSettings";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
-import VenueSelector from "./VenueSelector";
 
 interface SettingsTabProps {
   selectedVenueId?: string | null;
 }
 
+interface VenueSettings {
+  id: string;
+  venue_id: string;
+  theme: string;
+  rfid_enabled: boolean;
+  upi_enabled: boolean;
+  upi_merchant_id?: string;
+  brightness: number;
+  volume: number;
+  sound_effects_enabled: boolean;
+  password_protection_enabled: boolean;
+  admin_password?: string;
+}
+
 const SettingsTab = ({ selectedVenueId }: SettingsTabProps) => {
-  const [selectedVenue, setSelectedVenue] = useState(selectedVenueId);
-  const [isPaymentMethodsOpen, setIsPaymentMethodsOpen] = useState(false);
-  const [isDisplaySettingsOpen, setIsDisplaySettingsOpen] = useState(false);
-  const [isAudioSettingsOpen, setIsAudioSettingsOpen] = useState(false);
-  const [isSecuritySettingsOpen, setIsSecuritySettingsOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const [localSettings, setLocalSettings] = useState<Partial<VenueSettings>>({});
 
-  const { settings, isLoading, updateSettings } = useSettings(selectedVenue);
+  // Fetch venue settings
+  const { data: venueSettings, isLoading, error } = useQuery({
+    queryKey: ['venue-settings', selectedVenueId],
+    queryFn: async (): Promise<VenueSettings | null> => {
+      if (!selectedVenueId) return null;
 
-  const handleVenueSelect = (venueId: string) => {
-    setSelectedVenue(venueId);
-  };
+      const { data, error } = await supabase
+        .from('venue_settings')
+        .select('*')
+        .eq('venue_id', selectedVenueId)
+        .maybeSingle();
 
-  const handlePaymentMethodsSubmit = async (data: any) => {
-    try {
-      await updateSettings({
-        venue_id: selectedVenue || '',
-        rfid_enabled: data.rfid_enabled,
-        upi_enabled: data.upi_enabled,
-        upi_merchant_id: data.upi_merchant_id,
-      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedVenueId,
+    onSuccess: (data) => {
+      if (data) {
+        setLocalSettings(data);
+      }
+    }
+  });
+
+  // Update venue settings
+  const updateSettings = useMutation({
+    mutationFn: async (updates: Partial<VenueSettings>) => {
+      if (!selectedVenueId) throw new Error('No venue selected');
+
+      const { data, error } = await supabase
+        .from('venue_settings')
+        .upsert({
+          venue_id: selectedVenueId,
+          ...updates
+        }, {
+          onConflict: 'venue_id'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['venue-settings'] });
       toast({
-        title: "Payment methods updated",
-        description: "Payment methods have been successfully updated.",
+        title: "Settings Updated",
+        description: "Venue settings have been saved successfully"
       });
-      setIsPaymentMethodsOpen(false);
-    } catch (error: any) {
+    },
+    onError: (error) => {
       toast({
-        title: "Error updating payment methods",
+        title: "Update Failed",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
     }
+  });
+
+  const handleSaveSettings = () => {
+    updateSettings.mutate(localSettings);
   };
 
-  const handleDisplaySettingsSubmit = async (data: any) => {
-    try {
-      await updateSettings({
-        venue_id: selectedVenue || '',
-        theme: data.theme,
-        brightness: data.brightness,
-      });
-      toast({
-        title: "Display settings updated",
-        description: "Display settings have been successfully updated.",
-      });
-      setIsDisplaySettingsOpen(false);
-    } catch (error: any) {
-      toast({
-        title: "Error updating display settings",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
+  const updateLocalSetting = (key: keyof VenueSettings, value: any) => {
+    setLocalSettings(prev => ({
+      ...prev,
+      [key]: value
+    }));
   };
 
-  const handleAudioSettingsSubmit = async (data: any) => {
-    try {
-      await updateSettings({
-        venue_id: selectedVenue || '',
-        volume: data.volume,
-        sound_effects_enabled: data.sound_effects_enabled,
-      });
-      toast({
-        title: "Audio settings updated",
-        description: "Audio settings have been successfully updated.",
-      });
-      setIsAudioSettingsOpen(false);
-    } catch (error: any) {
-      toast({
-        title: "Error updating audio settings",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
+  if (!selectedVenueId) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h3 className="text-lg font-semibold mb-2">Select a Venue</h3>
+            <p className="text-muted-foreground">
+              Choose a venue from the filter above to manage its settings
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
-  const handleSecuritySettingsSubmit = async (data: any) => {
-    try {
-      await updateSettings({
-        venue_id: selectedVenue || '',
-        password_protection_enabled: data.password_protection_enabled,
-        admin_password: data.admin_password,
-      });
-      toast({
-        title: "Security settings updated",
-        description: "Security settings have been successfully updated.",
-      });
-      setIsSecuritySettingsOpen(false);
-    } catch (error: any) {
-      toast({
-        title: "Error updating security settings",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-  
-  return (
-    <div className="space-y-6">
-      {selectedVenueId && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
-            <strong>Venue Filter Active:</strong> Configuring settings for selected venue
-          </p>
-        </div>
-      )}
-      
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex justify-center items-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-vr-primary"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            General Settings
-          </CardTitle>
-          <CardDescription>
-            Configure basic settings for your venue.
-          </CardDescription>
+          <CardTitle className="text-red-600">Error Loading Settings</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <VenueSelector
-            selectedVenueId={selectedVenue || ""}
-            onVenueSelect={handleVenueSelect}
-          />
+        <CardContent>
+          <p className="text-red-600">Failed to load venue settings</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Venue Selection Notice */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm text-blue-800 flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            Venue Settings Configuration
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <p className="text-sm text-blue-700">
+            Configure settings specific to the selected venue
+          </p>
         </CardContent>
       </Card>
 
+      {/* Settings Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <Settings className="w-6 h-6" />
+            Venue Settings
+          </h2>
+          <p className="text-muted-foreground">
+            Configure display, payment, and operational settings for this venue
+          </p>
+        </div>
+        <Button 
+          onClick={handleSaveSettings} 
+          disabled={updateSettings.isPending}
+          className="flex items-center gap-2"
+        >
+          <Save className="w-4 h-4" />
+          {updateSettings.isPending ? 'Saving...' : 'Save Changes'}
+        </Button>
+      </div>
+
+      {/* Payment Settings */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
+            <CreditCard className="w-5 h-5" />
             Payment Methods
           </CardTitle>
           <CardDescription>
-            Manage payment methods available at your venue.
+            Configure payment options for customers
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="rfid">RFID Card Payments</Label>
-            <Switch id="rfid" defaultChecked={settings?.rfid_enabled} />
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium">RFID Card Payments</h3>
+              <p className="text-sm text-muted-foreground">
+                Enable contactless card payments
+              </p>
+            </div>
+            <Switch
+              checked={localSettings.rfid_enabled || false}
+              onCheckedChange={(checked) => updateLocalSetting('rfid_enabled', checked)}
+            />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="upi">UPI QR Code Payments</Label>
-            <Switch id="upi" defaultChecked={settings?.upi_enabled} />
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium">UPI QR Code Payments</h3>
+                <p className="text-sm text-muted-foreground">
+                  Enable UPI payments via QR code
+                </p>
+              </div>
+              <Switch
+                checked={localSettings.upi_enabled || false}
+                onCheckedChange={(checked) => updateLocalSetting('upi_enabled', checked)}
+              />
+            </div>
+            
+            {localSettings.upi_enabled && (
+              <div>
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <Smartphone className="w-4 h-4" />
+                  UPI Merchant ID
+                </label>
+                <Input
+                  value={localSettings.upi_merchant_id || ''}
+                  onChange={(e) => updateLocalSetting('upi_merchant_id', e.target.value)}
+                  placeholder="Enter UPI merchant ID"
+                  className="mt-1"
+                />
+              </div>
+            )}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="upi-merchant-id">UPI Merchant ID</Label>
-            <Input id="upi-merchant-id" defaultValue={settings?.upi_merchant_id || ""} />
-          </div>
-        </CardContent>
-        <CardContent>
-          <Button onClick={() => handlePaymentMethodsSubmit({
-            rfid_enabled: settings?.rfid_enabled,
-            upi_enabled: settings?.upi_enabled,
-            upi_merchant_id: settings?.upi_merchant_id || "",
-          })}>
-            Save Payment Methods
-          </Button>
         </CardContent>
       </Card>
 
+      {/* Display Settings */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Monitor className="h-5 w-5" />
-            Display Settings
+            <Sun className="w-5 h-5" />
+            Display & Audio
           </CardTitle>
           <CardDescription>
-            Customize the display settings for your venue.
+            Configure display brightness and audio settings
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="theme">Theme</Label>
-            <Select defaultValue={settings?.theme || "light"}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select a theme" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="light">Light</SelectItem>
-                <SelectItem value="dark">Dark</SelectItem>
-              </SelectContent>
-            </Select>
+        <CardContent className="space-y-6">
+          <div>
+            <label className="text-sm font-medium">Theme</label>
+            <select 
+              value={localSettings.theme || 'light'}
+              onChange={(e) => updateLocalSetting('theme', e.target.value)}
+              className="w-full p-2 border rounded-md mt-1"
+            >
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+              <option value="auto">Auto</option>
+            </select>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="brightness">Brightness</Label>
-            <Input id="brightness" type="number" defaultValue={settings?.brightness || 100} />
+
+          <div>
+            <label className="text-sm font-medium">Brightness</label>
+            <div className="flex items-center gap-4 mt-2">
+              <input
+                type="range"
+                min="10"
+                max="100"
+                value={localSettings.brightness || 100}
+                onChange={(e) => updateLocalSetting('brightness', parseInt(e.target.value))}
+                className="flex-1"
+              />
+              <Badge variant="outline">{localSettings.brightness || 100}%</Badge>
+            </div>
           </div>
-        </CardContent>
-        <CardContent>
-          <Button onClick={() => handleDisplaySettingsSubmit({
-            theme: settings?.theme || "light",
-            brightness: settings?.brightness || 100,
-          })}>
-            Save Display Settings
-          </Button>
+
+          <div>
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Volume2 className="w-4 h-4" />
+              Volume
+            </label>
+            <div className="flex items-center gap-4 mt-2">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={localSettings.volume || 50}
+                onChange={(e) => updateLocalSetting('volume', parseInt(e.target.value))}
+                className="flex-1"
+              />
+              <Badge variant="outline">{localSettings.volume || 50}%</Badge>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium">Sound Effects</h3>
+              <p className="text-sm text-muted-foreground">
+                Enable UI sound effects and notifications
+              </p>
+            </div>
+            <Switch
+              checked={localSettings.sound_effects_enabled !== false}
+              onCheckedChange={(checked) => updateLocalSetting('sound_effects_enabled', checked)}
+            />
+          </div>
         </CardContent>
       </Card>
 
+      {/* Security Settings */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Volume2 className="h-5 w-5" />
-            Audio Settings
+            <Shield className="w-5 h-5" />
+            Security
           </CardTitle>
           <CardDescription>
-            Configure audio settings for your venue.
+            Configure access control and security features
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="volume">Volume</Label>
-            <Input id="volume" type="number" defaultValue={settings?.volume || 50} />
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium">Admin Password Protection</h3>
+              <p className="text-sm text-muted-foreground">
+                Require password to access admin features on the machine
+              </p>
+            </div>
+            <Switch
+              checked={localSettings.password_protection_enabled || false}
+              onCheckedChange={(checked) => updateLocalSetting('password_protection_enabled', checked)}
+            />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="sound-effects">Sound Effects</Label>
-            <Switch id="sound-effects" defaultChecked={settings?.sound_effects_enabled} />
-          </div>
-        </CardContent>
-        <CardContent>
-          <Button onClick={() => handleAudioSettingsSubmit({
-            volume: settings?.volume || 50,
-            sound_effects_enabled: settings?.sound_effects_enabled,
-          })}>
-            Save Audio Settings
-          </Button>
+
+          {localSettings.password_protection_enabled && (
+            <div>
+              <label className="text-sm font-medium">Admin Password</label>
+              <Input
+                type="password"
+                value={localSettings.admin_password || ''}
+                onChange={(e) => updateLocalSetting('admin_password', e.target.value)}
+                placeholder="Enter admin password"
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                This password will be required to access admin features on the machine
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
+      {/* Current Settings Summary */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Security Settings
-          </CardTitle>
+          <CardTitle>Settings Summary</CardTitle>
           <CardDescription>
-            Manage security settings for your venue.
+            Current configuration for this venue
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="password-protection">Password Protection</Label>
-            <Switch id="password-protection" defaultChecked={settings?.password_protection_enabled} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="admin-password">Admin Password</Label>
-            <Input id="admin-password" type="password" defaultValue={settings?.admin_password || ""} />
-          </div>
-        </CardContent>
         <CardContent>
-          <Button onClick={() => handleSecuritySettingsSubmit({
-            password_protection_enabled: settings?.password_protection_enabled,
-            admin_password: settings?.admin_password || "",
-          })}>
-            Save Security Settings
-          </Button>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>RFID Payments:</span>
+                <Badge variant={localSettings.rfid_enabled ? "default" : "secondary"}>
+                  {localSettings.rfid_enabled ? "Enabled" : "Disabled"}
+                </Badge>
+              </div>
+              <div className="flex justify-between">
+                <span>UPI Payments:</span>
+                <Badge variant={localSettings.upi_enabled ? "default" : "secondary"}>
+                  {localSettings.upi_enabled ? "Enabled" : "Disabled"}
+                </Badge>
+              </div>
+              <div className="flex justify-between">
+                <span>Theme:</span>
+                <Badge variant="outline">{localSettings.theme || 'Light'}</Badge>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Brightness:</span>
+                <Badge variant="outline">{localSettings.brightness || 100}%</Badge>
+              </div>
+              <div className="flex justify-between">
+                <span>Volume:</span>
+                <Badge variant="outline">{localSettings.volume || 50}%</Badge>
+              </div>
+              <div className="flex justify-between">
+                <span>Password Protection:</span>
+                <Badge variant={localSettings.password_protection_enabled ? "default" : "secondary"}>
+                  {localSettings.password_protection_enabled ? "Enabled" : "Disabled"}
+                </Badge>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

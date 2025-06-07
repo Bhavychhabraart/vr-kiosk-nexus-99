@@ -1,36 +1,27 @@
+
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { 
-  TrendingUp, 
+  Play, 
   Star, 
-  Clock, 
-  Users, 
-  DollarSign,
-  Play,
+  Target,
   Trophy,
-  Target
+  Clock,
+  Building2
 } from "lucide-react";
-import { usePopularGames } from "@/hooks/usePopularGames";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer 
-} from "recharts";
+import { useMachineGames } from "@/hooks/useMachineGames";
+import { useSessionAnalytics } from "@/hooks/useSessionAnalytics";
 
 interface GamesShowcaseTabProps {
   selectedVenueId?: string | null;
 }
 
 const GamesShowcaseTab = ({ selectedVenueId }: GamesShowcaseTabProps) => {
-  const { popularGames, isLoading } = usePopularGames();
+  const { machineGames, isLoadingMachineGames } = useMachineGames(selectedVenueId || '');
+  const { sessions } = useSessionAnalytics(selectedVenueId);
 
-  if (isLoading) {
+  if (isLoadingMachineGames) {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -53,201 +44,222 @@ const GamesShowcaseTab = ({ selectedVenueId }: GamesShowcaseTabProps) => {
     );
   }
 
-  // Top performing games for chart
-  const topGamesData = popularGames?.slice(0, 5).map(game => ({
-    name: game.game_title || 'Unknown',
-    sessions: game.total_sessions,
-    revenue: Number(game.total_revenue)
-  })) || [];
+  if (!selectedVenueId) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h3 className="text-lg font-semibold mb-2">Select a Venue</h3>
+            <p className="text-muted-foreground">
+              Choose a venue from the filter above to view its game showcase
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
-  // Performance metrics
-  const totalSessions = popularGames?.reduce((sum, game) => sum + game.total_sessions, 0) || 0;
-  const totalRevenue = popularGames?.reduce((sum, game) => sum + Number(game.total_revenue), 0) || 0;
-  const avgRating = popularGames?.length 
-    ? popularGames.reduce((sum, game) => sum + (game.average_rating || 0), 0) / popularGames.length 
-    : 0;
+  // Calculate game statistics from sessions
+  const gameStats = sessions?.reduce((acc, session) => {
+    const gameId = session.game_id;
+    if (!acc[gameId]) {
+      acc[gameId] = {
+        sessions: 0,
+        totalRevenue: 0,
+        totalDuration: 0,
+        ratings: []
+      };
+    }
+    acc[gameId].sessions += 1;
+    acc[gameId].totalRevenue += session.amount_paid || 0;
+    acc[gameId].totalDuration += session.duration_seconds || 0;
+    if (session.rating) {
+      acc[gameId].ratings.push(session.rating);
+    }
+    return acc;
+  }, {} as Record<string, { sessions: number; totalRevenue: number; totalDuration: number; ratings: number[] }>) || {};
 
   return (
     <div className="space-y-6">
-      {selectedVenueId && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
-            <strong>Venue Filter Active:</strong> Showing game showcase for selected venue
+      {/* Venue Selection Notice */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm text-blue-800 flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            Venue Game Showcase
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <p className="text-sm text-blue-700">
+            Showing games available at the selected venue with performance metrics
           </p>
-        </div>
-      )}
-      
+        </CardContent>
+      </Card>
+
       {/* Performance Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+            <CardTitle className="text-sm font-medium">Available Games</CardTitle>
             <Play className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-vr-primary">
-              {totalSessions.toLocaleString()}
+              {machineGames?.length || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              Across all games
+              Games at this venue
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              ₹{totalRevenue.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              From game sessions
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
-            <Star className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Avg Duration</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-vr-secondary">
-              {avgRating.toFixed(1)}/5
+              {machineGames?.length ? 
+                `${Math.round(machineGames.reduce((sum, game) => sum + ((game.min_duration_seconds + game.max_duration_seconds) / 2), 0) / machineGames.length / 60)}m` 
+                : '0m'
+              }
             </div>
             <p className="text-xs text-muted-foreground">
-              Player satisfaction
+              Average game duration
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Game Variety</CardTitle>
+            <Star className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {machineGames?.length ? 'High' : 'None'}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Content diversity score
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Top Games Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5" />
-            Top Performing Games
-          </CardTitle>
-          <CardDescription>
-            Games ranked by total sessions and revenue
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={topGamesData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="name" 
-                tick={{ fontSize: 12 }}
-                angle={-45}
-                textAnchor="end"
-                height={80}
-              />
-              <YAxis />
-              <Tooltip 
-                formatter={(value, name) => [
-                  name === 'revenue' ? `₹${value}` : value,
-                  name === 'revenue' ? 'Revenue' : 'Sessions'
-                ]}
-              />
-              <Bar dataKey="sessions" fill="#00eaff" name="sessions" />
-              <Bar dataKey="revenue" fill="#ff6b35" name="revenue" />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Hot Selling Games Grid */}
+      {/* Games Showcase */}
       <div>
         <div className="flex items-center gap-2 mb-4">
-          <TrendingUp className="h-5 w-5 text-vr-primary" />
-          <h2 className="text-xl font-semibold">Hot Selling Games</h2>
+          <Trophy className="h-5 w-5 text-vr-primary" />
+          <h2 className="text-xl font-semibold">Games at This Venue</h2>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {popularGames?.map((game, index) => (
-            <Card key={game.id} className="relative overflow-hidden">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{game.game_title || 'Unknown Game'}</CardTitle>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-xs">
-                        #{index + 1} Most Popular
-                      </Badge>
-                      {game.average_rating && (
-                        <Badge variant="secondary" className="text-xs">
-                          ⭐ {game.average_rating.toFixed(1)}
-                        </Badge>
-                      )}
+        {machineGames && machineGames.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {machineGames.map((game, index) => {
+              const stats = gameStats[game.id];
+              const avgRating = stats?.ratings.length > 0 
+                ? stats.ratings.reduce((sum, r) => sum + r, 0) / stats.ratings.length 
+                : null;
+              
+              return (
+                <Card key={game.id} className="relative overflow-hidden">
+                  {game.image_url && (
+                    <div className="aspect-video bg-gray-200">
+                      <img 
+                        src={game.image_url} 
+                        alt={game.title}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Play className="h-4 w-4 text-vr-primary" />
-                    <span className="text-muted-foreground">Sessions:</span>
-                    <span className="font-semibold">{game.total_sessions}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-green-600" />
-                    <span className="text-muted-foreground">Revenue:</span>
-                    <span className="font-semibold">₹{Number(game.total_revenue).toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Target className="h-4 w-4 text-vr-secondary" />
-                    <span className="text-muted-foreground">Per Session:</span>
-                    <span className="font-semibold">₹{game.revenue_per_session?.toFixed(0) || 0}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-orange-500" />
-                    <span className="text-muted-foreground">This Week:</span>
-                    <span className="font-semibold">{game.weekly_sessions}</span>
-                  </div>
-                </div>
+                  )}
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{game.title}</CardTitle>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs">
+                            Available
+                          </Badge>
+                          {stats?.sessions && (
+                            <Badge variant="secondary" className="text-xs">
+                              {stats.sessions} plays
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      {game.description || "Experience this amazing VR game"}
+                    </p>
+                    
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-vr-primary" />
+                        <span className="text-muted-foreground">Duration:</span>
+                      </div>
+                      <span className="font-semibold">
+                        {Math.floor(game.min_duration_seconds / 60)}-{Math.floor(game.max_duration_seconds / 60)} min
+                      </span>
+                    </div>
 
-                {/* Engagement Score */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Engagement Score</span>
-                    <span className="font-semibold">{game.engagement_score?.toFixed(0)}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-gradient-to-r from-vr-primary to-vr-secondary h-2 rounded-full transition-all"
-                      style={{ width: `${game.engagement_score || 0}%` }}
-                    ></div>
-                  </div>
-                </div>
+                    {stats && (
+                      <div className="space-y-2 pt-2 border-t">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Sessions</span>
+                          <span className="font-semibold">{stats.sessions}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Revenue</span>
+                          <span className="font-semibold">₹{stats.totalRevenue.toLocaleString()}</span>
+                        </div>
+                        {avgRating && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Rating</span>
+                            <div className="flex items-center gap-1">
+                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                              <span className="font-semibold">{avgRating.toFixed(1)}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-                {game.last_played_at && (
-                  <p className="text-xs text-muted-foreground">
-                    Last played: {new Date(game.last_played_at).toLocaleDateString()}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {(!popularGames || popularGames.length === 0) && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Popularity</span>
+                        <span className="font-semibold">
+                          {stats?.sessions ? (stats.sessions > 10 ? 'High' : stats.sessions > 5 ? 'Medium' : 'Low') : 'New'}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-gradient-to-r from-vr-primary to-vr-secondary h-2 rounded-full"
+                          style={{ 
+                            width: stats?.sessions 
+                              ? `${Math.min(100, (stats.sessions / 20) * 100)}%`
+                              : '10%'
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
           <Card>
             <CardContent className="flex items-center justify-center py-12">
               <div className="text-center">
-                <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <h3 className="text-lg font-semibold mb-2">No game data available yet</h3>
+                <Play className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <h3 className="text-lg font-semibold mb-2">No games assigned</h3>
                 <p className="text-muted-foreground mb-4">
-                  Start running game sessions to see performance analytics
+                  This venue doesn't have any games assigned yet
                 </p>
-                <Button variant="outline" onClick={() => window.location.href = '/games'}>
-                  Browse Games
-                </Button>
               </div>
             </CardContent>
           </Card>
