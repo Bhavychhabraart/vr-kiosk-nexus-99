@@ -17,9 +17,9 @@ const Onboarding = () => {
       return;
     }
 
-    // If no onboarding status exists, trigger auto-setup
+    // If no onboarding status exists after loading is complete, trigger auto-setup
     if (!isLoading && !onboardingStatus) {
-      console.log('No onboarding status found, triggering auto-setup');
+      console.log('No onboarding status found after loading, triggering auto-setup');
       triggerAutoSetup();
     }
 
@@ -46,12 +46,25 @@ const Onboarding = () => {
   }, [user, onboardingStatus, isLoading, navigate, triggerAutoSetup]);
 
   // Show loading state
-  if (isLoading || !onboardingStatus) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-vr-primary mx-auto mb-4"></div>
-          <div className="text-white text-lg">Initializing your VR setup...</div>
+          <div className="text-white text-lg">Checking your setup status...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show message for users being redirected (existing setups)
+  if (!onboardingStatus) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-vr-primary mx-auto mb-4"></div>
+          <div className="text-white text-lg">Preparing your dashboard...</div>
+          <div className="text-gray-300 text-sm mt-2">Detecting existing setup...</div>
         </div>
       </div>
     );

@@ -69,6 +69,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq('is_active', true)
         .single();
 
+      // If user has existing roles but no onboarding record, they don't need onboarding
+      if (roleData && !onboardingData) {
+        console.log('User has existing setup, skipping onboarding');
+        setNeedsOnboarding(false);
+        return;
+      }
+
       // User needs onboarding if they don't have completed status or no admin role
       const needsSetup = !onboardingData || 
                         onboardingData.status !== 'completed' || 

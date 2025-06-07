@@ -21,6 +21,67 @@ export const useOnboarding = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
+  const createCompletedOnboardingStatus = async (userId: string, venueId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_onboarding_status')
+        .insert({
+          user_id: userId,
+          status: 'completed',
+          venue_id: venueId,
+          completed_at: new Date().toISOString(),
+          setup_progress: {
+            step: 'completed',
+            message: 'Your VR machine is ready! Welcome to your admin dashboard.'
+          }
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const typedData: OnboardingStatus = {
+        id: data.id,
+        status: data.status as 'completed',
+        venue_id: data.venue_id,
+        machine_serial_number: data.machine_serial_number,
+        setup_progress: data.setup_progress as { step: string; message: string },
+        completed_at: data.completed_at,
+        error_message: data.error_message,
+      };
+
+      setOnboardingStatus(typedData);
+      return typedData;
+    } catch (error) {
+      console.error('Error creating completed onboarding status:', error);
+      return null;
+    }
+  };
+
+  const checkForExistingSetup = async (userId: string) => {
+    try {
+      // Check if user has machine admin role and venues
+      const { data: roleData } = await supabase
+        .from('simplified_user_roles')
+        .select('venue_id')
+        .eq('user_id', userId)
+        .eq('role', 'machine_admin')
+        .eq('is_active', true)
+        .limit(1)
+        .single();
+
+      if (roleData?.venue_id) {
+        console.log('Found existing setup for user, creating completed onboarding status');
+        return await createCompletedOnboardingStatus(userId, roleData.venue_id);
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error checking for existing setup:', error);
+      return null;
+    }
+  };
+
   const fetchOnboardingStatus = async () => {
     if (!user) return;
 
@@ -34,6 +95,15 @@ export const useOnboarding = () => {
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching onboarding status:', error);
         return;
+      }
+
+      // If no onboarding status found, check for existing setup
+      if (!data) {
+        console.log('No onboarding status found, checking for existing setup...');
+        const existingSetup = await checkForExistingSetup(user.id);
+        if (existingSetup) {
+          return; // Status has been set by createCompletedOnboardingStatus
+        }
       }
 
       // Type cast the data to match our interface
