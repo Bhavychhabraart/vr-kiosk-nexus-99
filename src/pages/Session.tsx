@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,8 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Play, 
-  Pause, 
   Square, 
   Clock, 
   GamepadIcon,
@@ -51,8 +48,6 @@ const Session = () => {
   const { 
     launchGame, 
     endSession, 
-    pauseSession, 
-    resumeSession, 
     serverStatus,
     isLaunching,
     currentSessionId,
@@ -157,18 +152,6 @@ const Session = () => {
 
     return () => clearInterval(timer);
   }, [isGameActive, timeRemaining]);
-
-  const handlePauseResume = async () => {
-    try {
-      if (serverStatus.isPaused) {
-        await resumeSession();
-      } else {
-        await pauseSession();
-      }
-    } catch (error) {
-      console.error('Failed to pause/resume session:', error);
-    }
-  };
 
   const handleEndSession = async () => {
     try {
@@ -313,25 +296,7 @@ const Session = () => {
             <CardHeader>
               <CardTitle className="text-white">Session Controls</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <Button
-                onClick={handlePauseResume}
-                disabled={!isGameActive || isLaunching}
-                className="w-full bg-yellow-600 hover:bg-yellow-700"
-              >
-                {serverStatus.isPaused ? (
-                  <>
-                    <Play className="mr-2 h-4 w-4" />
-                    Resume Session
-                  </>
-                ) : (
-                  <>
-                    <Pause className="mr-2 h-4 w-4" />
-                    Pause Session
-                  </>
-                )}
-              </Button>
-              
+            <CardContent>
               <Button
                 onClick={handleEndSession}
                 disabled={isLaunching}

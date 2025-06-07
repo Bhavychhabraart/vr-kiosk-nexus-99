@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import websocketService, { 
@@ -161,60 +162,6 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
     }
   }, [currentSessionId, endSession]);
 
-  const pauseSession = useCallback(async () => {
-    try {
-      const response = await websocketService.sendCommand(CommandType.PAUSE_SESSION);
-      
-      if (currentSessionId) {
-        await updateSessionStatus(currentSessionId, 'paused');
-      }
-      
-      toast({
-        title: "Session Paused",
-        description: "VR session has been paused",
-      });
-      
-      return response;
-    } catch (error) {
-      console.error('Error pausing session:', error);
-      
-      toast({
-        variant: "destructive",
-        title: "Pause Failed",
-        description: "Failed to pause the VR session",
-      });
-      
-      throw error;
-    }
-  }, [currentSessionId, updateSessionStatus]);
-
-  const resumeSession = useCallback(async () => {
-    try {
-      const response = await websocketService.sendCommand(CommandType.RESUME_SESSION);
-      
-      if (currentSessionId) {
-        await updateSessionStatus(currentSessionId, 'active');
-      }
-      
-      toast({
-        title: "Session Resumed",
-        description: "VR session has been resumed",
-      });
-      
-      return response;
-    } catch (error) {
-      console.error('Error resuming session:', error);
-      
-      toast({
-        variant: "destructive",
-        title: "Resume Failed",
-        description: "Failed to resume the VR session",
-      });
-      
-      throw error;
-    }
-  }, [currentSessionId, updateSessionStatus]);
-
   const getServerStatus = useCallback(async () => {
     try {
       return await websocketService.sendCommand(CommandType.GET_STATUS);
@@ -268,8 +215,6 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
     currentSessionId,
     launchGame,
     endSession: endSessionCommand,
-    pauseSession,
-    resumeSession,
     getServerStatus,
     submitRating,
     getSystemDiagnostics

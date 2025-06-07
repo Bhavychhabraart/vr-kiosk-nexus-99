@@ -15,8 +15,6 @@ export enum ConnectionState {
 export enum CommandType {
   LAUNCH_GAME = 'launchGame',
   END_SESSION = 'endSession',
-  PAUSE_SESSION = 'pauseSession',
-  RESUME_SESSION = 'resumeSession',
   GET_STATUS = 'getStatus',
   HEARTBEAT = 'heartbeat',
   SUBMIT_RATING = 'submitRating',
@@ -62,7 +60,6 @@ export interface ServerStatus {
   cpuUsage?: number;
   memoryUsage?: number;
   diskSpace?: number;
-  isPaused?: boolean;
   timeRemaining?: number;
   serverUptime?: number;
   connectedClients?: number;
@@ -86,8 +83,6 @@ const defaultSettings: WebSocketSettings = {
 const COMMAND_TIMEOUTS = {
   [CommandType.LAUNCH_GAME]: 60000, // Increased to 60 seconds for game launch
   [CommandType.END_SESSION]: 15000,
-  [CommandType.PAUSE_SESSION]: 5000,
-  [CommandType.RESUME_SESSION]: 5000,
   [CommandType.GET_STATUS]: 10000, // Increased from 5000
   [CommandType.HEARTBEAT]: 15000, // Increased from 10000
   [CommandType.SUBMIT_RATING]: 10000,

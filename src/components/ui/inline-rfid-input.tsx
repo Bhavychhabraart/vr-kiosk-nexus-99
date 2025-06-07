@@ -3,8 +3,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  CreditCard,
   Loader2,
+  CheckCircle,
 } from "lucide-react";
 
 interface InlineRFIDInputProps {
@@ -28,44 +28,9 @@ export const InlineRFIDInput = ({
     }
   };
 
-  const handleSimulateRfid = () => {
-    if (!isLoading && !disabled) {
-      const simulatedTag = `RFID_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
-      onCardScanned(simulatedTag);
-    }
-  };
-
   return (
     <div className="space-y-3">
-      {/* RFID Simulation Button */}
-      <Button
-        onClick={handleSimulateRfid}
-        disabled={isLoading || disabled}
-        className="w-full py-4 bg-vr-secondary hover:bg-vr-secondary/90 text-black font-semibold"
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            Processing...
-          </>
-        ) : (
-          <>
-            <CreditCard className="h-4 w-4 mr-2" />
-            Tap RFID Card
-          </>
-        )}
-      </Button>
-
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-gray-300" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-gray-900 px-2 text-gray-400">Or enter manually</span>
-        </div>
-      </div>
-
-      {/* Manual Input */}
+      {/* Manual RFID Input */}
       <form onSubmit={handleSubmit} className="flex gap-2">
         <Input
           type="text"
@@ -78,10 +43,19 @@ export const InlineRFIDInput = ({
         <Button
           type="submit"
           disabled={isLoading || disabled || !cardInput.trim()}
-          variant="outline"
-          className="border-gray-600"
+          className="bg-vr-primary hover:bg-vr-primary/90"
         >
-          Scan
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Scan
+            </>
+          )}
         </Button>
       </form>
     </div>
