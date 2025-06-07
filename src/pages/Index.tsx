@@ -1,223 +1,189 @@
 
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { VrIcon } from "@/components/icons/VrIcon";
+import { Play, Settings, Users, LogOut, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { AnimatedBackground } from "@/components/ui/animated-background";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles } from "@/hooks/useUserRoles";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import MainLayout from "@/components/layout/MainLayout";
-import { VrIcon, PremiumVrIcon } from "@/components/icons/VrIcon";
-import { Play, Users, Settings, Crown, Wrench, UserPlus, ArrowRight } from "lucide-react";
 
 const Index = () => {
-  const { user } = useAuth();
-  const { isSuperAdmin, isMachineAdmin } = useUserRoles();
-  const [mounted, setMounted] = useState(false);
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const { isSuperAdmin, isMachineAdmin, isLoading } = useUserRoles();
+  const [showAdminOptions, setShowAdminOptions] = useState(false);
 
+  // Auto-redirect machine admins to their admin panel
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (!isLoading && user && isMachineAdmin && !isSuperAdmin) {
+      // Direct machine admins straight to their admin panel
+      navigate('/machine-admin');
+    }
+  }, [user, isMachineAdmin, isSuperAdmin, isLoading, navigate]);
+
+  const handleStartExperience = () => {
+    navigate('/games');
+  };
+
+  const handleAdminAccess = () => {
+    if (user) {
+      // Navigate based on user's highest role
+      if (isSuperAdmin) {
+        navigate('/superadmin');
+      } else if (isMachineAdmin) {
+        navigate('/machine-admin');
+      } else {
+        // Show admin options for users without specific roles
+        setShowAdminOptions(true);
+      }
+    } else {
+      navigate('/auth');
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    setShowAdminOptions(false);
+  };
+
+  // Show loading while checking roles
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 relative overflow-hidden">
+        <AnimatedBackground />
+        <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-vr-primary"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <MainLayout backgroundVariant="orbs" withPattern intensity="medium">
-      <div className={`space-y-20 transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-        {/* Hero Section */}
-        <section className="text-center space-y-8 py-12">
-          <div className="space-y-4">
-            <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-vr-primary via-vr-secondary to-vr-accent bg-clip-text text-transparent leading-tight">
-              Ultimate VR Experience
-            </h1>
-            <p className="text-xl md:text-2xl text-vr-muted max-w-3xl mx-auto leading-relaxed">
-              Step into immersive worlds with our cutting-edge VR kiosk management system. 
-              Experience the future of entertainment today.
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 relative overflow-hidden">
+      <AnimatedBackground />
+      
+      {/* User info in top right if logged in */}
+      {user && (
+        <div className="absolute top-6 right-6 z-20 flex items-center space-x-4">
+          <div className="flex items-center space-x-2 bg-black/30 backdrop-blur-md rounded-lg px-4 py-2">
+            <User className="w-4 h-4 text-vr-primary" />
+            <span className="text-white text-sm">{user.email}</span>
+            <Button
+              onClick={handleSignOut}
+              variant="ghost"
+              size="sm"
+              className="text-gray-400 hover:text-white p-1"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
           </div>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link to="/games">
-              <Button size="lg" className="bg-gradient-to-r from-vr-primary to-vr-secondary hover:from-vr-primary/80 hover:to-vr-secondary/80 text-white px-8 py-6 text-lg h-auto">
-                <Play className="w-5 h-5 mr-2" />
-                Explore Games
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </Link>
-
-            {user && isSuperAdmin && (
-              <Link to="/user-setup">
-                <Button size="lg" variant="outline" className="border-vr-primary/30 text-vr-primary hover:bg-vr-primary/10 px-8 py-6 text-lg h-auto">
-                  <UserPlus className="w-5 h-5 mr-2" />
-                  User Setup
-                </Button>
-              </Link>
-            )}
-          </div>
-        </section>
-
-        {/* Features Grid */}
-        <section className="grid md:grid-cols-3 gap-8">
-          <Card className="bg-vr-dark/50 border-vr-primary/20 backdrop-blur-sm hover:border-vr-primary/40 transition-all duration-300 group">
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-4 p-3 rounded-full bg-vr-primary/10 w-fit group-hover:bg-vr-primary/20 transition-colors">
-                <VrIcon className="w-8 h-8 text-vr-primary" />
-              </div>
-              <CardTitle className="text-vr-light">Immersive Games</CardTitle>
-              <CardDescription className="text-vr-muted">
-                Discover a vast library of VR games and experiences
-              </CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card className="bg-vr-dark/50 border-vr-secondary/20 backdrop-blur-sm hover:border-vr-secondary/40 transition-all duration-300 group">
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-4 p-3 rounded-full bg-vr-secondary/10 w-fit group-hover:bg-vr-secondary/20 transition-colors">
-                <Settings className="w-8 h-8 text-vr-secondary" />
-              </div>
-              <CardTitle className="text-vr-light">Smart Management</CardTitle>
-              <CardDescription className="text-vr-muted">
-                Intelligent kiosk management with real-time analytics
-              </CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card className="bg-vr-dark/50 border-vr-accent/20 backdrop-blur-sm hover:border-vr-accent/40 transition-all duration-300 group">
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-4 p-3 rounded-full bg-vr-accent/10 w-fit group-hover:bg-vr-accent/20 transition-colors">
-                <PremiumVrIcon className="w-8 h-8 text-vr-accent" />
-              </div>
-              <CardTitle className="text-vr-light">Premium Experience</CardTitle>
-              <CardDescription className="text-vr-muted">
-                High-quality VR hardware and seamless user experience
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </section>
-
-        {/* User Dashboard Section */}
-        {user && (
-          <section className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-3xl font-bold text-vr-light mb-4">
-                Welcome back, {user.email?.split('@')[0]}!
+        </div>
+      )}
+      
+      {/* Main Content */}
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-8">
+        {/* Logo and Branding */}
+        <div className="text-center mb-12">
+          <div className="flex items-center justify-center mb-6">
+            <VrIcon className="w-24 h-24 text-vr-primary mr-4" />
+            <div>
+              <h1 className="text-6xl font-bold text-white mb-2">
+                Next Gen
+              </h1>
+              <h2 className="text-4xl font-light text-vr-primary">
+                Arcadia Kiosk
               </h2>
-              <div className="flex items-center justify-center gap-2 text-vr-muted">
-                <Users className="w-5 h-5" />
-                <span>Role: </span>
-                {isSuperAdmin && (
-                  <span className="flex items-center gap-1 text-yellow-400">
-                    <Crown className="w-4 h-4" />
-                    Super Admin
-                  </span>
-                )}
-                {isMachineAdmin && !isSuperAdmin && (
-                  <span className="flex items-center gap-1 text-blue-400">
-                    <Wrench className="w-4 h-4" />
-                    Machine Admin
-                  </span>
-                )}
-                {!isSuperAdmin && !isMachineAdmin && (
-                  <span className="text-vr-muted">User</span>
-                )}
-              </div>
             </div>
+          </div>
+          <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+            Experience the future of virtual reality entertainment
+          </p>
+        </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Link to="/games">
-                <Card className="bg-vr-dark/50 border-vr-primary/20 backdrop-blur-sm hover:border-vr-primary/40 transition-all duration-300 cursor-pointer group">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-vr-light group-hover:text-vr-primary transition-colors">
-                      <Play className="w-5 h-5" />
-                      Browse Games
-                    </CardTitle>
-                    <CardDescription className="text-vr-muted">
-                      Explore our VR game library
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
-
-              {isMachineAdmin && (
-                <Link to="/machine-admin">
-                  <Card className="bg-vr-dark/50 border-blue-400/20 backdrop-blur-sm hover:border-blue-400/40 transition-all duration-300 cursor-pointer group">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-vr-light group-hover:text-blue-400 transition-colors">
-                        <Wrench className="w-5 h-5" />
-                        Machine Admin
-                      </CardTitle>
-                      <CardDescription className="text-vr-muted">
-                        Manage your VR machines
-                      </CardDescription>
-                    </CardHeader>
-                  </Card>
-                </Link>
-              )}
-
-              {isSuperAdmin && (
-                <>
-                  <Link to="/super-admin">
-                    <Card className="bg-vr-dark/50 border-yellow-400/20 backdrop-blur-sm hover:border-yellow-400/40 transition-all duration-300 cursor-pointer group">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-vr-light group-hover:text-yellow-400 transition-colors">
-                          <Crown className="w-5 h-5" />
-                          Super Admin
-                        </CardTitle>
-                        <CardDescription className="text-vr-muted">
-                          System-wide administration
-                        </CardDescription>
-                      </CardHeader>
-                    </Card>
-                  </Link>
-
-                  <Link to="/user-setup">
-                    <Card className="bg-vr-dark/50 border-vr-secondary/20 backdrop-blur-sm hover:border-vr-secondary/40 transition-all duration-300 cursor-pointer group">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-vr-light group-hover:text-vr-secondary transition-colors">
-                          <UserPlus className="w-5 h-5" />
-                          User Setup
-                        </CardTitle>
-                        <CardDescription className="text-vr-muted">
-                          Assign venues to users
-                        </CardDescription>
-                      </CardHeader>
-                    </Card>
-                  </Link>
-                </>
-              )}
-
-              <Link to="/admin">
-                <Card className="bg-vr-dark/50 border-vr-accent/20 backdrop-blur-sm hover:border-vr-accent/40 transition-all duration-300 cursor-pointer group">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-vr-light group-hover:text-vr-accent transition-colors">
-                      <Settings className="w-5 h-5" />
-                      Admin Panel
-                    </CardTitle>
-                    <CardDescription className="text-vr-muted">
-                      General administration
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
-            </div>
-          </section>
-        )}
-
-        {/* Call to Action */}
-        {!user && (
-          <section className="text-center space-y-6 py-12 bg-gradient-to-r from-vr-primary/10 to-vr-secondary/10 rounded-2xl border border-vr-primary/20">
-            <h2 className="text-3xl font-bold text-vr-light">Ready to Start?</h2>
-            <p className="text-vr-muted max-w-2xl mx-auto">
-              Join thousands of users experiencing the future of VR entertainment. 
-              Sign up today and get access to our complete VR ecosystem.
-            </p>
-            <Link to="/auth">
-              <Button size="lg" className="bg-gradient-to-r from-vr-primary to-vr-secondary hover:from-vr-primary/80 hover:to-vr-secondary/80 text-white px-8 py-6 text-lg h-auto">
-                Get Started
-                <ArrowRight className="w-5 h-5 ml-2" />
+        {/* Main Start Button */}
+        {!showAdminOptions ? (
+          <div className="text-center space-y-8">
+            <Button
+              onClick={handleStartExperience}
+              size="lg"
+              className="h-20 px-16 text-2xl font-semibold bg-gradient-to-r from-vr-primary to-vr-secondary hover:from-vr-primary/90 hover:to-vr-secondary/90 transform hover:scale-105 transition-all duration-300 shadow-2xl"
+            >
+              <Play className="mr-4 h-8 w-8" />
+              START VR EXPERIENCE
+            </Button>
+            
+            <div className="flex items-center justify-center space-x-4 mt-12">
+              <Button
+                onClick={handleAdminAccess}
+                variant="ghost"
+                className="text-gray-400 hover:text-white text-sm"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                {user ? (
+                  isSuperAdmin ? 'Super Admin Dashboard' : 
+                  isMachineAdmin ? 'Machine Admin Dashboard' : 
+                  'Admin Dashboard'
+                ) : 'Admin Login'}
               </Button>
-            </Link>
-          </section>
+            </div>
+          </div>
+        ) : (
+          /* Admin Options for users without specific roles */
+          <div className="space-y-6">
+            <h3 className="text-2xl font-semibold text-white text-center mb-8">
+              Select Admin Type
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="bg-black/30 border-vr-primary/30 hover:border-vr-primary transition-all duration-300 cursor-pointer transform hover:scale-105"
+                    onClick={() => navigate('/admin')}>
+                <CardContent className="p-8 text-center">
+                  <Settings className="w-12 h-12 text-vr-primary mx-auto mb-4" />
+                  <h4 className="text-xl font-semibold text-white mb-2">
+                    System Admin
+                  </h4>
+                  <p className="text-gray-300">
+                    General system administration and local management
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-black/30 border-vr-secondary/30 hover:border-vr-secondary transition-all duration-300 cursor-pointer transform hover:scale-105"
+                    onClick={() => navigate('/machine-admin')}>
+                <CardContent className="p-8 text-center">
+                  <Users className="w-12 h-12 text-vr-secondary mx-auto mb-4" />
+                  <h4 className="text-xl font-semibold text-white mb-2">
+                    Machine Admin
+                  </h4>
+                  <p className="text-gray-300">
+                    Venue-specific management and cloud analytics
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="text-center mt-8">
+              <Button
+                onClick={() => setShowAdminOptions(false)}
+                variant="ghost"
+                className="text-gray-400 hover:text-white"
+              >
+                Back to Main
+              </Button>
+            </div>
+          </div>
         )}
+
+        {/* Footer */}
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+          <p className="text-gray-500 text-sm">
+            Powered by Next Gen Arcadia Technology
+          </p>
+        </div>
       </div>
-    </MainLayout>
+    </div>
   );
 };
 
