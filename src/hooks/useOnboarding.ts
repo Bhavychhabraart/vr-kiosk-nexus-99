@@ -36,7 +36,19 @@ export const useOnboarding = () => {
         return;
       }
 
-      setOnboardingStatus(data);
+      // Type cast the data to match our interface
+      if (data) {
+        const typedData: OnboardingStatus = {
+          id: data.id,
+          status: data.status as 'pending' | 'in_progress' | 'completed' | 'failed',
+          venue_id: data.venue_id,
+          machine_serial_number: data.machine_serial_number,
+          setup_progress: data.setup_progress as { step: string; message: string } | undefined,
+          completed_at: data.completed_at,
+          error_message: data.error_message,
+        };
+        setOnboardingStatus(typedData);
+      }
     } catch (error) {
       console.error('Error in fetchOnboardingStatus:', error);
     } finally {
@@ -88,7 +100,18 @@ export const useOnboarding = () => {
         },
         (payload) => {
           console.log('Onboarding status updated:', payload.new);
-          setOnboardingStatus(payload.new as OnboardingStatus);
+          // Type cast the payload data
+          const newData = payload.new as any;
+          const typedData: OnboardingStatus = {
+            id: newData.id,
+            status: newData.status as 'pending' | 'in_progress' | 'completed' | 'failed',
+            venue_id: newData.venue_id,
+            machine_serial_number: newData.machine_serial_number,
+            setup_progress: newData.setup_progress as { step: string; message: string } | undefined,
+            completed_at: newData.completed_at,
+            error_message: newData.error_message,
+          };
+          setOnboardingStatus(typedData);
         }
       )
       .subscribe();

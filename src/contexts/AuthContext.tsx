@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,7 +43,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
 
       // Check for onboarding needs when user signs up or logs in
-      if (session?.user && (event === 'SIGNED_UP' || event === 'SIGNED_IN')) {
+      if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
         await checkOnboardingStatus(session.user.id);
       }
     });
