@@ -3,11 +3,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Clock, AlertCircle, Play, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, Play, Loader2, Sparkles, RefreshCw } from "lucide-react";
 import { useOnboarding } from "@/hooks/useOnboarding";
 
 const OnboardingProgress = () => {
-  const { onboardingStatus, isLoading, startSetup, isSettingUp, needsOnboarding, isInProgress } = useOnboarding();
+  const { 
+    onboardingStatus, 
+    isLoading, 
+    startSetup, 
+    retrySetup,
+    isSettingUp, 
+    isRetrying,
+    needsOnboarding, 
+    isInProgress,
+    hasFailed 
+  } = useOnboarding();
 
   if (isLoading) {
     return (
@@ -143,6 +153,8 @@ const OnboardingProgress = () => {
           <span className="flex items-center gap-2">
             {isInProgress ? (
               <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+            ) : hasFailed ? (
+              <AlertCircle className="w-5 h-5 text-red-600" />
             ) : (
               <Sparkles className="w-5 h-5 text-purple-600" />
             )}
@@ -153,6 +165,8 @@ const OnboardingProgress = () => {
         <CardDescription>
           {onboardingStatus?.status === 'completed' 
             ? `Your arcade "${progress.venue_name || 'VR Arcade'}" is ready to serve customers!`
+            : hasFailed
+            ? 'Setup encountered an error. Please try again.'
             : 'Setting up your VR arcade with all the essentials...'
           }
         </CardDescription>
@@ -226,19 +240,22 @@ const OnboardingProgress = () => {
             <div className="text-sm font-medium text-red-800 mb-2">Setup Error</div>
             <div className="text-sm text-red-600 mb-3">{onboardingStatus.error_message}</div>
             <Button 
-              onClick={startSetup} 
-              disabled={isSettingUp}
+              onClick={retrySetup} 
+              disabled={isRetrying || isSettingUp}
               variant="outline"
               size="sm"
               className="border-red-300 text-red-700 hover:bg-red-50"
             >
-              {isSettingUp ? (
+              {isRetrying ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Retrying...
                 </>
               ) : (
-                'Retry Setup'
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Retry Setup
+                </>
               )}
             </Button>
           </div>

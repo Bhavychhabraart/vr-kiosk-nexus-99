@@ -33,19 +33,27 @@ export function useOnboarding() {
     queryFn: async (): Promise<OnboardingStatus | null> => {
       if (!user?.id) return null;
 
+      console.log('Fetching onboarding status for user:', user.id);
+
       const { data, error } = await supabase
         .from('user_onboarding_status')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching onboarding status:', error);
+        throw error;
+      }
+      
+      console.log('Onboarding status fetched:', data);
       return data;
     },
     enabled: !!user?.id,
     refetchInterval: (query) => {
       // Refetch every 2 seconds if status is pending
-      return query.state.data?.status === 'pending' ? 2000 : false;
+      const status = query.state.data?.status;
+      return status === 'pending' ? 2000 : false;
     }
   });
 
@@ -69,13 +77,16 @@ export function useOnboarding() {
             games_assigned: 0,
             settings_configured: false,
             role_assigned: false
-          }
+          },
+          error_message: null
         });
 
       if (statusError) {
         console.error('Error updating onboarding status:', statusError);
         throw statusError;
       }
+
+      console.log('Onboarding status updated to pending, calling edge function...');
 
       // Trigger the edge function
       const { data, error } = await supabase.functions.invoke('auto-setup-user', {
@@ -88,23 +99,38 @@ export function useOnboarding() {
 
       if (error) {
         console.error('Setup function error:', error);
+        
+        // Update onboarding status with error
+        await supabase
+          .from('user_onboarding_status')
+          .update({
+            status: 'failed',
+            error_message: error.message || 'Setup function failed'
+          })
+          .eq('user_id', user.id);
+        
         throw error;
       }
 
       console.log('Setup function response:', data);
       return data;
     },
-    onSuccess: () => {
-      console.log('Setup started successfully');
+    onSuccess: (data) => {
+      console.log('Setup started successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['onboarding-status'] });
       queryClient.invalidateQueries({ queryKey: ['user-roles'] });
       queryClient.invalidateQueries({ queryKey: ['user-venues'] });
+      
+      toast({
+        title: "Setup Started",
+        description: "Your VR arcade setup is now in progress!",
+      });
     },
     onError: (error) => {
       console.error('Setup failed:', error);
       toast({
         title: "Setup Failed",
-        description: error.message,
+        description: error.message || "Failed to start setup. Please try again.",
         variant: "destructive",
       });
     }
@@ -137,9 +163,57 @@ export function useOnboarding() {
     }
   });
 
+  // Retry setup function
+  const retrySetup = useMutation({
+    mutationFn: async () => {
+      if (!user?.id || !user?.email) {
+        throw new Error('User not authenticated');
+      }
+
+      console.log('Retrying setup for user:', user.email);
+
+      // Reset onboarding status
+      const { error: resetError } = await supabase
+        .from('user_onboarding_status')
+        .update({
+          status: 'pending',
+          error_message: null,
+          setup_progress: {
+            venue_created: false,
+            games_assigned: 0,
+            settings_configured: false,
+            role_assigned: false
+          }
+        })
+        .eq('user_id', user.id);
+
+      if (resetError) {
+        console.error('Error resetting onboarding status:', resetError);
+        throw resetError;
+      }
+
+      // Call setup function again
+      return startSetup.mutateAsync();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Retry Started",
+        description: "Setup process has been restarted",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Retry Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
   const needsOnboarding = !onboardingStatus || onboardingStatus.status === 'pending';
   const isCompleted = onboardingStatus?.status === 'completed';
   const isInProgress = onboardingStatus?.status === 'pending';
+  const hasFailed = onboardingStatus?.status === 'failed';
 
   return {
     onboardingStatus,
@@ -148,9 +222,12 @@ export function useOnboarding() {
     needsOnboarding,
     isCompleted,
     isInProgress,
+    hasFailed,
     startSetup: () => startSetup.mutate(),
+    retrySetup: () => retrySetup.mutate(),
     setupExistingUsers: () => setupExistingUsers.mutate(),
     isSettingUp: startSetup.isPending,
+    isRetrying: retrySetup.isPending,
     isBatchSetup: setupExistingUsers.isPending
   };
 }

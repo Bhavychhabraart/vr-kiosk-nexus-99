@@ -23,6 +23,27 @@ serve(async (req) => {
 
     console.log(`Starting auto-setup for user: ${email} (${user_id}), type: ${setup_type}`)
 
+    // Update onboarding status to pending with initial progress
+    const { error: statusError } = await supabaseClient
+      .from('user_onboarding_status')
+      .upsert({
+        user_id: user_id,
+        status: 'pending',
+        setup_progress: {
+          venue_created: false,
+          games_assigned: 0,
+          settings_configured: false,
+          role_assigned: false
+        }
+      })
+
+    if (statusError) {
+      console.error('Error updating onboarding status:', statusError)
+      throw statusError
+    }
+
+    console.log('Starting setup_user_venue function...')
+
     // Call the setup function
     const { data: setupResult, error: setupError } = await supabaseClient
       .rpc('setup_user_venue', {
@@ -32,6 +53,16 @@ serve(async (req) => {
 
     if (setupError) {
       console.error('Setup error:', setupError)
+      
+      // Update onboarding status with error
+      await supabaseClient
+        .from('user_onboarding_status')
+        .update({
+          status: 'failed',
+          error_message: setupError.message || 'Setup failed'
+        })
+        .eq('user_id', user_id)
+      
       throw setupError
     }
 

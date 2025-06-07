@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOnboarding } from "@/hooks/useOnboarding";
+import { supabase } from "@/integrations/supabase/client";
 import OnboardingProgress from "@/components/onboarding/OnboardingProgress";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -20,9 +21,39 @@ const Onboarding = () => {
     }
   }, [user, loading, navigate]);
 
+  // Set up real-time subscription for onboarding status changes
+  useEffect(() => {
+    if (!user?.id) return;
+
+    console.log('Setting up real-time subscription for onboarding status');
+
+    const channel = supabase
+      .channel('onboarding-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_onboarding_status',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Onboarding status changed:', payload);
+          // The useQuery will automatically refetch due to the real-time update
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
   // Auto-redirect when setup is completed
   useEffect(() => {
     if (isCompleted && onboardingStatus?.venue_id) {
+      console.log('Onboarding completed, redirecting to machine admin');
       const timer = setTimeout(() => {
         navigate('/machine-admin');
       }, 4000); // Give user time to see completion message
