@@ -264,7 +264,7 @@ const MachineAdmin = () => {
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
-            <MachineAnalyticsTab />
+            <MachineAnalyticsTab venueId={currentVenue.id} />
           </TabsContent>
 
           <TabsContent value="earnings" className="space-y-6">

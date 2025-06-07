@@ -14,8 +14,12 @@ import { format } from "date-fns";
 import { RefreshCw, TrendingUp, Clock, Users, DollarSign } from "lucide-react";
 import { useSessionAnalytics } from "@/hooks/useSessionAnalytics";
 
-const MachineAnalyticsTab = () => {
-  const { sessions, stats, isLoading, refetchSessions } = useSessionAnalytics();
+interface MachineAnalyticsTabProps {
+  venueId: string;
+}
+
+const MachineAnalyticsTab = ({ venueId }: MachineAnalyticsTabProps) => {
+  const { sessions, stats, isLoading, refetchSessions } = useSessionAnalytics(venueId);
 
   if (isLoading) {
     return (
