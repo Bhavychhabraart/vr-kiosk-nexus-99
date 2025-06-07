@@ -16,6 +16,8 @@ export interface UserVenue {
   city: string;
   state: string;
   status: string;
+  machine_model?: string;
+  serial_number?: string;
 }
 
 export function useUserRoles() {
@@ -63,7 +65,7 @@ export function useUserRoles() {
         console.log('Fetching all venues for super admin');
         const { data: allVenues, error: venuesError } = await supabase
           .from('venues')
-          .select('id, name, city, state, status')
+          .select('id, name, city, state, status, machine_model, serial_number')
           .eq('status', 'active');
 
         if (venuesError) {
@@ -87,7 +89,7 @@ export function useUserRoles() {
 
       const { data: venues, error: venuesError } = await supabase
         .from('venues')
-        .select('id, name, city, state, status')
+        .select('id, name, city, state, status, machine_model, serial_number')
         .in('id', venueIds)
         .eq('status', 'active');
 

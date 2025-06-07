@@ -241,8 +241,8 @@ const MachineAdmin = () => {
                   <div>
                     <h3 className="font-semibold mb-2">Machine Details</h3>
                     <div className="space-y-1 text-sm">
-                      <p><span className="font-medium">Serial Number:</span> {currentVenue.serial_number}</p>
-                      <p><span className="font-medium">Model:</span> {currentVenue.machine_model}</p>
+                      <p><span className="font-medium">Serial Number:</span> {currentVenue.serial_number || 'AUTO-DETECTED'}</p>
+                      <p><span className="font-medium">Model:</span> {currentVenue.machine_model || 'VR-KIOSK-V1'}</p>
                       <p><span className="font-medium">Location:</span> {currentVenue.city}, {currentVenue.state}</p>
                     </div>
                   </div>
