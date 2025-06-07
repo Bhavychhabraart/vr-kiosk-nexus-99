@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import websocketService, { 
@@ -7,6 +6,7 @@ import websocketService, {
   ServerStatus
 } from '@/services/websocket';
 import { useSessionTracking } from './useSessionTracking';
+import { useUserRoles } from './useUserRoles';
 
 interface CommandCenterOptions {
   onStatusChange?: (status: ServerStatus) => void;
@@ -24,6 +24,16 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
   const { startSession, endSession, updateSessionStatus } = useSessionTracking();
+  const { userVenues, isMachineAdmin } = useUserRoles();
+
+  // Get the user's venue ID for session tracking
+  const getUserVenueId = useCallback(() => {
+    if (userVenues && userVenues.length > 0) {
+      return userVenues[0].id; // Use first venue
+    }
+    console.warn('No venue found for user, session tracking may be incomplete');
+    return null;
+  }, [userVenues]);
 
   useEffect(() => {
     websocketService.connect();
@@ -76,7 +86,7 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
   const isConnected = connectionState === ConnectionState.CONNECTED;
 
   const launchGame = useCallback(async (gameId: string, durationSeconds: number, paymentData?: {
-    method: 'rfid' | 'upi';
+    method: 'rfid' | 'upi' | 'free';
     amount: number;
     rfidTag?: string;
     venueId?: string;
@@ -91,19 +101,31 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
         sessionDuration: durationSeconds
       });
       
-      // Start session tracking if payment data is provided
+      // Start session tracking with proper venue ID
       if (paymentData) {
         const sessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         setCurrentSessionId(sessionId);
         
-        await startSession({
-          sessionId,
-          gameId,
-          venueId: paymentData.venueId,
-          paymentMethod: paymentData.method,
-          amountPaid: paymentData.amount,
-          rfidTag: paymentData.rfidTag
-        });
+        // Get venue ID from payment data or user's assigned venue
+        const venueId = paymentData.venueId || getUserVenueId();
+        
+        if (!venueId) {
+          console.error('Cannot start session tracking: No venue ID available');
+          toast({
+            variant: "destructive",
+            title: "Session Error",
+            description: "Venue information is missing. Session tracking disabled.",
+          });
+        } else {
+          await startSession({
+            sessionId,
+            gameId,
+            venueId, // Ensure venue ID is always provided
+            paymentMethod: paymentData.method,
+            amountPaid: paymentData.amount,
+            rfidTag: paymentData.rfidTag
+          });
+        }
       }
       
       console.log('Game launch command sent successfully');
@@ -131,7 +153,7 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
       
       throw error;
     }
-  }, [startSession]);
+  }, [startSession, getUserVenueId]);
 
   const endSessionCommand = useCallback(async (rating?: number) => {
     try {

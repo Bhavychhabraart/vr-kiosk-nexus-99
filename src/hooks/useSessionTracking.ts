@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -6,8 +5,8 @@ import { toast } from '@/components/ui/use-toast';
 interface SessionData {
   sessionId: string;
   gameId: string;
-  venueId?: string;
-  paymentMethod: 'rfid' | 'upi';
+  venueId: string; // Make this required instead of optional
+  paymentMethod: 'rfid' | 'upi' | 'free';
   amountPaid: number;
   rfidTag?: string;
 }
@@ -19,12 +18,25 @@ export const useSessionTracking = () => {
     try {
       setIsTracking(true);
       
+      // Validate that venue_id is provided
+      if (!data.venueId) {
+        console.error('Venue ID is required for session tracking');
+        toast({
+          variant: "destructive",
+          title: "Session Error",
+          description: "Venue information is missing",
+        });
+        return false;
+      }
+
+      console.log('Starting session with data:', data);
+      
       const { error } = await supabase
         .from('session_tracking')
         .insert({
           session_id: data.sessionId,
           game_id: data.gameId,
-          venue_id: data.venueId,
+          venue_id: data.venueId, // Ensure venue_id is always set
           payment_method: data.paymentMethod,
           amount_paid: data.amountPaid,
           rfid_tag: data.rfidTag,
@@ -36,7 +48,7 @@ export const useSessionTracking = () => {
         throw error;
       }
 
-      console.log('Session tracking started:', data.sessionId);
+      console.log('Session tracking started successfully:', data.sessionId, 'for venue:', data.venueId);
       return true;
     } catch (error) {
       console.error('Failed to start session tracking:', error);
@@ -45,6 +57,7 @@ export const useSessionTracking = () => {
         title: "Session Tracking Error",
         description: "Failed to start session tracking",
       });
+      setIsTracking(false);
       return false;
     }
   }, []);

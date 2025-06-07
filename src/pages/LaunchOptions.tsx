@@ -16,7 +16,7 @@ import {
 import { toast } from "@/components/ui/use-toast";
 import { useLaunchOptions } from "@/hooks/useLaunchOptions";
 import { useGames } from "@/hooks/useGames";
-import { useVenues } from "@/hooks/useVenues";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import useCommandCenter from "@/hooks/useCommandCenter";
 import { useSessionTracking } from "@/hooks/useSessionTracking";
 import { InlineRFIDInput } from "@/components/ui/inline-rfid-input";
@@ -25,16 +25,16 @@ const LaunchOptions = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { games } = useGames();
-  const { venues } = useVenues();
+  const { userVenues } = useUserRoles();
   
   // Get parameters from URL
   const gameId = searchParams.get("gameId");
   const gameTitle = searchParams.get("title") || "VR Game";
   
-  // Use the first available venue or fallback to hardcoded ID
-  const venueId = venues && venues.length > 0 ? venues[0].id : "00000000-0000-0000-0000-000000000001";
+  // Get venue ID from user's assigned venues
+  const venueId = userVenues && userVenues.length > 0 ? userVenues[0].id : null;
   
-  console.log('LaunchOptions - gameId:', gameId, 'venueId:', venueId, 'venues:', venues);
+  console.log('LaunchOptions - gameId:', gameId, 'venueId:', venueId, 'userVenues:', userVenues);
   
   const { launchOptions, isLoading, error } = useLaunchOptions(venueId);
   const { startSession } = useSessionTracking();
@@ -69,13 +69,34 @@ const LaunchOptions = () => {
     }
   }, [error]);
 
+  // Check if venue ID is available
+  useEffect(() => {
+    if (!venueId && userVenues !== undefined) {
+      console.error('No venue ID available for user');
+      toast({
+        variant: "destructive",
+        title: "Venue Error",
+        description: "No venue assigned to your account. Please contact support.",
+      });
+    }
+  }, [venueId, userVenues]);
+
   const calculatePrice = () => {
     if (!launchOptions) return 0;
     return launchOptions.default_duration_minutes * launchOptions.price_per_minute;
   };
 
   const handleLaunchOption = async (option: 'tap' | 'rfid' | 'qr') => {
-    if (!gameData || !launchOptions || isProcessing || isLaunching) return;
+    if (!gameData || !launchOptions || isProcessing || isLaunching || !venueId) {
+      if (!venueId) {
+        toast({
+          variant: "destructive",
+          title: "Venue Error",
+          description: "No venue information available",
+        });
+      }
+      return;
+    }
 
     if (option === 'rfid') {
       setShowRfidInput(true);
@@ -92,10 +113,11 @@ const LaunchOptions = () => {
       let paymentData;
       
       if (option === 'tap') {
-        // Instant launch with free play or default payment
+        // Instant launch with free play
         paymentData = {
           method: 'free' as const,
           amount: 0,
+          venueId, // Include venue ID
         };
       } else if (option === 'qr') {
         // Navigate to QR payment
@@ -105,7 +127,8 @@ const LaunchOptions = () => {
           duration: durationSeconds.toString(),
           sessionId,
           amount: amount.toString(),
-          method: 'upi'
+          method: 'upi',
+          venueId, // Include venue ID in QR payment flow
         });
         navigate(`/payment-selection?${params.toString()}`);
         return;
@@ -120,6 +143,7 @@ const LaunchOptions = () => {
         title: gameData.title,
         duration: durationSeconds.toString(),
         sessionId,
+        venueId, // Include venue ID in session page
       });
       navigate(`/session?${sessionParams.toString()}`);
       
@@ -136,7 +160,7 @@ const LaunchOptions = () => {
   };
 
   const handleRfidScanned = async (rfidTag: string) => {
-    if (!gameData || !launchOptions || isProcessing || isLaunching) return;
+    if (!gameData || !launchOptions || isProcessing || isLaunching || !venueId) return;
 
     setIsProcessing(true);
     
@@ -151,7 +175,7 @@ const LaunchOptions = () => {
         method: 'rfid' as const,
         amount: amount,
         rfidTag: rfidTag,
-        venueId: venueId
+        venueId: venueId // Ensure venue ID is included
       };
 
       // Launch game immediately
@@ -168,7 +192,8 @@ const LaunchOptions = () => {
         title: gameData.title,
         duration: durationSeconds.toString(),
         sessionId,
-        rfidTag: rfidTag
+        rfidTag: rfidTag,
+        venueId, // Include venue ID
       });
       navigate(`/session?${sessionParams.toString()}`);
       
@@ -200,7 +225,7 @@ const LaunchOptions = () => {
     );
   }
 
-  if (error || !launchOptions) {
+  if (error || !launchOptions || !venueId) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
         <Card className="w-full max-w-md bg-black/80 border-red-500/30">
@@ -209,7 +234,7 @@ const LaunchOptions = () => {
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-gray-300 mb-4">
-              {error ? error.message : "Launch options not available"}
+              {error ? error.message : !venueId ? "No venue assigned to your account" : "Launch options not available"}
             </p>
             <Button onClick={() => navigate('/games')} variant="outline">
               <ArrowLeft className="h-4 w-4 mr-2" />
