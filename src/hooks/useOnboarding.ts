@@ -43,9 +43,9 @@ export function useOnboarding() {
       return data;
     },
     enabled: !!user?.id,
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Refetch every 2 seconds if status is pending
-      return data?.status === 'pending' ? 2000 : false;
+      return query.state.data?.status === 'pending' ? 2000 : false;
     }
   });
 
