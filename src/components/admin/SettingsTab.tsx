@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,13 +55,15 @@ const SettingsTab = ({ selectedVenueId }: SettingsTabProps) => {
       if (error) throw error;
       return data;
     },
-    enabled: !!selectedVenueId,
-    onSuccess: (data) => {
-      if (data) {
-        setLocalSettings(data);
-      }
-    }
+    enabled: !!selectedVenueId
   });
+
+  // Update local settings when venue settings change
+  useEffect(() => {
+    if (venueSettings) {
+      setLocalSettings(venueSettings);
+    }
+  }, [venueSettings]);
 
   // Update venue settings
   const updateSettings = useMutation({
