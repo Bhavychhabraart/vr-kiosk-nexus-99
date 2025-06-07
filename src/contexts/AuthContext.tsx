@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,11 +22,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Trigger auto-setup for new signups
+        if (event === 'SIGNED_UP' && session?.user) {
+          console.log('New user signed up, triggering auto-setup');
+          setTimeout(async () => {
+            try {
+              const { data, error } = await supabase.functions.invoke('auto-setup-user', {
+                body: {
+                  user_id: session.user.id,
+                  email: session.user.email,
+                  setup_type: 'new_user'
+                }
+              });
+
+              if (error) {
+                console.error('Auto-setup failed:', error);
+              } else {
+                console.log('Auto-setup completed:', data);
+                toast({
+                  title: "Welcome!",
+                  description: "Your VR arcade is being set up automatically",
+                });
+              }
+            } catch (error) {
+              console.error('Auto-setup error:', error);
+            }
+          }, 2000);
+        }
       }
     );
 
@@ -43,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string) => {
-    const redirectUrl = `${window.location.origin}/`;
+    const redirectUrl = `${window.location.origin}/onboarding`;
     
     const { error } = await supabase.auth.signUp({
       email,
