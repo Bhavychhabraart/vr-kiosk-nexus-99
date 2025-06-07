@@ -28,6 +28,8 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
   const { data: sessions, isLoading: sessionsLoading, refetch: refetchSessions } = useQuery({
     queryKey: ['sessionAnalytics', selectedVenueId],
     queryFn: async (): Promise<UnifiedSession[]> => {
+      console.log('Fetching sessions for venue:', selectedVenueId);
+      
       // Build tracking query
       let trackingQuery = supabase
         .from('session_tracking')
@@ -62,6 +64,9 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
       if (historyError) {
         console.error('Error fetching session history:', historyError);
       }
+
+      console.log('Raw tracking data:', trackingData);
+      console.log('Raw history data:', historyData);
 
       // Transform session_tracking data
       const trackingSessions: UnifiedSession[] = (trackingData || []).map(session => ({
@@ -101,12 +106,14 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
 
       // Combine and deduplicate sessions
       const allSessions = [...trackingSessions, ...historySessions];
+      console.log('All sessions combined:', allSessions);
 
       // Remove duplicates by ID (session_tracking takes precedence)
       const uniqueSessions = allSessions.filter((session, index, self) => 
         index === self.findIndex(s => s.id === session.id)
       );
 
+      console.log('Unique sessions:', uniqueSessions);
       return uniqueSessions;
     },
     refetchInterval: 2000, // Refetch every 2 seconds for real-time updates
@@ -115,31 +122,51 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
   const { data: stats } = useQuery({
     queryKey: ['sessionStats', selectedVenueId, sessions],
     queryFn: async () => {
-      const today = new Date().toISOString().split('T')[0];
+      console.log('Calculating stats for sessions:', sessions?.length);
       
-      if (!sessions) return { totalSessions: 0, totalRevenue: 0, avgDuration: 0 };
+      if (!sessions || sessions.length === 0) {
+        console.log('No sessions found, returning zero stats');
+        return { totalSessions: 0, totalRevenue: 0, avgDuration: 0 };
+      }
 
-      // Filter today's sessions (both active and completed) from unified data
+      const today = new Date();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+      
+      console.log('Today range:', todayStart, 'to', todayEnd);
+
+      // Filter today's sessions
       const todaySessions = sessions.filter(session => {
-        const sessionDate = new Date(session.start_time).toISOString().split('T')[0];
-        return sessionDate === today;
+        const sessionDate = new Date(session.start_time);
+        const isToday = sessionDate >= todayStart && sessionDate < todayEnd;
+        console.log('Session date:', sessionDate, 'Is today:', isToday);
+        return isToday;
       });
 
-      // Count all sessions for today (active + completed)
+      console.log('Today sessions found:', todaySessions.length);
+
+      // Count ALL sessions for today (both active and completed)
       const totalSessions = todaySessions.length;
       
-      // Only count revenue from completed sessions
-      const completedSessions = todaySessions.filter(session => session.status === 'completed');
+      // Only count revenue from completed sessions that have amount_paid
+      const completedSessions = todaySessions.filter(session => 
+        session.status === 'completed' && session.amount_paid && session.amount_paid > 0
+      );
+      
       const totalRevenue = completedSessions.reduce((sum, session) => sum + (session.amount_paid || 0), 0);
       
-      // Calculate average duration only from completed sessions
-      const avgDuration = completedSessions.length > 0 
-        ? completedSessions.reduce((sum, session) => sum + (session.duration_seconds || 0), 0) / completedSessions.length 
+      // Calculate average duration only from sessions that have duration
+      const sessionsWithDuration = todaySessions.filter(session => 
+        session.duration_seconds && session.duration_seconds > 0
+      );
+      
+      const avgDuration = sessionsWithDuration.length > 0 
+        ? sessionsWithDuration.reduce((sum, session) => sum + (session.duration_seconds || 0), 0) / sessionsWithDuration.length 
         : 0;
 
-      console.log('Today sessions stats:', { 
+      console.log('Calculated stats:', { 
         totalSessions, 
-        completedSessions: completedSessions.length, 
+        completedWithRevenue: completedSessions.length, 
         totalRevenue, 
         avgDuration,
         venueId: selectedVenueId 

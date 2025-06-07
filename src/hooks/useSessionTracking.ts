@@ -21,24 +21,41 @@ export const useSessionTracking = () => {
       
       console.log('Starting session with data:', data);
       
-      const { error } = await supabase
-        .from('session_tracking')
-        .insert({
-          session_id: data.sessionId,
-          game_id: data.gameId,
-          venue_id: data.venueId, // Ensure venue_id is always set
-          payment_method: data.paymentMethod,
-          amount_paid: data.amountPaid,
-          rfid_tag: data.rfidTag,
-          status: 'active'
+      // Ensure venue_id is set - this is critical for analytics
+      if (!data.venueId) {
+        console.error('No venue ID provided for session!');
+        toast({
+          variant: "destructive",
+          title: "Session Error",
+          description: "Venue ID is required to start a session",
         });
+        setIsTracking(false);
+        return false;
+      }
+      
+      const sessionData = {
+        session_id: data.sessionId,
+        game_id: data.gameId,
+        venue_id: data.venueId,
+        payment_method: data.paymentMethod,
+        amount_paid: data.amountPaid,
+        rfid_tag: data.rfidTag,
+        status: 'active'
+      };
+
+      console.log('Inserting session data:', sessionData);
+
+      const { error, data: insertedData } = await supabase
+        .from('session_tracking')
+        .insert(sessionData)
+        .select();
 
       if (error) {
         console.error('Error starting session tracking:', error);
         throw error;
       }
 
-      console.log('Session tracking started successfully:', data.sessionId);
+      console.log('Session tracking started successfully:', insertedData);
       
       // Show immediate feedback
       toast({
@@ -63,6 +80,8 @@ export const useSessionTracking = () => {
     try {
       const endTime = new Date().toISOString();
       
+      console.log('Ending session:', sessionId);
+      
       // Get the session to calculate duration
       const { data: session } = await supabase
         .from('session_tracking')
@@ -75,6 +94,8 @@ export const useSessionTracking = () => {
         return false;
       }
 
+      console.log('Found session to end:', session);
+
       let durationSeconds = 0;
       if (session.start_time) {
         const startTime = new Date(session.start_time);
@@ -82,23 +103,30 @@ export const useSessionTracking = () => {
         durationSeconds = Math.floor((endTimeDate.getTime() - startTime.getTime()) / 1000);
       }
 
+      console.log('Calculated duration:', durationSeconds, 'seconds');
+
+      const updateData = {
+        end_time: endTime,
+        duration_seconds: durationSeconds,
+        status: 'completed',
+        rating: rating
+      };
+
+      console.log('Updating session with:', updateData);
+
       // Update session_tracking table
-      const { error: updateError } = await supabase
+      const { error: updateError, data: updatedData } = await supabase
         .from('session_tracking')
-        .update({
-          end_time: endTime,
-          duration_seconds: durationSeconds,
-          status: 'completed',
-          rating: rating
-        })
-        .eq('session_id', sessionId);
+        .update(updateData)
+        .eq('session_id', sessionId)
+        .select();
 
       if (updateError) {
         console.error('Error updating session tracking:', updateError);
         throw updateError;
       }
 
-      console.log('Session tracking ended successfully:', sessionId);
+      console.log('Session tracking ended successfully:', updatedData);
       
       toast({
         title: "Session Completed",
@@ -120,6 +148,8 @@ export const useSessionTracking = () => {
 
   const updateSessionStatus = useCallback(async (sessionId: string, status: string) => {
     try {
+      console.log('Updating session status:', sessionId, status);
+      
       const { error } = await supabase
         .from('session_tracking')
         .update({ status })
