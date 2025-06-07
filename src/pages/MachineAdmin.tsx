@@ -1,19 +1,21 @@
 
 import { useState } from "react";
-import { useMachineAuth } from "@/hooks/useMachineAuth";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUserRoles } from "@/hooks/useUserRoles";
+import { useMachineVenue } from "@/hooks/useMachineVenue";
 import MachineAuthLogin from "@/components/auth/MachineAuthLogin";
 import MainLayout from "@/components/layout/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Building2, 
   Gamepad2, 
   BarChart3, 
   LogOut,
   MapPin,
-  Calendar,
   Settings,
   CreditCard,
   Star,
@@ -31,14 +33,119 @@ import MachineProductCatalogTab from "@/components/machine-admin/MachineProductC
 import MachineSupportTab from "@/components/machine-admin/MachineSupportTab";
 
 const MachineAdmin = () => {
-  const { isAuthenticated, machineSession, logout } = useMachineAuth();
+  const { user, signOut } = useAuth();
+  const { isMachineAdmin, isLoading: rolesLoading } = useUserRoles();
+  const { machineVenueData, isLoading: venueLoading, hasMultipleVenues, userVenues } = useMachineVenue();
   const [activeTab, setActiveTab] = useState("overview");
+  const [selectedVenueId, setSelectedVenueId] = useState<string>("");
 
-  if (!isAuthenticated || !machineSession) {
+  // Show loading while checking authentication and roles
+  if (rolesLoading || venueLoading) {
+    return (
+      <MainLayout backgroundVariant="grid" withPattern intensity="low">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-vr-primary"></div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // If user is not logged in or not a machine admin, show login
+  if (!user || !isMachineAdmin) {
     return <MachineAuthLogin onSuccess={() => {}} />;
   }
 
-  const { venue, auth } = machineSession;
+  // If no venue data available, show error
+  if (!machineVenueData && !hasMultipleVenues) {
+    return (
+      <MainLayout backgroundVariant="grid" withPattern intensity="low">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-red-600">No Venue Access</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-red-600">You don't have access to any venues. Please contact your administrator.</p>
+            <Button onClick={signOut} className="mt-4">
+              Logout
+            </Button>
+          </CardContent>
+        </Card>
+      </MainLayout>
+    );
+  }
+
+  // Use selected venue or the auto-detected venue
+  const currentVenue = hasMultipleVenues 
+    ? userVenues?.find(v => v.id === selectedVenueId)
+    : machineVenueData?.venue;
+
+  const currentAuth = hasMultipleVenues 
+    ? { product_id: 'MULTI-VENUE', access_level: 'admin', expires_at: null }
+    : machineVenueData?.auth;
+
+  // If multiple venues but none selected, show venue selector
+  if (hasMultipleVenues && !selectedVenueId) {
+    return (
+      <MainLayout backgroundVariant="grid" withPattern intensity="low">
+        <div className="space-y-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-vr-primary to-vr-secondary bg-clip-text text-transparent">
+                Select Your Venue
+              </h1>
+              <p className="text-vr-muted mt-2">Choose which venue you want to manage</p>
+            </div>
+            <Button variant="outline" onClick={signOut} className="flex items-center gap-2">
+              <LogOut className="w-4 h-4" />
+              Logout
+            </Button>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Available Venues</CardTitle>
+              <CardDescription>
+                You have access to multiple venues. Select one to manage.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Select value={selectedVenueId} onValueChange={setSelectedVenueId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Choose a venue to manage..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {userVenues?.map((venue) => (
+                    <SelectItem key={venue.id} value={venue.id}>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4" />
+                        <span className="font-medium">{venue.name}</span>
+                        <span className="text-muted-foreground">({venue.city})</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!currentVenue) {
+    return (
+      <MainLayout backgroundVariant="grid" withPattern intensity="low">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-red-600">Venue Not Found</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-red-600">Selected venue could not be found.</p>
+          </CardContent>
+        </Card>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout backgroundVariant="grid" withPattern intensity="low">
@@ -47,27 +154,37 @@ const MachineAdmin = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-vr-primary to-vr-secondary bg-clip-text text-transparent">
-              {venue.name} Admin Panel
+              {currentVenue.name} Admin Panel
             </h1>
             <div className="flex items-center gap-4 mt-2 text-vr-muted">
               <div className="flex items-center gap-1">
                 <MapPin className="w-4 h-4" />
-                {venue.city}, {venue.state}
+                {currentVenue.city}, {currentVenue.state}
               </div>
               <div className="flex items-center gap-1">
                 <Building2 className="w-4 h-4" />
-                {venue.machine_model}
+                {currentVenue.machine_model || 'VR-KIOSK-V1'}
               </div>
               <Badge variant="outline">
-                Product ID: {auth.product_id}
+                Product ID: {currentAuth?.product_id}
               </Badge>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <Badge variant="default" className="px-4 py-2">
-              Access Level: {auth.access_level}
+              Access Level: {currentAuth?.access_level}
             </Badge>
-            <Button variant="outline" onClick={logout} className="flex items-center gap-2">
+            {hasMultipleVenues && (
+              <Button 
+                variant="outline" 
+                onClick={() => setSelectedVenueId("")}
+                className="flex items-center gap-2"
+              >
+                <Building2 className="w-4 h-4" />
+                Switch Venue
+              </Button>
+            )}
+            <Button variant="outline" onClick={signOut} className="flex items-center gap-2">
               <LogOut className="w-4 h-4" />
               Logout
             </Button>
@@ -116,7 +233,7 @@ const MachineAdmin = () => {
               <CardHeader>
                 <CardTitle>Machine Overview</CardTitle>
                 <CardDescription>
-                  Current status and quick information about {venue.name}
+                  Current status and quick information about {currentVenue.name}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -124,17 +241,17 @@ const MachineAdmin = () => {
                   <div>
                     <h3 className="font-semibold mb-2">Machine Details</h3>
                     <div className="space-y-1 text-sm">
-                      <p><span className="font-medium">Serial Number:</span> {venue.serial_number}</p>
-                      <p><span className="font-medium">Model:</span> {venue.machine_model}</p>
-                      <p><span className="font-medium">Location:</span> {venue.city}, {venue.state}</p>
+                      <p><span className="font-medium">Serial Number:</span> {currentVenue.serial_number}</p>
+                      <p><span className="font-medium">Model:</span> {currentVenue.machine_model}</p>
+                      <p><span className="font-medium">Location:</span> {currentVenue.city}, {currentVenue.state}</p>
                     </div>
                   </div>
                   <div>
                     <h3 className="font-semibold mb-2">Access Information</h3>
                     <div className="space-y-1 text-sm">
-                      <p><span className="font-medium">Product ID:</span> {auth.product_id}</p>
-                      <p><span className="font-medium">Access Level:</span> {auth.access_level}</p>
-                      <p><span className="font-medium">Expires:</span> {auth.expires_at ? new Date(auth.expires_at).toLocaleDateString() : 'Never'}</p>
+                      <p><span className="font-medium">Product ID:</span> {currentAuth?.product_id}</p>
+                      <p><span className="font-medium">Access Level:</span> {currentAuth?.access_level}</p>
+                      <p><span className="font-medium">Expires:</span> {currentAuth?.expires_at ? new Date(currentAuth.expires_at).toLocaleDateString() : 'Never'}</p>
                     </div>
                   </div>
                 </div>
@@ -143,7 +260,7 @@ const MachineAdmin = () => {
           </TabsContent>
 
           <TabsContent value="games" className="space-y-6">
-            <MachineGamesManagementTab venueId={venue.id} />
+            <MachineGamesManagementTab venueId={currentVenue.id} />
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
@@ -151,23 +268,23 @@ const MachineAdmin = () => {
           </TabsContent>
 
           <TabsContent value="earnings" className="space-y-6">
-            <MachinePaymentsEarningsTab venueId={venue.id} />
+            <MachinePaymentsEarningsTab venueId={currentVenue.id} />
           </TabsContent>
 
           <TabsContent value="showcase" className="space-y-6">
-            <MachineGamesShowcaseTab venueId={venue.id} />
+            <MachineGamesShowcaseTab venueId={currentVenue.id} />
           </TabsContent>
 
           <TabsContent value="catalog" className="space-y-6">
-            <MachineProductCatalogTab venueId={venue.id} />
+            <MachineProductCatalogTab venueId={currentVenue.id} />
           </TabsContent>
 
           <TabsContent value="support" className="space-y-6">
-            <MachineSupportTab venueId={venue.id} />
+            <MachineSupportTab venueId={currentVenue.id} />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">
-            <MachineSettingsTab venueId={venue.id} />
+            <MachineSettingsTab venueId={currentVenue.id} />
           </TabsContent>
         </Tabs>
       </div>

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { VrIcon } from "@/components/icons/VrIcon";
@@ -12,8 +12,16 @@ import { useUserRoles } from "@/hooks/useUserRoles";
 const Index = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { isSuperAdmin, isMachineAdmin } = useUserRoles();
+  const { isSuperAdmin, isMachineAdmin, isLoading } = useUserRoles();
   const [showAdminOptions, setShowAdminOptions] = useState(false);
+
+  // Auto-redirect machine admins to their admin panel
+  useEffect(() => {
+    if (!isLoading && user && isMachineAdmin && !isSuperAdmin) {
+      // Direct machine admins straight to their admin panel
+      navigate('/machine-admin');
+    }
+  }, [user, isMachineAdmin, isSuperAdmin, isLoading, navigate]);
 
   const handleStartExperience = () => {
     navigate('/games');
@@ -39,6 +47,18 @@ const Index = () => {
     await signOut();
     setShowAdminOptions(false);
   };
+
+  // Show loading while checking roles
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 relative overflow-hidden">
+        <AnimatedBackground />
+        <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-vr-primary"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 relative overflow-hidden">
