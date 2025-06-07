@@ -30,6 +30,11 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
     queryFn: async (): Promise<UnifiedSession[]> => {
       console.log('Fetching session analytics for venue:', selectedVenueId);
       
+      if (!selectedVenueId) {
+        console.log('No venue selected, returning empty array');
+        return [];
+      }
+      
       // Build tracking query
       let trackingQuery = supabase
         .from('session_tracking')
@@ -37,6 +42,7 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
           *,
           games:game_id (title)
         `)
+        .eq('venue_id', selectedVenueId)
         .order('start_time', { ascending: false });
 
       // Build history query
@@ -46,16 +52,16 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
           *,
           games:game_id (title)
         `)
+        .eq('venue_id', selectedVenueId)
         .order('start_time', { ascending: false });
 
-      // Apply venue filter if specified
-      if (selectedVenueId) {
-        trackingQuery = trackingQuery.eq('venue_id', selectedVenueId);
-        historyQuery = historyQuery.eq('venue_id', selectedVenueId);
-      }
+      const [trackingResult, historyResult] = await Promise.all([
+        trackingQuery,
+        historyQuery
+      ]);
 
-      const { data: trackingData, error: trackingError } = await trackingQuery;
-      const { data: historyData, error: historyError } = await historyQuery;
+      const { data: trackingData, error: trackingError } = trackingResult;
+      const { data: historyData, error: historyError } = historyResult;
 
       if (trackingError) {
         console.error('Error fetching session tracking:', trackingError);
@@ -99,7 +105,6 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
         customer_id: session.customer_id,
         notes: session.notes,
         // Default values for missing fields
-        amount_paid: 0,
         payment_method: 'rfid',
         game_title: session.games?.title || 'Unknown Game'
       }));
@@ -113,6 +118,8 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
       );
 
       console.log('Total unique sessions found:', uniqueSessions.length);
+      console.log('Sample session data:', uniqueSessions.slice(0, 2));
+      
       return uniqueSessions;
     },
     refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
@@ -123,27 +130,40 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
     queryFn: async () => {
       console.log('Fetching session stats for venue:', selectedVenueId);
       
+      if (!selectedVenueId) {
+        return {
+          totalSessions: 0,
+          totalRevenue: 0,
+          avgDuration: 0
+        };
+      }
+      
       const today = new Date().toISOString().split('T')[0];
+      console.log('Fetching stats for date:', today);
       
       // Get today's sessions from both tables
-      let trackingQuery = supabase
+      const trackingQuery = supabase
         .from('session_tracking')
         .select('*')
+        .eq('venue_id', selectedVenueId)
         .gte('start_time', today);
 
-      let historyQuery = supabase
+      const historyQuery = supabase
         .from('session_history')
         .select('*')
+        .eq('venue_id', selectedVenueId)
         .gte('start_time', today);
 
-      // Apply venue filter if specified
-      if (selectedVenueId) {
-        trackingQuery = trackingQuery.eq('venue_id', selectedVenueId);
-        historyQuery = historyQuery.eq('venue_id', selectedVenueId);
-      }
+      const [trackingResult, historyResult] = await Promise.all([
+        trackingQuery,
+        historyQuery
+      ]);
 
-      const { data: trackingSessions } = await trackingQuery;
-      const { data: historySessions } = await historyQuery;
+      const { data: trackingSessions } = trackingResult;
+      const { data: historySessions } = historyResult;
+
+      console.log('Today tracking sessions:', trackingSessions?.length || 0);
+      console.log('Today history sessions:', historySessions?.length || 0);
 
       // Combine both datasets
       const allTodaySessions = [
@@ -164,6 +184,7 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
       console.log('Today\'s unique sessions:', uniqueSessions.length);
 
       const totalSessions = uniqueSessions.length;
+      
       // Only sum amount_paid from session_tracking records
       const totalRevenue = uniqueSessions.reduce((sum, session) => {
         // Check if this session has amount_paid (from session_tracking)

@@ -38,11 +38,12 @@ const AnalyticsTab = ({ selectedVenueId }: AnalyticsTabProps) => {
 
   // Debug logging
   React.useEffect(() => {
-    console.log('AnalyticsTab - selectedVenueId:', selectedVenueId);
-    console.log('AnalyticsTab - sessions:', sessions?.length || 0);
-    console.log('AnalyticsTab - stats:', stats);
-    console.log('AnalyticsTab - isLoading:', isLoading);
-  }, [selectedVenueId, sessions, stats, isLoading]);
+    console.log('AnalyticsTab render - selectedVenueId:', selectedVenueId);
+    console.log('AnalyticsTab render - sessions:', sessions?.length || 0);
+    console.log('AnalyticsTab render - stats:', stats);
+    console.log('AnalyticsTab render - isLoading:', isLoading);
+    console.log('AnalyticsTab render - earnings:', earnings?.length || 0);
+  }, [selectedVenueId, sessions, stats, isLoading, earnings]);
 
   if (isLoading) {
     return (
@@ -79,8 +80,8 @@ const AnalyticsTab = ({ selectedVenueId }: AnalyticsTabProps) => {
     );
   }
 
-  // Show analytics even if data is empty (for debugging)
-  const recentSessions = sessions?.slice(0, 10) || [];
+  // Process the data even if empty to ensure UI displays
+  const recentSessions = sessions || [];
   const chartData = earnings?.slice(0, 7).reverse().map(earning => ({
     date: new Date(earning.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
     revenue: Number(earning.total_revenue),
@@ -120,6 +121,8 @@ const AnalyticsTab = ({ selectedVenueId }: AnalyticsTabProps) => {
             <p>Today's Sessions: {stats?.totalSessions || 0}</p>
             <p>Today's Revenue: ₹{stats?.totalRevenue || 0}</p>
             <p>Loading: {isLoading ? 'Yes' : 'No'}</p>
+            <p>Has Sessions Data: {sessions ? 'Yes' : 'No'}</p>
+            <p>Has Stats Data: {stats ? 'Yes' : 'No'}</p>
           </div>
         </CardContent>
       </Card>
@@ -240,13 +243,13 @@ const AnalyticsTab = ({ selectedVenueId }: AnalyticsTabProps) => {
         <CardHeader>
           <CardTitle>Recent Sessions</CardTitle>
           <CardDescription>
-            Latest gaming sessions at this venue
+            Latest gaming sessions at this venue ({recentSessions.length} total)
           </CardDescription>
         </CardHeader>
         <CardContent>
           {recentSessions.length > 0 ? (
             <div className="space-y-2">
-              {recentSessions.map((session) => (
+              {recentSessions.slice(0, 10).map((session) => (
                 <div key={session.id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded">
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="text-xs">
@@ -264,7 +267,7 @@ const AnalyticsTab = ({ selectedVenueId }: AnalyticsTabProps) => {
           ) : (
             <div className="text-center py-8">
               <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">No recent sessions found for this venue</p>
+              <p className="text-muted-foreground">No sessions found for this venue</p>
               <p className="text-xs text-muted-foreground mt-2">
                 Start a gaming session to see analytics data appear here
               </p>
