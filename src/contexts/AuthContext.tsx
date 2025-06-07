@@ -1,178 +1,132 @@
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Session, User } from '@supabase/supabase-js';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   loading: boolean;
-  needsOnboarding: boolean;
-  signIn: (email: string, password: string) => Promise<{ user: User | null; error: Error | null }>;
-  signUp: (email: string, password: string, userData?: any) => Promise<{ user: User | null; error: Error | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   useEffect(() => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    );
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session?.user?.email);
+      setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email);
-      setUser(session?.user ?? null);
-      setLoading(false);
-
-      // Check for onboarding needs when user signs up or logs in
-      if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-        await checkOnboardingStatus(session.user.id);
-      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const checkOnboardingStatus = async (userId: string) => {
-    try {
-      // Check if user has onboarding status
-      const { data: onboardingData } = await supabase
-        .from('user_onboarding_status')
-        .select('status')
-        .eq('user_id', userId)
-        .single();
-
-      // Check if user has machine admin role
-      const { data: roleData } = await supabase
-        .from('simplified_user_roles')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('role', 'machine_admin')
-        .eq('is_active', true)
-        .single();
-
-      // If user has existing roles but no onboarding record, they don't need onboarding
-      if (roleData && !onboardingData) {
-        console.log('User has existing setup, skipping onboarding');
-        setNeedsOnboarding(false);
-        return;
+  const signUp = async (email: string, password: string) => {
+    const redirectUrl = `${window.location.origin}/`;
+    
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl
       }
+    });
 
-      // User needs onboarding if they don't have completed status or no admin role
-      const needsSetup = !onboardingData || 
-                        onboardingData.status !== 'completed' || 
-                        !roleData;
-
-      setNeedsOnboarding(needsSetup);
-
-      // If user needs onboarding and doesn't have pending/in_progress status, trigger auto-setup
-      if (needsSetup && (!onboardingData || onboardingData.status === 'failed')) {
-        console.log('Triggering auto-setup for new user');
-        await triggerAutoSetup(userId);
-      }
-    } catch (error) {
-      console.error('Error checking onboarding status:', error);
-    }
-  };
-
-  const triggerAutoSetup = async (userId: string) => {
-    try {
-      const response = await supabase.functions.invoke('auto-setup-user', {
-        body: {
-          userId: userId,
-          userEmail: user?.email,
-          userName: user?.user_metadata?.full_name
-        }
+    if (error) {
+      toast({
+        title: "Sign Up Failed",
+        description: error.message,
+        variant: "destructive",
       });
-
-      if (response.error) {
-        console.error('Auto-setup error:', response.error);
-      } else {
-        console.log('Auto-setup triggered successfully');
-      }
-    } catch (error) {
-      console.error('Error triggering auto-setup:', error);
+    } else {
+      toast({
+        title: "Check your email",
+        description: "We've sent you a confirmation link",
+      });
     }
+
+    return { error };
   };
 
   const signIn = async (email: string, password: string) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      toast({
+        title: "Sign In Failed",
+        description: error.message,
+        variant: "destructive",
       });
-
-      if (error) {
-        console.error('Sign-in error:', error.message);
-        return { user: null, error };
-      }
-
-      return { user: data.user, error: null };
-    } catch (error: any) {
-      console.error('Sign-in error:', error.message);
-      return { user: null, error };
-    }
-  };
-
-  const signUp = async (email: string, password: string, userData: any = {}) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: userData,
-        },
+    } else {
+      toast({
+        title: "Welcome back!",
+        description: "Successfully signed in",
       });
-
-      if (error) {
-        console.error('Sign-up error:', error.message);
-        return { user: null, error };
-      }
-
-      return { user: data.user, error: null };
-    } catch (error: any) {
-      console.error('Sign-up error:', error.message);
-      return { user: null, error };
     }
+
+    return { error };
   };
 
   const signOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-    } catch (error: any) {
-      console.error('Sign-out error:', error.message);
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({
+        title: "Sign Out Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Signed out",
+        description: "You've been successfully signed out",
+      });
     }
   };
 
   const value = {
     user,
+    session,
     loading,
-    needsOnboarding,
-    signIn,
     signUp,
-    signOut,
+    signIn,
+    signOut
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
 
-export default AuthContext;
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}

@@ -1300,53 +1300,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_onboarding_status: {
-        Row: {
-          completed_at: string | null
-          created_at: string | null
-          error_message: string | null
-          id: string
-          machine_serial_number: string | null
-          setup_progress: Json | null
-          status: string
-          updated_at: string | null
-          user_id: string
-          venue_id: string | null
-        }
-        Insert: {
-          completed_at?: string | null
-          created_at?: string | null
-          error_message?: string | null
-          id?: string
-          machine_serial_number?: string | null
-          setup_progress?: Json | null
-          status?: string
-          updated_at?: string | null
-          user_id: string
-          venue_id?: string | null
-        }
-        Update: {
-          completed_at?: string | null
-          created_at?: string | null
-          error_message?: string | null
-          id?: string
-          machine_serial_number?: string | null
-          setup_progress?: Json | null
-          status?: string
-          updated_at?: string | null
-          user_id?: string
-          venue_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_onboarding_status_venue_id_fkey"
-            columns: ["venue_id"]
-            isOneToOne: false
-            referencedRelation: "venues"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_roles: {
         Row: {
           expires_at: string | null
@@ -1546,10 +1499,6 @@ export type Database = {
       create_machine_admin_invitation: {
         Args: { p_email: string; p_venue_id: string; p_invited_by: string }
         Returns: Json
-      }
-      generate_machine_serial: {
-        Args: Record<PropertyKey, never>
-        Returns: string
       }
       get_current_user_simplified_role: {
         Args: Record<PropertyKey, never>
