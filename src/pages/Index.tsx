@@ -7,10 +7,12 @@ import { Play, Settings, Users, LogOut, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AnimatedBackground } from "@/components/ui/animated-background";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 const Index = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { isSuperAdmin, isMachineAdmin } = useUserRoles();
   const [showAdminOptions, setShowAdminOptions] = useState(false);
 
   const handleStartExperience = () => {
@@ -19,7 +21,15 @@ const Index = () => {
 
   const handleAdminAccess = () => {
     if (user) {
-      setShowAdminOptions(true);
+      // Navigate based on user's highest role
+      if (isSuperAdmin) {
+        navigate('/superadmin');
+      } else if (isMachineAdmin) {
+        navigate('/machine-admin');
+      } else {
+        // Show admin options for users without specific roles
+        setShowAdminOptions(true);
+      }
     } else {
       navigate('/auth');
     }
@@ -91,12 +101,16 @@ const Index = () => {
                 className="text-gray-400 hover:text-white text-sm"
               >
                 <Settings className="mr-2 h-4 w-4" />
-                {user ? 'Admin Dashboard' : 'Admin Login'}
+                {user ? (
+                  isSuperAdmin ? 'Super Admin Dashboard' : 
+                  isMachineAdmin ? 'Machine Admin Dashboard' : 
+                  'Admin Dashboard'
+                ) : 'Admin Login'}
               </Button>
             </div>
           </div>
         ) : (
-          /* Admin Options */
+          /* Admin Options for users without specific roles */
           <div className="space-y-6">
             <h3 className="text-2xl font-semibold text-white text-center mb-8">
               Select Admin Type

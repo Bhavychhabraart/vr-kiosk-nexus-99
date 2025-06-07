@@ -20,7 +20,7 @@ const Onboarding = () => {
     }
   }, [user, loading, navigate]);
 
-  // Auto-redirect when setup is completed
+  // Auto-redirect when setup is completed - go to machine admin
   useEffect(() => {
     if (isCompleted && onboardingStatus?.venue_id) {
       const timer = setTimeout(() => {
@@ -55,10 +55,10 @@ const Onboarding = () => {
         {isCompleted && (
           <div className="mt-8 text-center">
             <p className="text-green-600 font-medium mb-4">
-              🎉 Setup Complete! Redirecting to your admin dashboard...
+              🎉 Setup Complete! Redirecting to your machine admin dashboard...
             </p>
             <Button onClick={() => navigate('/machine-admin')} className="flex items-center gap-2">
-              Go to Admin Dashboard
+              Go to Machine Admin Dashboard
               <ArrowRight className="w-4 h-4" />
             </Button>
           </div>

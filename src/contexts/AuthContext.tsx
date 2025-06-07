@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Trigger auto-setup for new signups - fix the event type comparison
+        // Trigger auto-setup for new signups
         if (event === 'SIGNED_IN' && session?.user && session.user.created_at) {
           // Check if this is a new user (created within last 5 minutes)
           const userCreatedAt = new Date(session.user.created_at);

@@ -8,11 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { VrIcon } from '@/components/icons/VrIcon';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRoles } from '@/hooks/useUserRoles';
 import { AnimatedBackground } from '@/components/ui/animated-background';
 
 const Auth = () => {
   const navigate = useNavigate();
   const { user, signIn, signUp, loading } = useAuth();
+  const { userRoles, isSuperAdmin, isMachineAdmin, isLoading: rolesLoading } = useUserRoles();
   const [isLoading, setIsLoading] = useState(false);
   
   // Form states
@@ -24,10 +26,23 @@ const Auth = () => {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (user && !loading) {
-      navigate('/admin');
+    if (user && !loading && !rolesLoading) {
+      // Check if user has completed onboarding by checking if they have any roles
+      if (userRoles && userRoles.length > 0) {
+        // User has roles, redirect based on role type
+        if (isSuperAdmin) {
+          navigate('/superadmin');
+        } else if (isMachineAdmin) {
+          navigate('/machine-admin');
+        } else {
+          navigate('/admin');
+        }
+      } else {
+        // New user without roles, send to onboarding
+        navigate('/onboarding');
+      }
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, rolesLoading, userRoles, isSuperAdmin, isMachineAdmin, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +51,7 @@ const Auth = () => {
     const { error } = await signIn(loginEmail, loginPassword);
     
     if (!error) {
-      navigate('/admin');
+      // Navigation will be handled by the useEffect above
     }
     
     setIsLoading(false);
@@ -53,10 +68,14 @@ const Auth = () => {
     
     const { error } = await signUp(signupEmail, signupPassword);
     
+    if (!error) {
+      // New users will be redirected to onboarding after email confirmation
+    }
+    
     setIsLoading(false);
   };
 
-  if (loading) {
+  if (loading || rolesLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
         <div className="text-center">
