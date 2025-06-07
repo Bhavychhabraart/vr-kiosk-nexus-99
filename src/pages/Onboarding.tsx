@@ -39,7 +39,7 @@ const Onboarding = () => {
   }
 
   return (
-    <MainLayout backgroundVariant="gradient" withPattern intensity="low">
+    <MainLayout backgroundVariant="grid" withPattern intensity="low">
       <div className="min-h-screen flex flex-col items-center justify-center p-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-vr-primary to-vr-secondary bg-clip-text text-transparent mb-4">

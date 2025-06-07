@@ -17,6 +17,12 @@ interface OnboardingStatus {
   updated_at: string;
 }
 
+interface SetupResult {
+  success: boolean;
+  users_processed: number;
+  results: any[];
+}
+
 export function useOnboarding() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -76,14 +82,16 @@ export function useOnboarding() {
     }
   });
 
-  // Setup existing users
+  // Setup existing users - call via edge function instead of RPC
   const setupExistingUsers = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.rpc('setup_existing_users');
+    mutationFn: async (): Promise<SetupResult> => {
+      const { data, error } = await supabase.functions.invoke('setup-existing-users', {
+        body: {}
+      });
       if (error) throw error;
-      return data;
+      return data as SetupResult;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: SetupResult) => {
       queryClient.invalidateQueries({ queryKey: ['onboarding-status'] });
       queryClient.invalidateQueries({ queryKey: ['user-roles'] });
       queryClient.invalidateQueries({ queryKey: ['user-venues'] });

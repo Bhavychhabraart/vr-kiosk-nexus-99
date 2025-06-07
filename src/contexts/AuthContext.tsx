@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,32 +29,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Trigger auto-setup for new signups
-        if (event === 'SIGNED_UP' && session?.user) {
-          console.log('New user signed up, triggering auto-setup');
-          setTimeout(async () => {
-            try {
-              const { data, error } = await supabase.functions.invoke('auto-setup-user', {
-                body: {
-                  user_id: session.user.id,
-                  email: session.user.email,
-                  setup_type: 'new_user'
-                }
-              });
-
-              if (error) {
-                console.error('Auto-setup failed:', error);
-              } else {
-                console.log('Auto-setup completed:', data);
-                toast({
-                  title: "Welcome!",
-                  description: "Your VR arcade is being set up automatically",
+        // Trigger auto-setup for new signups - fix the event type comparison
+        if (event === 'SIGNED_IN' && session?.user && session.user.created_at) {
+          // Check if this is a new user (created within last 5 minutes)
+          const userCreatedAt = new Date(session.user.created_at);
+          const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+          
+          if (userCreatedAt > fiveMinutesAgo) {
+            console.log('New user signed up, triggering auto-setup');
+            setTimeout(async () => {
+              try {
+                const { data, error } = await supabase.functions.invoke('auto-setup-user', {
+                  body: {
+                    user_id: session.user.id,
+                    email: session.user.email,
+                    setup_type: 'new_user'
+                  }
                 });
+
+                if (error) {
+                  console.error('Auto-setup failed:', error);
+                } else {
+                  console.log('Auto-setup completed:', data);
+                  toast({
+                    title: "Welcome!",
+                    description: "Your VR arcade is being set up automatically",
+                  });
+                }
+              } catch (error) {
+                console.error('Auto-setup error:', error);
               }
-            } catch (error) {
-              console.error('Auto-setup error:', error);
-            }
-          }, 2000);
+            }, 2000);
+          }
         }
       }
     );
