@@ -164,7 +164,15 @@ export const useSessionAnalytics = (selectedVenueId?: string | null) => {
       console.log('Today\'s unique sessions:', uniqueSessions.length);
 
       const totalSessions = uniqueSessions.length;
-      const totalRevenue = uniqueSessions.reduce((sum, session) => sum + (session.amount_paid || 0), 0);
+      // Only sum amount_paid from session_tracking records
+      const totalRevenue = uniqueSessions.reduce((sum, session) => {
+        // Check if this session has amount_paid (from session_tracking)
+        if ('amount_paid' in session && typeof session.amount_paid === 'number') {
+          return sum + session.amount_paid;
+        }
+        return sum;
+      }, 0);
+      
       const completedSessions = uniqueSessions.filter(s => s.status === 'completed' && s.duration_seconds);
       const avgDuration = completedSessions.length > 0 
         ? completedSessions.reduce((sum, session) => sum + (session.duration_seconds || 0), 0) / completedSessions.length 
