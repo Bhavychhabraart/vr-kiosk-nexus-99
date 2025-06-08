@@ -115,7 +115,12 @@ export function useCustomerGames(venueId?: string) {
           console.log('Real-time machine_games update received:', payload);
           
           // Only invalidate if the change affects this venue
-          if (!venueId || payload.new?.venue_id === venueId || payload.old?.venue_id === venueId) {
+          const newRecord = payload.new as any;
+          const oldRecord = payload.old as any;
+          
+          if (!venueId || 
+              (newRecord && newRecord.venue_id === venueId) || 
+              (oldRecord && oldRecord.venue_id === venueId)) {
             queryClient.invalidateQueries({ queryKey: ['customer-games', venueId] });
             queryClient.refetchQueries({ queryKey: ['customer-games', venueId] });
           }
