@@ -67,7 +67,7 @@ export const useGamePricing = (venueId?: string) => {
           game_id: pricingData.game_id,
           base_price: pricingData.base_price,
           price_per_minute: pricingData.price_per_minute,
-          duration_packages: pricingData.duration_packages || [],
+          duration_packages: JSON.parse(JSON.stringify(pricingData.duration_packages || [])),
           is_active: pricingData.is_active ?? true
         }, {
           onConflict: 'venue_id,game_id'
