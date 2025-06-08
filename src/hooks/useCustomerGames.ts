@@ -15,6 +15,7 @@ export function useCustomerGames(venueId?: string) {
   // Fetch venue-specific games that are both globally active and enabled for the venue
   const fetchCustomerGames = async (): Promise<CustomerGame[]> => {
     if (!venueId) {
+      console.log('No venue ID provided, fetching all active games as fallback');
       // Fallback to all active games if no venue is specified
       const { data, error } = await supabase
         .from('games')
@@ -22,8 +23,12 @@ export function useCustomerGames(venueId?: string) {
         .eq('is_active', true)
         .order('title');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching fallback games:', error);
+        throw error;
+      }
       
+      console.log('Fallback games fetched:', data?.length || 0);
       return (data || []).map(game => ({
         ...game,
         machine_game_id: '',
@@ -33,6 +38,7 @@ export function useCustomerGames(venueId?: string) {
 
     console.log('Fetching customer games for venue:', venueId);
 
+    // Fixed query syntax - filter for active games in the select statement
     const { data, error } = await supabase
       .from('machine_games')
       .select(`
@@ -55,30 +61,40 @@ export function useCustomerGames(venueId?: string) {
         )
       `)
       .eq('venue_id', venueId)
-      .eq('is_active', true)
-      .eq('games.is_active', true);
+      .eq('is_active', true);
 
     if (error) {
-      console.error('Error fetching customer games:', error);
+      console.error('Error fetching venue games:', error);
       throw error;
     }
 
-    console.log('Raw customer games data:', data);
+    console.log('Raw venue games data:', data?.length || 0, 'records');
 
-    const mappedData = data?.map(mg => ({
+    // Filter for active games at the application level to ensure we only get active games
+    const filteredData = data?.filter(mg => mg.games && mg.games.is_active) || [];
+    
+    console.log('Filtered active games:', filteredData.length);
+
+    const mappedData = filteredData.map(mg => ({
       ...mg.games,
       machine_game_id: mg.id,
       is_machine_active: mg.is_active
-    })) as CustomerGame[] || [];
+    })) as CustomerGame[];
 
-    console.log('Mapped customer games:', mappedData);
+    console.log('Final mapped customer games:', mappedData.length);
     return mappedData;
   };
 
   const { data: customerGames, isLoading, error } = useQuery({
     queryKey: ['customer-games', venueId],
     queryFn: fetchCustomerGames,
-    enabled: true
+    enabled: true,
+    onError: (error) => {
+      console.error('Customer games query error:', error);
+    },
+    onSuccess: (data) => {
+      console.log('Customer games query success:', data?.length || 0, 'games');
+    }
   });
 
   // Real-time subscription for games and machine_games table changes
@@ -121,6 +137,7 @@ export function useCustomerGames(venueId?: string) {
           if (!venueId || 
               (newRecord && newRecord.venue_id === venueId) || 
               (oldRecord && oldRecord.venue_id === venueId)) {
+            console.log('Machine games change affects current venue, refreshing...');
             queryClient.invalidateQueries({ queryKey: ['customer-games', venueId] });
             queryClient.refetchQueries({ queryKey: ['customer-games', venueId] });
           }
