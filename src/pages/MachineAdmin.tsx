@@ -1,10 +1,10 @@
-
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useMachineVenue } from "@/hooks/useMachineVenue";
 import MachineAuthLogin from "@/components/auth/MachineAuthLogin";
 import MainLayout from "@/components/layout/MainLayout";
+import AdminPinProtection from "@/components/admin/AdminPinProtection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,11 +20,12 @@ import {
   CreditCard,
   Star,
   Package,
-  Headphones
+  Headphones,
+  Shield
 } from "lucide-react";
 
 // Import machine-specific admin components
-import MachineGamesManagementTab from "@/components/machine-admin/MachineGamesManagementTab";
+import MachineGameManagementTab from "@/components/machine-admin/MachineGameManagementTab";
 import MachineAnalyticsTab from "@/components/machine-admin/MachineAnalyticsTab";
 import MachineSettingsTab from "@/components/machine-admin/MachineSettingsTab";
 import MachinePaymentsEarningsTab from "@/components/machine-admin/MachinePaymentsEarningsTab";
@@ -38,6 +39,7 @@ const MachineAdmin = () => {
   const { machineVenueData, isLoading: venueLoading, hasMultipleVenues, userVenues } = useMachineVenue();
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedVenueId, setSelectedVenueId] = useState<string>("");
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
 
   // Show loading while checking authentication and roles
   if (rolesLoading || venueLoading) {
@@ -147,147 +149,158 @@ const MachineAdmin = () => {
     );
   }
 
-  return (
-    <MainLayout backgroundVariant="grid" withPattern intensity="low">
-      <div className="space-y-8">
-        {/* Header with Machine Info */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-vr-primary to-vr-secondary bg-clip-text text-transparent">
-              {currentVenue.name} Admin Panel
-            </h1>
-            <div className="flex items-center gap-4 mt-2 text-vr-muted">
-              <div className="flex items-center gap-1">
-                <MapPin className="w-4 h-4" />
-                {currentVenue.city}, {currentVenue.state}
-              </div>
-              <div className="flex items-center gap-1">
-                <Building2 className="w-4 h-4" />
-                {currentVenue.machine_model || 'VR-KIOSK-V1'}
-              </div>
-              <Badge variant="outline">
-                Product ID: {currentAuth?.product_id}
-              </Badge>
+  // Wrap admin content with PIN protection
+  const AdminContent = () => (
+    <div className="space-y-8">
+      {/* Header with Machine Info */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-vr-primary to-vr-secondary bg-clip-text text-transparent">
+            {currentVenue.name} Admin Panel
+          </h1>
+          <div className="flex items-center gap-4 mt-2 text-vr-muted">
+            <div className="flex items-center gap-1">
+              <MapPin className="w-4 h-4" />
+              {currentVenue.city}, {currentVenue.state}
             </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <Badge variant="default" className="px-4 py-2">
-              Access Level: {currentAuth?.access_level}
+            <div className="flex items-center gap-1">
+              <Building2 className="w-4 h-4" />
+              {currentVenue.machine_model || 'VR-KIOSK-V1'}
+            </div>
+            <Badge variant="outline">
+              Product ID: {currentAuth?.product_id}
             </Badge>
-            {hasMultipleVenues && (
-              <Button 
-                variant="outline" 
-                onClick={() => setSelectedVenueId("")}
-                className="flex items-center gap-2"
-              >
-                <Building2 className="w-4 h-4" />
-                Switch Venue
-              </Button>
-            )}
-            <Button variant="outline" onClick={signOut} className="flex items-center gap-2">
-              <LogOut className="w-4 h-4" />
-              Logout
-            </Button>
           </div>
         </div>
-
-        {/* Main Content Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-8">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
+          <Badge variant="default" className="px-4 py-2">
+            <Shield className="w-4 h-4 mr-1" />
+            Protected Access
+          </Badge>
+          {hasMultipleVenues && (
+            <Button 
+              variant="outline" 
+              onClick={() => setSelectedVenueId("")}
+              className="flex items-center gap-2"
+            >
               <Building2 className="w-4 h-4" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="games" className="flex items-center gap-2">
-              <Gamepad2 className="w-4 h-4" />
-              Games
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Analytics
-            </TabsTrigger>
-            <TabsTrigger value="earnings" className="flex items-center gap-2">
-              <CreditCard className="w-4 h-4" />
-              Payments
-            </TabsTrigger>
-            <TabsTrigger value="showcase" className="flex items-center gap-2">
-              <Star className="w-4 h-4" />
-              Showcase
-            </TabsTrigger>
-            <TabsTrigger value="catalog" className="flex items-center gap-2">
-              <Package className="w-4 h-4" />
-              Catalog
-            </TabsTrigger>
-            <TabsTrigger value="support" className="flex items-center gap-2">
-              <Headphones className="w-4 h-4" />
-              Support
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              Settings
-            </TabsTrigger>
-          </TabsList>
+              Switch Venue
+            </Button>
+          )}
+          <Button variant="outline" onClick={signOut} className="flex items-center gap-2">
+            <LogOut className="w-4 h-4" />
+            Logout
+          </Button>
+        </div>
+      </div>
 
-          <TabsContent value="overview" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Machine Overview</CardTitle>
-                <CardDescription>
-                  Current status and quick information about {currentVenue.name}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <h3 className="font-semibold mb-2">Machine Details</h3>
-                    <div className="space-y-1 text-sm">
-                      <p><span className="font-medium">Serial Number:</span> {currentVenue.serial_number || 'AUTO-DETECTED'}</p>
-                      <p><span className="font-medium">Model:</span> {currentVenue.machine_model || 'VR-KIOSK-V1'}</p>
-                      <p><span className="font-medium">Location:</span> {currentVenue.city}, {currentVenue.state}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-2">Access Information</h3>
-                    <div className="space-y-1 text-sm">
-                      <p><span className="font-medium">Product ID:</span> {currentAuth?.product_id}</p>
-                      <p><span className="font-medium">Access Level:</span> {currentAuth?.access_level}</p>
-                      <p><span className="font-medium">Expires:</span> {currentAuth?.expires_at ? new Date(currentAuth.expires_at).toLocaleDateString() : 'Never'}</p>
-                    </div>
+      {/* Main Content Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-8">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <Building2 className="w-4 h-4" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="games" className="flex items-center gap-2">
+            <Gamepad2 className="w-4 h-4" />
+            Games
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            Analytics
+          </TabsTrigger>
+          <TabsTrigger value="earnings" className="flex items-center gap-2">
+            <CreditCard className="w-4 h-4" />
+            Payments
+          </TabsTrigger>
+          <TabsTrigger value="showcase" className="flex items-center gap-2">
+            <Star className="w-4 h-4" />
+            Showcase
+          </TabsTrigger>
+          <TabsTrigger value="catalog" className="flex items-center gap-2">
+            <Package className="w-4 h-4" />
+            Catalog
+          </TabsTrigger>
+          <TabsTrigger value="support" className="flex items-center gap-2">
+            <Headphones className="w-4 h-4" />
+            Support
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            Settings
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Machine Overview</CardTitle>
+              <CardDescription>
+                Current status and quick information about {currentVenue.name}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-semibold mb-2">Machine Details</h3>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="font-medium">Serial Number:</span> {currentVenue.serial_number || 'AUTO-DETECTED'}</p>
+                    <p><span className="font-medium">Model:</span> {currentVenue.machine_model || 'VR-KIOSK-V1'}</p>
+                    <p><span className="font-medium">Location:</span> {currentVenue.city}, {currentVenue.state}</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                <div>
+                  <h3 className="font-semibold mb-2">Access Information</h3>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="font-medium">Product ID:</span> {currentAuth?.product_id}</p>
+                    <p><span className="font-medium">Access Level:</span> {currentAuth?.access_level}</p>
+                    <p><span className="font-medium">Expires:</span> {currentAuth?.expires_at ? new Date(currentAuth.expires_at).toLocaleDateString() : 'Never'}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          <TabsContent value="games" className="space-y-6">
-            <MachineGamesManagementTab venueId={currentVenue.id} />
-          </TabsContent>
+        <TabsContent value="games" className="space-y-6">
+          <MachineGameManagementTab venueId={currentVenue.id} />
+        </TabsContent>
 
-          <TabsContent value="analytics" className="space-y-6">
-            <MachineAnalyticsTab venueId={currentVenue.id} />
-          </TabsContent>
+        <TabsContent value="analytics" className="space-y-6">
+          <MachineAnalyticsTab venueId={currentVenue.id} />
+        </TabsContent>
 
-          <TabsContent value="earnings" className="space-y-6">
-            <MachinePaymentsEarningsTab venueId={currentVenue.id} />
-          </TabsContent>
+        <TabsContent value="earnings" className="space-y-6">
+          <MachinePaymentsEarningsTab venueId={currentVenue.id} />
+        </TabsContent>
 
-          <TabsContent value="showcase" className="space-y-6">
-            <MachineGamesShowcaseTab venueId={currentVenue.id} />
-          </TabsContent>
+        <TabsContent value="showcase" className="space-y-6">
+          <MachineGamesShowcaseTab venueId={currentVenue.id} />
+        </TabsContent>
 
-          <TabsContent value="catalog" className="space-y-6">
-            <MachineProductCatalogTab venueId={currentVenue.id} />
-          </TabsContent>
+        <TabsContent value="catalog" className="space-y-6">
+          <MachineProductCatalogTab venueId={currentVenue.id} />
+        </TabsContent>
 
-          <TabsContent value="support" className="space-y-6">
-            <MachineSupportTab venueId={currentVenue.id} />
-          </TabsContent>
+        <TabsContent value="support" className="space-y-6">
+          <MachineSupportTab venueId={currentVenue.id} />
+        </TabsContent>
 
-          <TabsContent value="settings" className="space-y-6">
-            <MachineSettingsTab venueId={currentVenue.id} />
-          </TabsContent>
-        </Tabs>
-      </div>
+        <TabsContent value="settings" className="space-y-6">
+          <MachineSettingsTab venueId={currentVenue.id} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+
+  return (
+    <MainLayout backgroundVariant="grid" withPattern intensity="low">
+      <AdminPinProtection 
+        venueId={currentVenue.id} 
+        onSuccess={() => setIsAdminAuthenticated(true)}
+      >
+        <AdminContent />
+      </AdminPinProtection>
     </MainLayout>
   );
 };

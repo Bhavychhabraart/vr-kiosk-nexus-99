@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -11,6 +10,9 @@ interface SessionData {
   amountPaid: number;
   rfidTag?: string;
 }
+
+// Global session lock to prevent simultaneous session creation
+const sessionLocks = new Set<string>();
 
 export const useSessionTracking = () => {
   const [isTracking, setIsTracking] = useState(false);
@@ -29,39 +31,74 @@ export const useSessionTracking = () => {
         return false;
       }
 
-      console.log('Starting session with data:', data);
+      // Create a unique lock key for this session
+      const lockKey = `${data.venueId}-${data.sessionId}`;
       
-      // Check if session with this ID already exists to prevent double creation
-      const { data: existingSession } = await supabase
-        .from('session_tracking')
-        .select('id')
-        .eq('session_id', data.sessionId)
-        .maybeSingle();
+      // Check if session is already being created
+      if (sessionLocks.has(lockKey)) {
+        console.log('Session creation already in progress, skipping duplicate');
+        return false;
+      }
 
-      if (existingSession) {
-        console.log('Session already exists, skipping creation');
+      // Add lock
+      sessionLocks.add(lockKey);
+
+      try {
+        console.log('Starting session with data:', data);
+        
+        // Check if session with this ID already exists to prevent double creation
+        const { data: existingSession } = await supabase
+          .from('session_tracking')
+          .select('id, status')
+          .eq('session_id', data.sessionId)
+          .eq('venue_id', data.venueId)
+          .maybeSingle();
+
+        if (existingSession) {
+          console.log('Session already exists, skipping creation:', existingSession);
+          return true;
+        }
+
+        // Additional check for active sessions with same RFID tag in the last 10 seconds
+        if (data.rfidTag) {
+          const tenSecondsAgo = new Date(Date.now() - 10000).toISOString();
+          const { data: recentSessions } = await supabase
+            .from('session_tracking')
+            .select('id, session_id')
+            .eq('venue_id', data.venueId)
+            .eq('rfid_tag', data.rfidTag)
+            .eq('status', 'active')
+            .gte('created_at', tenSecondsAgo);
+
+          if (recentSessions && recentSessions.length > 0) {
+            console.log('Recent RFID session found, preventing duplicate:', recentSessions);
+            return false;
+          }
+        }
+
+        const { error } = await supabase
+          .from('session_tracking')
+          .insert({
+            session_id: data.sessionId,
+            game_id: data.gameId,
+            venue_id: data.venueId,
+            payment_method: data.paymentMethod,
+            amount_paid: data.amountPaid,
+            rfid_tag: data.rfidTag,
+            status: 'active'
+          });
+
+        if (error) {
+          console.error('Error starting session tracking:', error);
+          throw error;
+        }
+
+        console.log('Session tracking started successfully:', data.sessionId, 'for venue:', data.venueId);
         return true;
+      } finally {
+        // Always remove the lock
+        sessionLocks.delete(lockKey);
       }
-
-      const { error } = await supabase
-        .from('session_tracking')
-        .insert({
-          session_id: data.sessionId,
-          game_id: data.gameId,
-          venue_id: data.venueId,
-          payment_method: data.paymentMethod,
-          amount_paid: data.amountPaid,
-          rfid_tag: data.rfidTag,
-          status: 'active'
-        });
-
-      if (error) {
-        console.error('Error starting session tracking:', error);
-        throw error;
-      }
-
-      console.log('Session tracking started successfully:', data.sessionId, 'for venue:', data.venueId);
-      return true;
     } catch (error) {
       console.error('Failed to start session tracking:', error);
       toast({
