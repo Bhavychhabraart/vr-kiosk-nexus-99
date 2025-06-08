@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -95,7 +94,7 @@ export function useMachineGames(venueId?: string) {
     console.log('Setting up real-time subscription for machine games');
     
     const channel = supabase
-      .channel('machine-games-changes')
+      .channel('machine-games-realtime')
       .on(
         'postgres_changes',
         {
@@ -106,10 +105,14 @@ export function useMachineGames(venueId?: string) {
         (payload) => {
           console.log('Real-time games update received in useMachineGames:', payload);
           
-          // Invalidate queries to ensure consistency
+          // Invalidate all related queries
           queryClient.invalidateQueries({ queryKey: ['machine-games', venueId] });
           queryClient.invalidateQueries({ queryKey: ['all-games'] });
           queryClient.invalidateQueries({ queryKey: ['games'] });
+          
+          // Force refetch to ensure immediate updates
+          queryClient.refetchQueries({ queryKey: ['machine-games', venueId] });
+          queryClient.refetchQueries({ queryKey: ['all-games'] });
         }
       )
       .on(
@@ -124,9 +127,14 @@ export function useMachineGames(venueId?: string) {
           
           // Invalidate queries to ensure consistency
           queryClient.invalidateQueries({ queryKey: ['machine-games', venueId] });
+          
+          // Force refetch for immediate updates
+          queryClient.refetchQueries({ queryKey: ['machine-games', venueId] });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Machine games real-time subscription status:', status);
+      });
 
     return () => {
       console.log('Cleaning up real-time subscription for machine games');
@@ -202,6 +210,7 @@ export function useMachineGames(venueId?: string) {
       console.log('Toggle mutation settled, invalidating queries');
       // Always refetch after error or success
       queryClient.invalidateQueries({ queryKey: ['machine-games', venueId] });
+      queryClient.invalidateQueries({ queryKey: ['games'] });
     }
   });
 

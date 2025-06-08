@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,7 +29,7 @@ export function useGames() {
     console.log('Setting up real-time subscription for games');
     
     const channel = supabase
-      .channel('games-changes')
+      .channel('games-realtime')
       .on(
         'postgres_changes',
         {
@@ -39,15 +40,18 @@ export function useGames() {
         (payload) => {
           console.log('Real-time games update received:', payload);
           
-          // Invalidate and refetch the games query to ensure consistency
+          // Invalidate all related queries immediately
           queryClient.invalidateQueries({ queryKey: ['games'] });
-          
-          // Also invalidate machine games queries to keep admin interfaces in sync
           queryClient.invalidateQueries({ queryKey: ['machine-games'] });
           queryClient.invalidateQueries({ queryKey: ['all-games'] });
+          
+          // Force refetch of games query to ensure UI updates
+          queryClient.refetchQueries({ queryKey: ['games'] });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Real-time subscription status:', status);
+      });
 
     return () => {
       console.log('Cleaning up real-time subscription for games');
@@ -67,6 +71,7 @@ export function useGames() {
       return data;
     },
     onSuccess: () => {
+      // Invalidate all game-related queries
       queryClient.invalidateQueries({ queryKey: ['games'] });
       queryClient.invalidateQueries({ queryKey: ['machine-games'] });
       queryClient.invalidateQueries({ queryKey: ['all-games'] });
@@ -100,6 +105,7 @@ export function useGames() {
       return data;
     },
     onSuccess: () => {
+      // Invalidate all game-related queries
       queryClient.invalidateQueries({ queryKey: ['games'] });
       queryClient.invalidateQueries({ queryKey: ['machine-games'] });
       queryClient.invalidateQueries({ queryKey: ['all-games'] });
@@ -131,6 +137,7 @@ export function useGames() {
       return id;
     },
     onSuccess: () => {
+      // Invalidate all game-related queries
       queryClient.invalidateQueries({ queryKey: ['games'] });
       queryClient.invalidateQueries({ queryKey: ['machine-games'] });
       queryClient.invalidateQueries({ queryKey: ['all-games'] });
@@ -153,6 +160,8 @@ export function useGames() {
   
   const toggleGameStatus = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      console.log('Toggling game status:', { id, isActive });
+      
       const { data, error } = await supabase
         .from('games')
         .update({ is_active: isActive })
@@ -163,10 +172,17 @@ export function useGames() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Game status toggle success:', data);
+      
+      // Invalidate all game-related queries to ensure all components update
       queryClient.invalidateQueries({ queryKey: ['games'] });
       queryClient.invalidateQueries({ queryKey: ['machine-games'] });
       queryClient.invalidateQueries({ queryKey: ['all-games'] });
+      
+      // Force refetch to ensure immediate UI updates
+      queryClient.refetchQueries({ queryKey: ['games'] });
+      
       toast({
         title: "Status updated",
         description: "Game status has been updated",
@@ -176,6 +192,7 @@ export function useGames() {
       syncGamesToPythonBackend();
     },
     onError: (error) => {
+      console.error('Game status toggle error:', error);
       toast({
         title: "Error updating status",
         description: error.message,
