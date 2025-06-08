@@ -334,6 +334,57 @@ export type Database = {
           },
         ]
       }
+      game_pricing: {
+        Row: {
+          base_price: number
+          created_at: string | null
+          duration_packages: Json | null
+          game_id: string
+          id: string
+          is_active: boolean
+          price_per_minute: number
+          updated_at: string | null
+          venue_id: string
+        }
+        Insert: {
+          base_price?: number
+          created_at?: string | null
+          duration_packages?: Json | null
+          game_id: string
+          id?: string
+          is_active?: boolean
+          price_per_minute?: number
+          updated_at?: string | null
+          venue_id: string
+        }
+        Update: {
+          base_price?: number
+          created_at?: string | null
+          duration_packages?: Json | null
+          game_id?: string
+          id?: string
+          is_active?: boolean
+          price_per_minute?: number
+          updated_at?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_pricing_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_pricing_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       games: {
         Row: {
           arguments: string | null
@@ -1575,6 +1626,10 @@ export type Database = {
         Args: { p_serial_number: string; p_model?: string }
         Returns: Json
       }
+      set_admin_password: {
+        Args: { p_venue_id: string; p_password: string; p_enabled?: boolean }
+        Returns: Json
+      }
       setup_existing_users: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -1603,6 +1658,10 @@ export type Database = {
       validate_setup_token: {
         Args: { p_token: string }
         Returns: Json
+      }
+      verify_admin_password: {
+        Args: { p_venue_id: string; p_password: string }
+        Returns: boolean
       }
     }
     Enums: {

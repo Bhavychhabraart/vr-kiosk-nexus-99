@@ -1,26 +1,32 @@
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
+
+import React, { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  CheckCircle2,
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { 
+  Plus, 
+  Search, 
+  Filter,
   Edit,
-  Loader2,
-  Search,
   Trash2,
-  XCircle,
+  Eye,
+  EyeOff,
+  GamepadIcon,
+  Building2
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useGames } from "@/hooks/useGames";
-import { Game } from "@/types";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 import GameForm from "./GameForm";
 
 interface GamesManagementTabProps {
@@ -28,224 +34,269 @@ interface GamesManagementTabProps {
 }
 
 const GamesManagementTab = ({ selectedVenueId }: GamesManagementTabProps) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isAddGameOpen, setIsAddGameOpen] = useState(false);
-  const [isEditGameOpen, setIsEditGameOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
-  
-  const { 
-    games, 
-    isLoading, 
-    createGame, 
-    updateGame, 
-    deleteGame, 
-    toggleGameStatus,
-    isCreating,
-    isUpdating,
-    isDeleting
-  } = useGames();
-  
-  // Filter games based on search term
-  const filteredGames = games?.filter(game =>
-    game.title.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
-  
-  const handleAddGame = (gameData: any) => {
-    createGame(gameData);
-    setIsAddGameOpen(false);
-  };
-  
-  const handleEditGame = (gameData: any) => {
-    updateGame(gameData);
-    setIsEditGameOpen(false);
-    setSelectedGame(null);
-  };
-  
-  const handleDeleteGame = () => {
-    if (selectedGame) {
-      deleteGame(selectedGame.id);
-      setIsDeleteDialogOpen(false);
-      setSelectedGame(null);
+  const queryClient = useQueryClient();
+  const { games, isLoading } = useGames();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [editingGame, setEditingGame] = useState<any>(null);
+  const [showGameForm, setShowGameForm] = useState(false);
+
+  // Toggle game active status
+  const toggleGameStatus = useMutation({
+    mutationFn: async ({ gameId, isActive }: { gameId: string; isActive: boolean }) => {
+      const { error } = await supabase
+        .from('games')
+        .update({ is_active: isActive })
+        .eq('id', gameId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['games'] });
+      toast({
+        title: "Success",
+        description: "Game status updated successfully"
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
     }
+  });
+
+  // Delete game
+  const deleteGame = useMutation({
+    mutationFn: async (gameId: string) => {
+      const { error } = await supabase
+        .from('games')
+        .delete()
+        .eq('id', gameId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['games'] });
+      toast({
+        title: "Success",
+        description: "Game deleted successfully"
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error", 
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  const filteredGames = games?.filter((game) => {
+    const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = filterStatus === "all" || 
+      (filterStatus === "active" && game.is_active) ||
+      (filterStatus === "inactive" && !game.is_active);
+    
+    return matchesSearch && matchesFilter;
+  }) || [];
+
+  const handleEditGame = (game: any) => {
+    setEditingGame(game);
+    setShowGameForm(true);
   };
-  
-  const openEditGameModal = (game: Game) => {
-    setSelectedGame(game);
-    setIsEditGameOpen(true);
+
+  const handleAddGame = () => {
+    setEditingGame(null);
+    setShowGameForm(true);
   };
-  
-  const openDeleteConfirmation = (game: Game) => {
-    setSelectedGame(game);
-    setIsDeleteDialogOpen(true);
+
+  const handleCloseForm = () => {
+    setShowGameForm(false);
+    setEditingGame(null);
   };
-  
-  const handleToggleStatus = (game: Game) => {
-    toggleGameStatus(game.id, !game.is_active);
-  };
-  
+
+  if (!selectedVenueId) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h3 className="text-lg font-semibold mb-2">Select a Venue</h3>
+            <p className="text-muted-foreground">
+              Choose a venue from the filter above to manage games
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (showGameForm) {
+    return (
+      <GameForm 
+        game={editingGame} 
+        onClose={handleCloseForm}
+        venueId={selectedVenueId}
+      />
+    );
+  }
+
   return (
-    <div className="vr-card">
-      {selectedVenueId && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <p className="text-sm text-blue-800">
-            <strong>Venue Filter Active:</strong> Showing games for selected venue
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <GamepadIcon className="w-6 h-6" />
+            Games Management
+          </h2>
+          <p className="text-muted-foreground">
+            Manage games, their status, and availability for this venue
           </p>
         </div>
-      )}
-      
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold">Game Library</h2>
-        <Button className="vr-button-secondary" onClick={() => setIsAddGameOpen(true)}>
-          Add New Game
+        <Button onClick={handleAddGame}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Game
         </Button>
       </div>
-      
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-vr-muted h-4 w-4" />
-        <Input
-          placeholder="Search games..."
-          className="pl-10 bg-vr-dark border-vr-primary/30 focus:border-vr-secondary"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search games..."
+            className="pl-10"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-full md:w-[180px]">
+            <Filter className="w-4 h-4 mr-2" />
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Games</SelectItem>
+            <SelectItem value="active">Active Games</SelectItem>
+            <SelectItem value="inactive">Inactive Games</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
-      
-      <div className="overflow-x-auto">
-        {isLoading ? (
-          <div className="flex justify-center items-center py-10">
-            <Loader2 className="h-8 w-8 animate-spin text-vr-secondary" />
-          </div>
-        ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-vr-primary/20">
-                <th className="py-3 px-4 text-left text-vr-muted font-medium">Game Title</th>
-                <th className="py-3 px-4 text-left text-vr-muted font-medium">Description</th>
-                <th className="py-3 px-4 text-left text-vr-muted font-medium">Status</th>
-                <th className="py-3 px-4 text-right text-vr-muted font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredGames.map(game => (
-                <tr key={game.id} className="border-b border-vr-primary/10 hover:bg-vr-dark/50">
-                  <td className="py-3 px-4 font-medium">{game.title}</td>
-                  <td className="py-3 px-4 text-vr-muted">{game.description || "No description"}</td>
-                  <td className="py-3 px-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      game.is_active
-                        ? 'bg-green-500/20 text-green-400'
-                        : 'bg-yellow-500/20 text-yellow-400'
-                    }`}>
-                      {game.is_active ? "Available" : "Maintenance"}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="text-vr-muted hover:text-vr-text"
-                      onClick={() => handleToggleStatus(game)}
-                      title={game.is_active ? "Set to maintenance" : "Set to available"}
-                    >
-                      {game.is_active ? (
-                        <XCircle className="h-4 w-4" />
-                      ) : (
-                        <CheckCircle2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="text-vr-secondary hover:text-vr-secondary/80"
-                      onClick={() => openEditGameModal(game)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="text-vr-accent hover:text-vr-accent/80"
-                      onClick={() => openDeleteConfirmation(game)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-              {filteredGames.length === 0 && !isLoading && (
-                <tr>
-                  <td colSpan={4} className="py-8 text-center text-vr-muted">
-                    {searchTerm 
-                      ? `No games found matching "${searchTerm}"`
-                      : "No games available. Add some games to get started!"}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        )}
-      </div>
-      
-      {/* Add Game Form Modal */}
-      <GameForm
-        open={isAddGameOpen}
-        onClose={() => setIsAddGameOpen(false)}
-        onSubmit={handleAddGame}
-        isSubmitting={isCreating}
-      />
-      
-      {/* Edit Game Form Modal */}
-      {selectedGame && (
-        <GameForm
-          open={isEditGameOpen}
-          onClose={() => {
-            setIsEditGameOpen(false);
-            setSelectedGame(null);
-          }}
-          onSubmit={handleEditGame}
-          isSubmitting={isUpdating}
-          game={selectedGame}
-        />
+
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array(6).fill(0).map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <div className="aspect-video bg-gray-200 rounded-t-lg"></div>
+              <CardHeader>
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredGames.map((game) => (
+            <Card key={game.id} className="overflow-hidden">
+              <div className="aspect-video relative">
+                <img 
+                  src={game.image_url || "https://images.unsplash.com/photo-1559363367-ee2b206e73ea?q=80&w=800&auto=format&fit=crop"}
+                  alt={game.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-2 right-2">
+                  <Badge variant={game.is_active ? "default" : "secondary"}>
+                    {game.is_active ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+              </div>
+              
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="truncate">{game.title}</span>
+                  <div className="flex items-center space-x-1">
+                    <Switch
+                      checked={game.is_active}
+                      onCheckedChange={(checked) => 
+                        toggleGameStatus.mutate({ gameId: game.id, isActive: checked })
+                      }
+                      disabled={toggleGameStatus.isPending}
+                    />
+                    {game.is_active ? (
+                      <Eye className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <EyeOff className="w-4 h-4 text-gray-400" />
+                    )}
+                  </div>
+                </CardTitle>
+                <CardDescription className="line-clamp-2">
+                  {game.description || "No description available"}
+                </CardDescription>
+              </CardHeader>
+              
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Duration:</span>
+                    <span>{Math.floor(game.min_duration_seconds / 60)}-{Math.floor(game.max_duration_seconds / 60)} min</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Status:</span>
+                    <Badge variant={game.is_active ? "default" : "secondary"} className="text-xs">
+                      {game.is_active ? "Available" : "Unavailable"}
+                    </Badge>
+                  </div>
+                </div>
+                
+                <div className="flex justify-between items-center mt-4 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEditGame(game)}
+                  >
+                    <Edit className="w-3 h-3 mr-1" />
+                    Edit
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => deleteGame.mutate(game.id)}
+                    disabled={deleteGame.isPending}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="w-3 h-3 mr-1" />
+                    Delete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
-      
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog 
-        open={isDeleteDialogOpen} 
-        onOpenChange={setIsDeleteDialogOpen}
-      >
-        <AlertDialogContent className="bg-vr-dark border-vr-primary/30 text-vr-text">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete{' '}
-              <span className="font-medium text-vr-text">
-                {selectedGame?.title}
-              </span>{' '}
-              from your game library.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-vr-primary/50 text-vr-text hover:bg-vr-primary/20">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteGame}
-              className="bg-vr-accent hover:bg-vr-accent/80"
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                'Delete'
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
+      {filteredGames.length === 0 && !isLoading && (
+        <Card>
+          <CardContent className="text-center py-12">
+            <GamepadIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h3 className="text-lg font-semibold mb-2">No Games Found</h3>
+            <p className="text-muted-foreground mb-6">
+              {searchQuery || filterStatus !== "all" 
+                ? "Try adjusting your search or filter criteria"
+                : "Start by adding your first game to the platform"
+              }
+            </p>
+            {!searchQuery && filterStatus === "all" && (
+              <Button onClick={handleAddGame}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Your First Game
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

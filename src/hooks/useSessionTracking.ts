@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -5,7 +6,7 @@ import { toast } from '@/components/ui/use-toast';
 interface SessionData {
   sessionId: string;
   gameId: string;
-  venueId: string; // Make this required instead of optional
+  venueId: string;
   paymentMethod: 'rfid' | 'upi' | 'free';
   amountPaid: number;
   rfidTag?: string;
@@ -18,7 +19,6 @@ export const useSessionTracking = () => {
     try {
       setIsTracking(true);
       
-      // Validate that venue_id is provided
       if (!data.venueId) {
         console.error('Venue ID is required for session tracking');
         toast({
@@ -31,12 +31,24 @@ export const useSessionTracking = () => {
 
       console.log('Starting session with data:', data);
       
+      // Check if session with this ID already exists to prevent double creation
+      const { data: existingSession } = await supabase
+        .from('session_tracking')
+        .select('id')
+        .eq('session_id', data.sessionId)
+        .maybeSingle();
+
+      if (existingSession) {
+        console.log('Session already exists, skipping creation');
+        return true;
+      }
+
       const { error } = await supabase
         .from('session_tracking')
         .insert({
           session_id: data.sessionId,
           game_id: data.gameId,
-          venue_id: data.venueId, // Ensure venue_id is always set
+          venue_id: data.venueId,
           payment_method: data.paymentMethod,
           amount_paid: data.amountPaid,
           rfid_tag: data.rfidTag,
@@ -66,16 +78,23 @@ export const useSessionTracking = () => {
     try {
       const endTime = new Date().toISOString();
       
-      // Get the session to calculate duration
+      // Get the session to calculate duration and ensure it exists
       const { data: session } = await supabase
         .from('session_tracking')
         .select('*')
         .eq('session_id', sessionId)
-        .single();
+        .eq('status', 'active')
+        .maybeSingle();
 
       if (!session) {
-        console.error('Session not found:', sessionId);
+        console.error('Active session not found:', sessionId);
         return false;
+      }
+
+      // Prevent double ending by checking if already completed
+      if (session.status === 'completed') {
+        console.log('Session already completed:', sessionId);
+        return true;
       }
 
       let durationSeconds = 0;
@@ -85,7 +104,7 @@ export const useSessionTracking = () => {
         durationSeconds = Math.floor((endTimeDate.getTime() - startTime.getTime()) / 1000);
       }
 
-      // Update session_tracking table
+      // Update session_tracking table with completed status
       const { error: updateError } = await supabase
         .from('session_tracking')
         .update({
@@ -94,31 +113,12 @@ export const useSessionTracking = () => {
           status: 'completed',
           rating: rating
         })
-        .eq('session_id', sessionId);
+        .eq('session_id', sessionId)
+        .eq('status', 'active'); // Only update if still active
 
       if (updateError) {
         console.error('Error updating session tracking:', updateError);
         throw updateError;
-      }
-
-      // Also insert into session_history for analytics
-      const { error: historyError } = await supabase
-        .from('session_history')
-        .insert({
-          id: session.id, // Use same ID to avoid duplicates
-          game_id: session.game_id,
-          venue_id: session.venue_id,
-          start_time: session.start_time,
-          end_time: endTime,
-          duration_seconds: durationSeconds,
-          rfid_tag: session.rfid_tag,
-          rating: rating,
-          status: 'completed'
-        });
-
-      if (historyError && historyError.code !== '23505') { // Ignore duplicate key errors
-        console.error('Error inserting session history:', historyError);
-        // Don't throw here as the main session update succeeded
       }
 
       console.log('Session tracking ended:', sessionId);

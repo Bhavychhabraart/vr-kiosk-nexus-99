@@ -12,11 +12,13 @@ import {
   Smartphone,
   Shield,
   Volume2,
-  Sun
+  Sun,
+  Lock
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { useAdminPassword } from "@/hooks/useAdminPassword";
 
 interface SettingsTabProps {
   selectedVenueId?: string | null;
@@ -38,7 +40,10 @@ interface VenueSettings {
 
 const SettingsTab = ({ selectedVenueId }: SettingsTabProps) => {
   const queryClient = useQueryClient();
+  const { setAdminPassword } = useAdminPassword();
   const [localSettings, setLocalSettings] = useState<Partial<VenueSettings>>({});
+  const [passwordInput, setPasswordInput] = useState('');
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
 
   // Fetch venue settings
   const { data: venueSettings, isLoading, error } = useQuery({
@@ -102,6 +107,38 @@ const SettingsTab = ({ selectedVenueId }: SettingsTabProps) => {
 
   const handleSaveSettings = () => {
     updateSettings.mutate(localSettings);
+  };
+
+  const handlePasswordUpdate = () => {
+    if (!selectedVenueId) return;
+
+    if (passwordInput !== confirmPasswordInput) {
+      toast({
+        title: "Password Error",
+        description: "Passwords do not match",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (localSettings.password_protection_enabled && passwordInput.length < 4) {
+      toast({
+        title: "Password Error",
+        description: "Password must be at least 4 characters long",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setAdminPassword.mutate({
+      venueId: selectedVenueId,
+      password: passwordInput,
+      enabled: localSettings.password_protection_enabled || false
+    });
+
+    // Clear password inputs after update
+    setPasswordInput('');
+    setConfirmPasswordInput('');
   };
 
   const updateLocalSetting = (key: keyof VenueSettings, value: any) => {
@@ -320,7 +357,7 @@ const SettingsTab = ({ selectedVenueId }: SettingsTabProps) => {
         </CardContent>
       </Card>
 
-      {/* Security Settings */}
+      {/* Enhanced Security Settings */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -346,16 +383,41 @@ const SettingsTab = ({ selectedVenueId }: SettingsTabProps) => {
           </div>
 
           {localSettings.password_protection_enabled && (
-            <div>
-              <label className="text-sm font-medium">Admin Password</label>
-              <Input
-                type="password"
-                value={localSettings.admin_password || ''}
-                onChange={(e) => updateLocalSetting('admin_password', e.target.value)}
-                placeholder="Enter admin password"
-                className="mt-1"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
+            <div className="space-y-4 border-t pt-4">
+              <div>
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  New Admin Password
+                </label>
+                <Input
+                  type="password"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  placeholder="Enter new admin password"
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium">Confirm Password</label>
+                <Input
+                  type="password"
+                  value={confirmPasswordInput}
+                  onChange={(e) => setConfirmPasswordInput(e.target.value)}
+                  placeholder="Confirm admin password"
+                  className="mt-1"
+                />
+              </div>
+
+              <Button 
+                onClick={handlePasswordUpdate}
+                disabled={setAdminPassword.isPending || !passwordInput || passwordInput !== confirmPasswordInput}
+                className="w-full"
+              >
+                {setAdminPassword.isPending ? 'Updating...' : 'Update Admin Password'}
+              </Button>
+              
+              <p className="text-xs text-muted-foreground">
                 This password will be required to access admin features on the machine
               </p>
             </div>
