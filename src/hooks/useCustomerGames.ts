@@ -38,8 +38,8 @@ export function useCustomerGames(venueId?: string) {
       }));
     }
 
-    // Query machine_games with games join, removing the problematic filter
-    const { data, error } = await supabase
+    // First, try to get venue-specific games from machine_games
+    const { data: machineGamesData, error: machineGamesError } = await supabase
       .from('machine_games')
       .select(`
         id,
@@ -62,45 +62,60 @@ export function useCustomerGames(venueId?: string) {
       `)
       .eq('venue_id', venueId);
 
-    if (error) {
-      console.error('Error fetching venue games:', error);
-      throw error;
-    }
+    console.log('Machine games query result:', {
+      data: machineGamesData?.length || 0,
+      error: machineGamesError?.message
+    });
 
-    console.log('Raw venue games data:', data?.length || 0, 'records');
-    
-    // Debug: Log the structure of the first record
-    if (data && data.length > 0) {
-      console.log('First record structure:', JSON.stringify(data[0], null, 2));
-    }
-
-    // Filter for games that are globally active in the games table
-    // We want games that are active in the main games table, regardless of machine-level status
-    const filteredData = data?.filter(mg => {
-      const gameIsActive = mg.games?.is_active === true;
-      console.log('Filtering record:', {
-        machine_game_id: mg.id,
-        game_title: mg.games?.title,
-        game_is_active: mg.games?.is_active,
-        machine_is_active: mg.is_active,
-        will_include: gameIsActive
+    // If there are machine_games records for this venue, use them
+    if (machineGamesData && machineGamesData.length > 0) {
+      console.log('Found machine games for venue, filtering active ones');
+      
+      // Filter for games that are globally active in the games table
+      const filteredData = machineGamesData.filter(mg => {
+        const gameIsActive = mg.games?.is_active === true;
+        console.log('Filtering machine game:', {
+          game_title: mg.games?.title,
+          game_is_active: mg.games?.is_active,
+          machine_is_active: mg.is_active,
+          will_include: gameIsActive
+        });
+        
+        return gameIsActive;
       });
       
-      return gameIsActive;
-    }) || [];
-    
-    console.log('Filtered active games:', filteredData.length);
+      console.log('Filtered machine games:', filteredData.length);
 
-    const mappedData = filteredData.map(mg => ({
-      ...mg.games,
-      machine_game_id: mg.id,
-      is_machine_active: mg.is_active
-    })) as CustomerGame[];
+      const mappedData = filteredData.map(mg => ({
+        ...mg.games,
+        machine_game_id: mg.id,
+        is_machine_active: mg.is_active
+      })) as CustomerGame[];
 
-    console.log('Final mapped customer games:', mappedData.length);
-    console.log('Final games list:', mappedData.map(game => ({ title: game.title, id: game.id })));
+      console.log('Final machine games result:', mappedData.length);
+      return mappedData;
+    }
+
+    // If no machine_games records exist for this venue, fall back to all active games
+    console.log('No machine games found for venue, falling back to all active games');
+    const { data: allGamesData, error: allGamesError } = await supabase
+      .from('games')
+      .select('*')
+      .eq('is_active', true)
+      .order('title');
+
+    if (allGamesError) {
+      console.error('Error fetching all active games:', allGamesError);
+      throw allGamesError;
+    }
+
+    console.log('All active games fallback:', allGamesData?.length || 0);
     
-    return mappedData;
+    return (allGamesData || []).map(game => ({
+      ...game,
+      machine_game_id: '',
+      is_machine_active: true
+    }));
   };
 
   const { data: customerGames, isLoading, error } = useQuery({
