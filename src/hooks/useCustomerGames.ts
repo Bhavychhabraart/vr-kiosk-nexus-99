@@ -38,7 +38,7 @@ export function useCustomerGames(venueId?: string) {
       }));
     }
 
-    // Fixed query syntax - use proper PostgREST filtering for joined tables
+    // Query machine_games with games join, removing the problematic filter
     const { data, error } = await supabase
       .from('machine_games')
       .select(`
@@ -60,8 +60,7 @@ export function useCustomerGames(venueId?: string) {
           updated_at
         )
       `)
-      .eq('venue_id', venueId)
-      .eq('is_active', true);
+      .eq('venue_id', venueId);
 
     if (error) {
       console.error('Error fetching venue games:', error);
@@ -73,30 +72,24 @@ export function useCustomerGames(venueId?: string) {
     // Debug: Log the structure of the first record
     if (data && data.length > 0) {
       console.log('First record structure:', JSON.stringify(data[0], null, 2));
-      console.log('games property structure:', data[0].games);
-      console.log('games.is_active value:', data[0].games?.is_active);
     }
 
-    // Filter for active games at the application level
-    // The data structure should have mg.games as the nested game object
+    // Filter for games that are globally active in the games table
+    // We want games that are active in the main games table, regardless of machine-level status
     const filteredData = data?.filter(mg => {
+      const gameIsActive = mg.games?.is_active === true;
       console.log('Filtering record:', {
         machine_game_id: mg.id,
-        has_games: !!mg.games,
-        games_is_active: mg.games?.is_active,
-        machine_is_active: mg.is_active
+        game_title: mg.games?.title,
+        game_is_active: mg.games?.is_active,
+        machine_is_active: mg.is_active,
+        will_include: gameIsActive
       });
       
-      // Check if games object exists and the game itself is active
-      return mg.games && mg.games.is_active === true;
+      return gameIsActive;
     }) || [];
     
     console.log('Filtered active games:', filteredData.length);
-    console.log('Filtered games details:', filteredData.map(mg => ({
-      title: mg.games?.title,
-      game_active: mg.games?.is_active,
-      machine_active: mg.is_active
-    })));
 
     const mappedData = filteredData.map(mg => ({
       ...mg.games,
