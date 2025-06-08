@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Game } from '@/types';
+import { useEffect } from 'react';
 
 interface MachineGameWithStatus extends Game {
   machine_game_id: string;
@@ -86,6 +87,52 @@ export function useMachineGames(venueId?: string) {
     queryKey: ['all-games'],
     queryFn: fetchAllGames
   });
+
+  // Real-time subscription for games and machine_games table changes
+  useEffect(() => {
+    if (!venueId) return;
+    
+    console.log('Setting up real-time subscription for machine games');
+    
+    const channel = supabase
+      .channel('machine-games-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'games'
+        },
+        (payload) => {
+          console.log('Real-time games update received in useMachineGames:', payload);
+          
+          // Invalidate queries to ensure consistency
+          queryClient.invalidateQueries({ queryKey: ['machine-games', venueId] });
+          queryClient.invalidateQueries({ queryKey: ['all-games'] });
+          queryClient.invalidateQueries({ queryKey: ['games'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'machine_games'
+        },
+        (payload) => {
+          console.log('Real-time machine_games update received:', payload);
+          
+          // Invalidate queries to ensure consistency
+          queryClient.invalidateQueries({ queryKey: ['machine-games', venueId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Cleaning up real-time subscription for machine games');
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient, venueId]);
 
   // Toggle game status for machine with optimistic updates
   const toggleGameStatus = useMutation({
@@ -179,6 +226,7 @@ export function useMachineGames(venueId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['machine-games', venueId] });
+      queryClient.invalidateQueries({ queryKey: ['all-games'] });
       toast({
         title: "Game Assigned",
         description: "Game has been successfully assigned to the machine",
@@ -206,6 +254,7 @@ export function useMachineGames(venueId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['machine-games', venueId] });
+      queryClient.invalidateQueries({ queryKey: ['all-games'] });
       toast({
         title: "Game Removed",
         description: "Game has been removed from the machine",
@@ -241,6 +290,7 @@ export function useMachineGames(venueId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['machine-games', venueId] });
+      queryClient.invalidateQueries({ queryKey: ['all-games'] });
       toast({
         title: "Bulk Assignment Complete",
         description: "Selected games have been assigned to the machine",

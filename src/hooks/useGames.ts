@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -23,6 +22,38 @@ export function useGames() {
     queryKey: ['games'],
     queryFn: fetchGames
   });
+
+  // Real-time subscription for games table changes
+  useEffect(() => {
+    console.log('Setting up real-time subscription for games');
+    
+    const channel = supabase
+      .channel('games-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'games'
+        },
+        (payload) => {
+          console.log('Real-time games update received:', payload);
+          
+          // Invalidate and refetch the games query to ensure consistency
+          queryClient.invalidateQueries({ queryKey: ['games'] });
+          
+          // Also invalidate machine games queries to keep admin interfaces in sync
+          queryClient.invalidateQueries({ queryKey: ['machine-games'] });
+          queryClient.invalidateQueries({ queryKey: ['all-games'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Cleaning up real-time subscription for games');
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
   
   const createGame = useMutation({
     mutationFn: async (newGame: GameInsert) => {
@@ -37,6 +68,8 @@ export function useGames() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['games'] });
+      queryClient.invalidateQueries({ queryKey: ['machine-games'] });
+      queryClient.invalidateQueries({ queryKey: ['all-games'] });
       toast({
         title: "Game created",
         description: "The game has been successfully added",
@@ -68,6 +101,8 @@ export function useGames() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['games'] });
+      queryClient.invalidateQueries({ queryKey: ['machine-games'] });
+      queryClient.invalidateQueries({ queryKey: ['all-games'] });
       toast({
         title: "Game updated",
         description: "The game has been successfully updated",
@@ -97,6 +132,8 @@ export function useGames() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['games'] });
+      queryClient.invalidateQueries({ queryKey: ['machine-games'] });
+      queryClient.invalidateQueries({ queryKey: ['all-games'] });
       toast({
         title: "Game deleted",
         description: "The game has been successfully deleted",
@@ -128,6 +165,8 @@ export function useGames() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['games'] });
+      queryClient.invalidateQueries({ queryKey: ['machine-games'] });
+      queryClient.invalidateQueries({ queryKey: ['all-games'] });
       toast({
         title: "Status updated",
         description: "Game status has been updated",
