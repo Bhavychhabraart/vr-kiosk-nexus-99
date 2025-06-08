@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/select";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Film, Loader2, Search, Star } from "lucide-react";
-import { useGames } from "@/hooks/useGames";
+import { useCustomerGames } from "@/hooks/useCustomerGames";
+import { useVenueDetection } from "@/hooks/useVenueDetection";
 
 const Games = () => {
   const navigate = useNavigate();
@@ -22,20 +23,23 @@ const Games = () => {
   const [category, setCategory] = useState<string>(initialCategory);
   const [searchQuery, setSearchQuery] = useState<string>("");
   
-  const { games, isLoading, error } = useGames();
+  // Use venue detection to get the current venue
+  const { venueId, hasVenue } = useVenueDetection();
+  
+  // Fetch venue-specific games for customers
+  const { customerGames, isLoading, error } = useCustomerGames(venueId || undefined);
+
+  console.log('Games page - venue detection:', { venueId, hasVenue, gameCount: customerGames?.length });
 
   // Extract unique categories from games
-  const uniqueCategories = games 
-    ? Array.from(new Set(games.map(game => 
+  const uniqueCategories = customerGames 
+    ? Array.from(new Set(customerGames.map(game => 
         game.description?.toLowerCase().split(",")[0] || "uncategorized"
       )))
     : [];
   
   // Filter games based on category and search query
-  const filteredGames = games?.filter((game) => {
-    // Only show active games on the public games page
-    if (!game.is_active) return false;
-    
+  const filteredGames = customerGames?.filter((game) => {
     const gameCategory = game.description?.toLowerCase().split(",")[0] || "uncategorized";
     const matchesCategory = category === "all" || gameCategory.includes(category.toLowerCase());
     const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -46,7 +50,14 @@ const Games = () => {
     <MainLayout>
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Game Library</h1>
-        <p className="text-vr-muted">Browse our collection of VR games.</p>
+        <p className="text-vr-muted">
+          Browse our collection of VR games.
+          {hasVenue && (
+            <span className="ml-2 text-vr-secondary text-sm">
+              (Showing games available at this location)
+            </span>
+          )}
+        </p>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 mb-8">
@@ -94,7 +105,12 @@ const Games = () => {
           {filteredGames.length === 0 && (
             <div className="text-center py-12">
               <h3 className="text-xl font-medium text-vr-muted mb-2">No games found</h3>
-              <p className="text-vr-muted mb-6">Try changing your search or filter criteria</p>
+              <p className="text-vr-muted mb-6">
+                {hasVenue 
+                  ? "No games are currently available at this location or match your search criteria"
+                  : "Try changing your search or filter criteria"
+                }
+              </p>
               <Button 
                 variant="outline" 
                 className="border-vr-primary/50 text-vr-text hover:bg-vr-primary/20"
