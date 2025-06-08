@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { GameInsert, GameUpdate, Game } from "@/types";
+import { Game } from "@/types";
 import { Loader2, Film } from "lucide-react";
 
 // Define the form validation schema
@@ -48,6 +48,8 @@ const gameSchema = z.object({
   path: ["max_duration_seconds"]
 });
 
+type GameFormData = z.infer<typeof gameSchema>;
+
 type GameFormProps = {
   game?: Game;
   onClose: () => void;
@@ -58,7 +60,7 @@ const GameForm = ({ game, onClose, venueId }: GameFormProps) => {
   const queryClient = useQueryClient();
   const isEditing = !!game;
   
-  const form = useForm<z.infer<typeof gameSchema>>({
+  const form = useForm<GameFormData>({
     resolver: zodResolver(gameSchema),
     defaultValues: {
       title: game?.title || "",
@@ -75,11 +77,21 @@ const GameForm = ({ game, onClose, venueId }: GameFormProps) => {
 
   // Create or update game
   const saveGame = useMutation({
-    mutationFn: async (gameData: z.infer<typeof gameSchema>) => {
+    mutationFn: async (gameData: GameFormData) => {
       if (isEditing && game) {
         const { data, error } = await supabase
           .from('games')
-          .update(gameData)
+          .update({
+            title: gameData.title,
+            description: gameData.description || null,
+            executable_path: gameData.executable_path || null,
+            working_directory: gameData.working_directory || null,
+            arguments: gameData.arguments || null,
+            image_url: gameData.image_url || null,
+            trailer_url: gameData.trailer_url || null,
+            min_duration_seconds: gameData.min_duration_seconds,
+            max_duration_seconds: gameData.max_duration_seconds
+          })
           .eq('id', game.id)
           .select()
           .single();
@@ -88,7 +100,17 @@ const GameForm = ({ game, onClose, venueId }: GameFormProps) => {
       } else {
         const { data, error } = await supabase
           .from('games')
-          .insert(gameData)
+          .insert({
+            title: gameData.title,
+            description: gameData.description || null,
+            executable_path: gameData.executable_path || null,
+            working_directory: gameData.working_directory || null,
+            arguments: gameData.arguments || null,
+            image_url: gameData.image_url || null,
+            trailer_url: gameData.trailer_url || null,
+            min_duration_seconds: gameData.min_duration_seconds,
+            max_duration_seconds: gameData.max_duration_seconds
+          })
           .select()
           .single();
         if (error) throw error;
@@ -124,7 +146,7 @@ const GameForm = ({ game, onClose, venueId }: GameFormProps) => {
     }
   });
   
-  const handleSubmit = (values: z.infer<typeof gameSchema>) => {
+  const handleSubmit = (values: GameFormData) => {
     saveGame.mutate(values);
   };
   

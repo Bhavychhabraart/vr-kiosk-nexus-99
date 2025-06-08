@@ -46,11 +46,11 @@ export const useGamePricing = (venueId?: string) => {
 
       if (error) throw error;
       
-      // Parse the duration_packages JSON field
+      // Parse the duration_packages JSON field safely
       return (data || []).map(item => ({
         ...item,
         duration_packages: Array.isArray(item.duration_packages) 
-          ? item.duration_packages as DurationPackage[]
+          ? (item.duration_packages as unknown as DurationPackage[])
           : []
       }));
     },
@@ -62,7 +62,14 @@ export const useGamePricing = (venueId?: string) => {
     mutationFn: async (pricingData: CreateGamePricingData) => {
       const { data, error } = await supabase
         .from('game_pricing')
-        .upsert(pricingData, {
+        .upsert({
+          venue_id: pricingData.venue_id,
+          game_id: pricingData.game_id,
+          base_price: pricingData.base_price,
+          price_per_minute: pricingData.price_per_minute,
+          duration_packages: pricingData.duration_packages || [],
+          is_active: pricingData.is_active ?? true
+        }, {
           onConflict: 'venue_id,game_id'
         })
         .select()

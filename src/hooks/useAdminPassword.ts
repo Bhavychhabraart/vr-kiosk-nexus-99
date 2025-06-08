@@ -24,7 +24,7 @@ export const useAdminPassword = () => {
       });
 
       if (error) throw error;
-      return data as PasswordResponse;
+      return data as unknown as PasswordResponse;
     },
     onSuccess: (data) => {
       if (data.success) {
