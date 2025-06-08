@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Settings, Shield, Wifi, Volume2, Brightness4 } from "lucide-react";
+import { Settings, Shield, Wifi, Volume2, Monitor } from "lucide-react";
 import AdminPasswordSetup from "@/components/admin/AdminPasswordSetup";
 
 interface MachineSettingsTabProps {
@@ -62,7 +62,7 @@ const MachineSettingsTab = ({ venueId }: MachineSettingsTabProps) => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Brightness4 className="w-5 h-5" />
+              <Monitor className="w-5 h-5" />
               Display Settings
             </CardTitle>
             <CardDescription>
