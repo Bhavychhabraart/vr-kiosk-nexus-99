@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMachineGames } from "@/hooks/useMachineGames";
-import { GamePlus, Search, Eye, EyeOff, Trash2, Loader2 } from "lucide-react";
+import { Gamepad2, Search, Eye, EyeOff, Trash2, Loader2 } from "lucide-react";
 
 interface MachineGameManagementTabProps {
   venueId: string;
@@ -66,7 +65,7 @@ const MachineGameManagementTab = ({ venueId }: MachineGameManagementTabProps) =>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            <GamePlus className="w-6 h-6" />
+            <Gamepad2 className="w-6 h-6" />
             Game Management
           </h2>
           <p className="text-muted-foreground">
@@ -131,7 +130,7 @@ const MachineGameManagementTab = ({ venueId }: MachineGameManagementTabProps) =>
                             />
                           ) : (
                             <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center">
-                              <GamePlus className="w-8 h-8 text-muted-foreground" />
+                              <Gamepad2 className="w-8 h-8 text-muted-foreground" />
                             </div>
                           )}
                           <div>
@@ -178,7 +177,7 @@ const MachineGameManagementTab = ({ venueId }: MachineGameManagementTabProps) =>
                             />
                           ) : (
                             <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center">
-                              <GamePlus className="w-8 h-8 text-muted-foreground" />
+                              <Gamepad2 className="w-8 h-8 text-muted-foreground" />
                             </div>
                           )}
                           <div>
