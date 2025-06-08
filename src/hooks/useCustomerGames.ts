@@ -14,6 +14,8 @@ export function useCustomerGames(venueId?: string) {
 
   // Fetch venue-specific games that are both globally active and enabled for the venue
   const fetchCustomerGames = async (): Promise<CustomerGame[]> => {
+    console.log('Fetching customer games for venue:', venueId);
+    
     if (!venueId) {
       console.log('No venue ID provided, fetching all active games as fallback');
       // Fallback to all active games if no venue is specified
@@ -36,9 +38,7 @@ export function useCustomerGames(venueId?: string) {
       }));
     }
 
-    console.log('Fetching customer games for venue:', venueId);
-
-    // Fixed query syntax - filter for active games in the select statement
+    // Fixed query syntax - use proper PostgREST filtering for joined tables
     const { data, error } = await supabase
       .from('machine_games')
       .select(`
@@ -98,12 +98,13 @@ export function useCustomerGames(venueId?: string) {
     }
     if (customerGames) {
       console.log('Customer games query success:', customerGames.length, 'games');
+      console.log('Query executed with venue ID:', venueId);
     }
-  }, [customerGames, error]);
+  }, [customerGames, error, venueId]);
 
   // Real-time subscription for games and machine_games table changes
   useEffect(() => {
-    console.log('Setting up real-time subscription for customer games');
+    console.log('Setting up real-time subscription for customer games with venue:', venueId);
     
     const channel = supabase
       .channel('customer-games-realtime')

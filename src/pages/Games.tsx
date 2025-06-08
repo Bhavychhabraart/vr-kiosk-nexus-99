@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Input } from "@/components/ui/input";
@@ -26,10 +25,16 @@ const Games = () => {
   // Use venue detection to get the current venue
   const { venueId, hasVenue } = useVenueDetection();
   
-  // Fetch venue-specific games for customers
+  // Fetch venue-specific games for customers - ensure venueId is passed correctly
   const { customerGames, isLoading, error } = useCustomerGames(venueId || undefined);
 
-  console.log('Games page - venue detection:', { venueId, hasVenue, gameCount: customerGames?.length });
+  console.log('Games page - venue detection:', { 
+    venueId, 
+    hasVenue, 
+    gameCount: customerGames?.length,
+    isLoading,
+    error: error?.message 
+  });
 
   // Extract unique categories from games
   const uniqueCategories = customerGames 
@@ -54,7 +59,12 @@ const Games = () => {
           Browse our collection of VR games.
           {hasVenue && (
             <span className="ml-2 text-vr-secondary text-sm">
-              (Showing games available at this location)
+              (Showing games available at this location - Venue: {venueId?.slice(0, 8)}...)
+            </span>
+          )}
+          {!hasVenue && (
+            <span className="ml-2 text-vr-accent text-sm">
+              (Showing all available games)
             </span>
           )}
         </p>
@@ -93,6 +103,7 @@ const Games = () => {
         <div className="text-center py-12">
           <h3 className="text-xl font-medium text-vr-accent mb-2">Error loading games</h3>
           <p className="text-vr-muted mb-6">Please try again later</p>
+          <p className="text-xs text-vr-muted">Error: {error.message}</p>
         </div>
       ) : (
         <>
@@ -107,7 +118,7 @@ const Games = () => {
               <h3 className="text-xl font-medium text-vr-muted mb-2">No games found</h3>
               <p className="text-vr-muted mb-6">
                 {hasVenue 
-                  ? "No games are currently available at this location or match your search criteria"
+                  ? `No games are currently available at this location (${venueId?.slice(0, 8)}...) or match your search criteria`
                   : "Try changing your search or filter criteria"
                 }
               </p>
