@@ -1,8 +1,8 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Game } from '@/types';
-import { MachineGames } from '@/types/machine';
 
 interface MachineGameWithStatus extends Game {
   machine_game_id: string;
@@ -18,6 +18,8 @@ export function useMachineGames(venueId?: string) {
   const fetchMachineGames = async (): Promise<MachineGameWithStatus[]> => {
     if (!venueId) return [];
 
+    console.log('Fetching machine games for venue:', venueId);
+
     const { data, error } = await supabase
       .from('machine_games')
       .select(`
@@ -25,19 +27,41 @@ export function useMachineGames(venueId?: string) {
         is_active,
         assigned_at,
         assigned_by,
-        games (*)
+        games!inner(
+          id,
+          title,
+          description,
+          image_url,
+          trailer_url,
+          is_active,
+          min_duration_seconds,
+          max_duration_seconds,
+          executable_path,
+          working_directory,
+          arguments,
+          created_at,
+          updated_at
+        )
       `)
       .eq('venue_id', venueId);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching machine games:', error);
+      throw error;
+    }
 
-    return data?.map(mg => ({
+    console.log('Raw machine games data:', data);
+
+    const mappedData = data?.map(mg => ({
       ...mg.games,
       machine_game_id: mg.id,
       is_machine_active: mg.is_active,
       assigned_at: mg.assigned_at,
       assigned_by: mg.assigned_by
-    })).filter(Boolean) as MachineGameWithStatus[] || [];
+    })) as MachineGameWithStatus[] || [];
+
+    console.log('Mapped machine games:', mappedData);
+    return mappedData;
   };
 
   // Fetch all available games (for Super Admin)
@@ -66,6 +90,8 @@ export function useMachineGames(venueId?: string) {
   // Toggle game status for machine with optimistic updates
   const toggleGameStatus = useMutation({
     mutationFn: async ({ machineGameId, isActive }: { machineGameId: string; isActive: boolean }) => {
+      console.log('Toggling game status:', { machineGameId, isActive });
+      
       const { data, error } = await supabase
         .from('machine_games')
         .update({ is_active: isActive })
@@ -73,10 +99,17 @@ export function useMachineGames(venueId?: string) {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error toggling game status:', error);
+        throw error;
+      }
+      
+      console.log('Toggle response:', data);
       return data;
     },
     onMutate: async ({ machineGameId, isActive }) => {
+      console.log('Optimistic update:', { machineGameId, isActive });
+      
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['machine-games', venueId] });
 
@@ -85,36 +118,41 @@ export function useMachineGames(venueId?: string) {
 
       // Optimistically update to the new value
       if (previousGames) {
-        queryClient.setQueryData(['machine-games', venueId], 
-          previousGames.map(game => 
-            game.machine_game_id === machineGameId 
-              ? { ...game, is_machine_active: isActive }
-              : game
-          )
+        const updatedGames = previousGames.map(game => 
+          game.machine_game_id === machineGameId 
+            ? { ...game, is_machine_active: isActive }
+            : game
         );
+        
+        console.log('Setting optimistic data:', updatedGames);
+        queryClient.setQueryData(['machine-games', venueId], updatedGames);
       }
 
       // Return a context object with the snapshotted value
       return { previousGames };
     },
     onError: (err, { machineGameId, isActive }, context) => {
+      console.error('Toggle mutation failed:', err);
+      
       // If the mutation fails, use the context returned from onMutate to roll back
       if (context?.previousGames) {
         queryClient.setQueryData(['machine-games', venueId], context.previousGames);
       }
       toast({
         title: "Update Failed",
-        description: err.message,
+        description: err.message || "Failed to update game status",
         variant: "destructive",
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Toggle mutation succeeded:', data);
       toast({
         title: "Game Status Updated",
         description: "Game status has been successfully updated",
       });
     },
     onSettled: () => {
+      console.log('Toggle mutation settled, invalidating queries');
       // Always refetch after error or success
       queryClient.invalidateQueries({ queryKey: ['machine-games', venueId] });
     }
@@ -140,7 +178,7 @@ export function useMachineGames(venueId?: string) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['machine-games'] });
+      queryClient.invalidateQueries({ queryKey: ['machine-games', venueId] });
       toast({
         title: "Game Assigned",
         description: "Game has been successfully assigned to the machine",
@@ -167,7 +205,7 @@ export function useMachineGames(venueId?: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['machine-games'] });
+      queryClient.invalidateQueries({ queryKey: ['machine-games', venueId] });
       toast({
         title: "Game Removed",
         description: "Game has been removed from the machine",
@@ -202,7 +240,7 @@ export function useMachineGames(venueId?: string) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['machine-games'] });
+      queryClient.invalidateQueries({ queryKey: ['machine-games', venueId] });
       toast({
         title: "Bulk Assignment Complete",
         description: "Selected games have been assigned to the machine",

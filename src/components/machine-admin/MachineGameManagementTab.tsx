@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ const MachineGameManagementTab = ({ venueId }: MachineGameManagementTabProps) =>
   ) || [];
 
   const handleToggleGame = (machineGameId: string, currentStatus: boolean) => {
+    console.log('Handle toggle game:', { machineGameId, currentStatus, newStatus: !currentStatus });
     toggleGameStatus(machineGameId, !currentStatus);
   };
 
