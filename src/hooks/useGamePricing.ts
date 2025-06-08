@@ -1,6 +1,12 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+
+interface DurationPackage {
+  duration_minutes: number;
+  price: number;
+}
 
 interface GamePricing {
   id: string;
@@ -8,10 +14,7 @@ interface GamePricing {
   game_id: string;
   base_price: number;
   price_per_minute: number;
-  duration_packages: Array<{
-    duration_minutes: number;
-    price: number;
-  }>;
+  duration_packages: DurationPackage[];
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -22,10 +25,7 @@ interface CreateGamePricingData {
   game_id: string;
   base_price: number;
   price_per_minute: number;
-  duration_packages?: Array<{
-    duration_minutes: number;
-    price: number;
-  }>;
+  duration_packages?: DurationPackage[];
   is_active?: boolean;
 }
 
@@ -45,7 +45,14 @@ export const useGamePricing = (venueId?: string) => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      
+      // Parse the duration_packages JSON field
+      return (data || []).map(item => ({
+        ...item,
+        duration_packages: Array.isArray(item.duration_packages) 
+          ? item.duration_packages as DurationPackage[]
+          : []
+      }));
     },
     enabled: !!venueId
   });

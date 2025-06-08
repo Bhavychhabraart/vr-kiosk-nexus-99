@@ -3,6 +3,9 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -46,14 +49,13 @@ const gameSchema = z.object({
 });
 
 type GameFormProps = {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (data: GameInsert | GameUpdate) => void;
-  isSubmitting: boolean;
   game?: Game;
+  onClose: () => void;
+  venueId: string;
 };
 
-const GameForm = ({ open, onClose, onSubmit, isSubmitting, game }: GameFormProps) => {
+const GameForm = ({ game, onClose, venueId }: GameFormProps) => {
+  const queryClient = useQueryClient();
   const isEditing = !!game;
   
   const form = useForm<z.infer<typeof gameSchema>>({
@@ -70,19 +72,64 @@ const GameForm = ({ open, onClose, onSubmit, isSubmitting, game }: GameFormProps
       max_duration_seconds: game?.max_duration_seconds || 1800
     }
   });
+
+  // Create or update game
+  const saveGame = useMutation({
+    mutationFn: async (gameData: z.infer<typeof gameSchema>) => {
+      if (isEditing && game) {
+        const { data, error } = await supabase
+          .from('games')
+          .update(gameData)
+          .eq('id', game.id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      } else {
+        const { data, error } = await supabase
+          .from('games')
+          .insert(gameData)
+          .select()
+          .single();
+        if (error) throw error;
+
+        // Assign the new game to this venue
+        const { error: assignError } = await supabase
+          .from('machine_games')
+          .insert({
+            venue_id: venueId,
+            game_id: data.id,
+            assigned_by: 'admin'
+          });
+        if (assignError) throw assignError;
+
+        return data;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['games'] });
+      queryClient.invalidateQueries({ queryKey: ['machine-games'] });
+      toast({
+        title: "Success",
+        description: `Game ${isEditing ? 'updated' : 'created'} successfully`
+      });
+      onClose();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
   
   const handleSubmit = (values: z.infer<typeof gameSchema>) => {
-    const gameData = {
-      ...values,
-      // If editing, include the id
-      ...(isEditing && { id: game.id })
-    };
-    
-    onSubmit(gameData as GameInsert | GameUpdate);
+    saveGame.mutate(values);
   };
   
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="bg-vr-dark border-vr-primary/30 text-vr-text max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">
@@ -265,16 +312,16 @@ const GameForm = ({ open, onClose, onSubmit, isSubmitting, game }: GameFormProps
                 variant="outline" 
                 className="border-vr-primary/50 text-vr-text hover:bg-vr-primary/20"
                 onClick={onClose}
-                disabled={isSubmitting}
+                disabled={saveGame.isPending}
               >
                 Cancel
               </Button>
               <Button 
                 type="submit" 
                 className="vr-button" 
-                disabled={isSubmitting}
+                disabled={saveGame.isPending}
               >
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {saveGame.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isEditing ? "Save Changes" : "Add Game"}
               </Button>
             </DialogFooter>

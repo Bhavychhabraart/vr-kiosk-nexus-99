@@ -3,6 +3,12 @@ import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
+interface PasswordResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
 export const useAdminPassword = () => {
   // Set admin password
   const setAdminPassword = useMutation({
@@ -18,18 +24,18 @@ export const useAdminPassword = () => {
       });
 
       if (error) throw error;
-      return data;
+      return data as PasswordResponse;
     },
     onSuccess: (data) => {
       if (data.success) {
         toast({
           title: "Success",
-          description: data.message
+          description: data.message || "Password updated successfully"
         });
       } else {
         toast({
           title: "Error",
-          description: data.error,
+          description: data.error || "Failed to update password",
           variant: "destructive"
         });
       }
@@ -55,7 +61,7 @@ export const useAdminPassword = () => {
       });
 
       if (error) throw error;
-      return data;
+      return data as boolean;
     }
   });
 
