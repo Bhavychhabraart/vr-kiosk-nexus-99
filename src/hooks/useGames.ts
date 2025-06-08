@@ -43,7 +43,8 @@ export function useGames() {
           // Invalidate all related queries immediately
           queryClient.invalidateQueries({ queryKey: ['games'] });
           queryClient.invalidateQueries({ queryKey: ['machine-games'] });
-          queryClient.invalidateQueries({ queryKey: ['all-games'] });
+          queryClient.invalidateQueries({ queryKey: ['customer-games'] });
+          queryClient.invalidateQueries({ queryKey: ['venue-games'] });
           
           // Force refetch of games query to ensure UI updates
           queryClient.refetchQueries({ queryKey: ['games'] });
@@ -74,10 +75,11 @@ export function useGames() {
       // Invalidate all game-related queries
       queryClient.invalidateQueries({ queryKey: ['games'] });
       queryClient.invalidateQueries({ queryKey: ['machine-games'] });
-      queryClient.invalidateQueries({ queryKey: ['all-games'] });
+      queryClient.invalidateQueries({ queryKey: ['customer-games'] });
+      queryClient.invalidateQueries({ queryKey: ['venue-games'] });
       toast({
         title: "Game created",
-        description: "The game has been successfully added",
+        description: "The game has been successfully added and will be available across all venues",
       });
       
       // Sync with Python backend
@@ -108,7 +110,8 @@ export function useGames() {
       // Invalidate all game-related queries
       queryClient.invalidateQueries({ queryKey: ['games'] });
       queryClient.invalidateQueries({ queryKey: ['machine-games'] });
-      queryClient.invalidateQueries({ queryKey: ['all-games'] });
+      queryClient.invalidateQueries({ queryKey: ['customer-games'] });
+      queryClient.invalidateQueries({ queryKey: ['venue-games'] });
       toast({
         title: "Game updated",
         description: "The game has been successfully updated",
@@ -140,10 +143,11 @@ export function useGames() {
       // Invalidate all game-related queries
       queryClient.invalidateQueries({ queryKey: ['games'] });
       queryClient.invalidateQueries({ queryKey: ['machine-games'] });
-      queryClient.invalidateQueries({ queryKey: ['all-games'] });
+      queryClient.invalidateQueries({ queryKey: ['customer-games'] });
+      queryClient.invalidateQueries({ queryKey: ['venue-games'] });
       toast({
         title: "Game deleted",
-        description: "The game has been successfully deleted",
+        description: "The game has been successfully deleted from all venues",
       });
       
       // Sync with Python backend
@@ -160,7 +164,7 @@ export function useGames() {
   
   const toggleGameStatus = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      console.log('Toggling game status:', { id, isActive });
+      console.log('Toggling global game status:', { id, isActive });
       
       const { data, error } = await supabase
         .from('games')
@@ -173,26 +177,29 @@ export function useGames() {
       return data;
     },
     onSuccess: (data) => {
-      console.log('Game status toggle success:', data);
+      console.log('Global game status toggle success:', data);
       
       // Invalidate all game-related queries to ensure all components update
       queryClient.invalidateQueries({ queryKey: ['games'] });
       queryClient.invalidateQueries({ queryKey: ['machine-games'] });
-      queryClient.invalidateQueries({ queryKey: ['all-games'] });
+      queryClient.invalidateQueries({ queryKey: ['customer-games'] });
+      queryClient.invalidateQueries({ queryKey: ['venue-games'] });
       
       // Force refetch to ensure immediate UI updates
       queryClient.refetchQueries({ queryKey: ['games'] });
       
       toast({
         title: "Status updated",
-        description: "Game status has been updated",
+        description: data.is_active 
+          ? "Game is now active and available across all venues" 
+          : "Game is now inactive and removed from all venues",
       });
       
       // Sync with Python backend
       syncGamesToPythonBackend();
     },
     onError: (error) => {
-      console.error('Game status toggle error:', error);
+      console.error('Global game status toggle error:', error);
       toast({
         title: "Error updating status",
         description: error.message,

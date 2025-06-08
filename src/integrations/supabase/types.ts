@@ -1590,6 +1590,14 @@ export type Database = {
         Args: { p_token: string; p_user_id: string }
         Returns: Json
       }
+      assign_all_games_to_all_venues: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      assign_all_games_to_venue: {
+        Args: { venue_id_param: string }
+        Returns: Json
+      }
       assign_machine_admin_role: {
         Args: { p_user_id: string; p_venue_id: string; p_granted_by?: string }
         Returns: Json
