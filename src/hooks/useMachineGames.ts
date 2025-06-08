@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -64,7 +63,7 @@ export function useMachineGames(venueId?: string) {
     queryFn: fetchAllGames
   });
 
-  // Toggle game status for machine
+  // Toggle game status for machine with optimistic updates
   const toggleGameStatus = useMutation({
     mutationFn: async ({ machineGameId, isActive }: { machineGameId: string; isActive: boolean }) => {
       const { data, error } = await supabase
@@ -77,19 +76,47 @@ export function useMachineGames(venueId?: string) {
       if (error) throw error;
       return data;
     },
+    onMutate: async ({ machineGameId, isActive }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['machine-games', venueId] });
+
+      // Snapshot the previous value
+      const previousGames = queryClient.getQueryData(['machine-games', venueId]) as MachineGameWithStatus[];
+
+      // Optimistically update to the new value
+      if (previousGames) {
+        queryClient.setQueryData(['machine-games', venueId], 
+          previousGames.map(game => 
+            game.machine_game_id === machineGameId 
+              ? { ...game, is_machine_active: isActive }
+              : game
+          )
+        );
+      }
+
+      // Return a context object with the snapshotted value
+      return { previousGames };
+    },
+    onError: (err, { machineGameId, isActive }, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousGames) {
+        queryClient.setQueryData(['machine-games', venueId], context.previousGames);
+      }
+      toast({
+        title: "Update Failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['machine-games'] });
       toast({
         title: "Game Status Updated",
         description: "Game status has been successfully updated",
       });
     },
-    onError: (error) => {
-      toast({
-        title: "Update Failed",
-        description: error.message,
-        variant: "destructive",
-      });
+    onSettled: () => {
+      // Always refetch after error or success
+      queryClient.invalidateQueries({ queryKey: ['machine-games', venueId] });
     }
   });
 

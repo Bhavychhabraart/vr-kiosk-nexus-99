@@ -21,7 +21,9 @@ import {
   Star,
   Package,
   Headphones,
-  Shield
+  Shield,
+  Zap,
+  DollarSign
 } from "lucide-react";
 
 // Import machine-specific admin components
@@ -32,6 +34,8 @@ import MachinePaymentsEarningsTab from "@/components/machine-admin/MachinePaymen
 import MachineGamesShowcaseTab from "@/components/machine-admin/MachineGamesShowcaseTab";
 import MachineProductCatalogTab from "@/components/machine-admin/MachineProductCatalogTab";
 import MachineSupportTab from "@/components/machine-admin/MachineSupportTab";
+import MachineLaunchOptionsTab from "@/components/machine-admin/MachineLaunchOptionsTab";
+import MachineGamePricingTab from "@/components/machine-admin/MachineGamePricingTab";
 
 const MachineAdmin = () => {
   const { user, signOut } = useAuth();
@@ -196,7 +200,7 @@ const MachineAdmin = () => {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-10">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <Building2 className="w-4 h-4" />
             Overview
@@ -204,6 +208,14 @@ const MachineAdmin = () => {
           <TabsTrigger value="games" className="flex items-center gap-2">
             <Gamepad2 className="w-4 h-4" />
             Games
+          </TabsTrigger>
+          <TabsTrigger value="launch-options" className="flex items-center gap-2">
+            <Zap className="w-4 h-4" />
+            Launch
+          </TabsTrigger>
+          <TabsTrigger value="pricing" className="flex items-center gap-2">
+            <DollarSign className="w-4 h-4" />
+            Pricing
           </TabsTrigger>
           <TabsTrigger value="analytics" className="flex items-center gap-2">
             <BarChart3 className="w-4 h-4" />
@@ -264,6 +276,14 @@ const MachineAdmin = () => {
 
         <TabsContent value="games" className="space-y-6">
           <MachineGameManagementTab venueId={currentVenue.id} />
+        </TabsContent>
+
+        <TabsContent value="launch-options" className="space-y-6">
+          <MachineLaunchOptionsTab venueId={currentVenue.id} />
+        </TabsContent>
+
+        <TabsContent value="pricing" className="space-y-6">
+          <MachineGamePricingTab venueId={currentVenue.id} />
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-6">
