@@ -69,11 +69,34 @@ export function useCustomerGames(venueId?: string) {
     }
 
     console.log('Raw venue games data:', data?.length || 0, 'records');
+    
+    // Debug: Log the structure of the first record
+    if (data && data.length > 0) {
+      console.log('First record structure:', JSON.stringify(data[0], null, 2));
+      console.log('games property structure:', data[0].games);
+      console.log('games.is_active value:', data[0].games?.is_active);
+    }
 
-    // Filter for active games at the application level to ensure we only get active games
-    const filteredData = data?.filter(mg => mg.games && mg.games.is_active) || [];
+    // Filter for active games at the application level
+    // The data structure should have mg.games as the nested game object
+    const filteredData = data?.filter(mg => {
+      console.log('Filtering record:', {
+        machine_game_id: mg.id,
+        has_games: !!mg.games,
+        games_is_active: mg.games?.is_active,
+        machine_is_active: mg.is_active
+      });
+      
+      // Check if games object exists and the game itself is active
+      return mg.games && mg.games.is_active === true;
+    }) || [];
     
     console.log('Filtered active games:', filteredData.length);
+    console.log('Filtered games details:', filteredData.map(mg => ({
+      title: mg.games?.title,
+      game_active: mg.games?.is_active,
+      machine_active: mg.is_active
+    })));
 
     const mappedData = filteredData.map(mg => ({
       ...mg.games,
@@ -82,6 +105,8 @@ export function useCustomerGames(venueId?: string) {
     })) as CustomerGame[];
 
     console.log('Final mapped customer games:', mappedData.length);
+    console.log('Final games list:', mappedData.map(game => ({ title: game.title, id: game.id })));
+    
     return mappedData;
   };
 
