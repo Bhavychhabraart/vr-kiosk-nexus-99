@@ -88,14 +88,18 @@ export function useCustomerGames(venueId?: string) {
   const { data: customerGames, isLoading, error } = useQuery({
     queryKey: ['customer-games', venueId],
     queryFn: fetchCustomerGames,
-    enabled: true,
-    onError: (error) => {
-      console.error('Customer games query error:', error);
-    },
-    onSuccess: (data) => {
-      console.log('Customer games query success:', data?.length || 0, 'games');
-    }
+    enabled: true
   });
+
+  // Log query results for debugging
+  useEffect(() => {
+    if (error) {
+      console.error('Customer games query error:', error);
+    }
+    if (customerGames) {
+      console.log('Customer games query success:', customerGames.length, 'games');
+    }
+  }, [customerGames, error]);
 
   // Real-time subscription for games and machine_games table changes
   useEffect(() => {
