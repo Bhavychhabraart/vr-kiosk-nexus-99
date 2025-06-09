@@ -26,19 +26,32 @@ const Auth = () => {
 
   // Redirect if already authenticated
   useEffect(() => {
+    console.log('Auth component - checking redirect conditions:', {
+      user: !!user,
+      loading,
+      rolesLoading,
+      userRoles: userRoles?.length || 0,
+      isSuperAdmin,
+      isMachineAdmin
+    });
+
     if (user && !loading && !rolesLoading) {
       // Check if user has completed onboarding by checking if they have any roles
       if (userRoles && userRoles.length > 0) {
         // User has roles, redirect based on role type
         if (isSuperAdmin) {
-          navigate('/superadmin');
+          console.log('Redirecting super admin to /super-admin');
+          navigate('/super-admin');
         } else if (isMachineAdmin) {
+          console.log('Redirecting machine admin to /machine-admin');
           navigate('/machine-admin');
         } else {
+          console.log('Redirecting regular admin to /admin');
           navigate('/admin');
         }
       } else {
         // New user without roles, send to onboarding
+        console.log('Redirecting new user to /onboarding');
         navigate('/onboarding');
       }
     }
