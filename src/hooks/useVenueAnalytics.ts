@@ -83,10 +83,19 @@ export const useVenueAnalytics = (
         .lte('start_time', dateRange.end)
         .order('start_time', { ascending: false });
 
-      // Combine all sessions
+      // Combine all sessions with safe property access
       const allSessions = [
-        ...(sessions || []).map(s => ({ ...s, source: 'tracking' })),
-        ...(historicalSessions || []).map(s => ({ ...s, source: 'history', payment_method: 'rfid' }))
+        ...(sessions || []).map(s => ({ 
+          ...s, 
+          source: 'tracking',
+          amount_paid: s.amount_paid || 0
+        })),
+        ...(historicalSessions || []).map(s => ({ 
+          ...s, 
+          source: 'history', 
+          payment_method: 'rfid',
+          amount_paid: 0 // Historical sessions don't have amount_paid
+        }))
       ];
 
       // Calculate metrics
@@ -101,7 +110,8 @@ export const useVenueAnalytics = (
       const revenueByPaymentMethod = allSessions.reduce(
         (acc, s) => {
           const method = s.payment_method || 'rfid';
-          acc[method as keyof typeof acc] += s.amount_paid || 0;
+          const amount = s.amount_paid || 0;
+          acc[method as keyof typeof acc] += amount;
           return acc;
         },
         { rfid: 0, upi: 0 }
