@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   Play, 
   Star, 
@@ -22,6 +23,7 @@ const GameDetail = () => {
   const navigate = useNavigate();
   const { games, isLoading } = useGames();
   const { userVenues, isLoading: rolesLoading } = useUserRoles();
+  const [showTrailer, setShowTrailer] = useState(false);
   
   const game = games?.find(g => g.id === id);
 
@@ -47,6 +49,24 @@ const GameDetail = () => {
       title: game.title,
     });
     navigate(`/launch-options?${params.toString()}`);
+  };
+
+  const handleWatchTrailer = () => {
+    if (game?.trailer_url) {
+      setShowTrailer(true);
+    }
+  };
+
+  // Convert YouTube URL to embed format if needed
+  const getEmbedUrl = (url: string) => {
+    if (url.includes('embed')) {
+      return url;
+    }
+    if (url.includes('youtube.com/watch')) {
+      const videoId = url.split('v=')[1]?.split('&')[0];
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+    return url;
   };
 
   if (isLoading || rolesLoading) {
@@ -110,6 +130,7 @@ const GameDetail = () => {
               {hasTrailer && (
                 <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
                   <Button
+                    onClick={handleWatchTrailer}
                     size="lg"
                     className="bg-white/90 text-black hover:bg-white"
                   >
@@ -200,6 +221,25 @@ const GameDetail = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Trailer Modal */}
+      <Dialog open={showTrailer} onOpenChange={setShowTrailer}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{game.title} - Trailer</DialogTitle>
+          </DialogHeader>
+          <div className="aspect-video">
+            {game.trailer_url && (
+              <iframe
+                src={getEmbedUrl(game.trailer_url)}
+                className="w-full h-full rounded-lg"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 };

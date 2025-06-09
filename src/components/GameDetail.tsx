@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Play,
   Clock,
@@ -21,6 +22,7 @@ interface GameDetailProps {
     image_url: string;
     min_duration_seconds: number;
     max_duration_seconds: number;
+    trailer_url?: string;
   };
   onBack: () => void;
 }
@@ -29,6 +31,7 @@ const GameDetail = ({ game, onBack }: GameDetailProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isConnected } = useCommandCenter();
+  const [showTrailer, setShowTrailer] = useState(false);
 
   const handlePlayClick = () => {
     if (!isConnected) {
@@ -49,9 +52,27 @@ const GameDetail = ({ game, onBack }: GameDetailProps) => {
     navigate(`/launch-options?${params.toString()}`);
   };
 
+  const handleWatchTrailer = () => {
+    if (game.trailer_url) {
+      setShowTrailer(true);
+    }
+  };
+
   const formatDuration = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     return `${minutes} min${minutes !== 1 ? 's' : ''}`;
+  };
+
+  // Convert YouTube URL to embed format if needed
+  const getEmbedUrl = (url: string) => {
+    if (url.includes('embed')) {
+      return url;
+    }
+    if (url.includes('youtube.com/watch')) {
+      const videoId = url.split('v=')[1]?.split('&')[0];
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+    return url;
   };
 
   return (
@@ -80,6 +101,18 @@ const GameDetail = ({ game, onBack }: GameDetailProps) => {
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-vr-dark/80 to-transparent" />
+          {game.trailer_url && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Button
+                onClick={handleWatchTrailer}
+                size="lg"
+                className="bg-white/90 text-black hover:bg-white"
+              >
+                <Play className="h-6 w-6 mr-2" />
+                Watch Trailer
+              </Button>
+            </div>
+          )}
           <div className="absolute bottom-4 left-4">
             <h1 className="text-3xl font-bold text-white mb-2">{game.title}</h1>
             <div className="flex items-center gap-4 text-white/80">
@@ -135,6 +168,25 @@ const GameDetail = ({ game, onBack }: GameDetailProps) => {
           </Button>
         </div>
       </div>
+
+      {/* Trailer Modal */}
+      <Dialog open={showTrailer} onOpenChange={setShowTrailer}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{game.title} - Trailer</DialogTitle>
+          </DialogHeader>
+          <div className="aspect-video">
+            {game.trailer_url && (
+              <iframe
+                src={getEmbedUrl(game.trailer_url)}
+                className="w-full h-full rounded-lg"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 };

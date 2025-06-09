@@ -71,20 +71,23 @@ export function useCustomerGames(venueId?: string) {
     if (machineGamesData && machineGamesData.length > 0) {
       console.log('Found machine games for venue, filtering active ones');
       
-      // Filter for games that are globally active in the games table
+      // Filter for games that are both globally active AND machine-level active
       const filteredData = machineGamesData.filter(mg => {
-        const gameIsActive = mg.games?.is_active === true;
+        const gameIsGloballyActive = mg.games?.is_active === true;
+        const gameIsMachineActive = mg.is_active === true;
+        const shouldInclude = gameIsGloballyActive && gameIsMachineActive;
+        
         console.log('Filtering machine game:', {
           game_title: mg.games?.title,
-          game_is_active: mg.games?.is_active,
-          machine_is_active: mg.is_active,
-          will_include: gameIsActive
+          game_is_globally_active: gameIsGloballyActive,
+          machine_is_active: gameIsMachineActive,
+          will_include: shouldInclude
         });
         
-        return gameIsActive;
+        return shouldInclude;
       });
       
-      console.log('Filtered machine games:', filteredData.length);
+      console.log('Filtered machine games (customer visible):', filteredData.length);
 
       const mappedData = filteredData.map(mg => ({
         ...mg.games,
@@ -92,7 +95,7 @@ export function useCustomerGames(venueId?: string) {
         is_machine_active: mg.is_active
       })) as CustomerGame[];
 
-      console.log('Final machine games result:', mappedData.length);
+      console.log('Final customer games result:', mappedData.length);
       return mappedData;
     }
 
@@ -175,7 +178,7 @@ export function useCustomerGames(venueId?: string) {
           if (!venueId || 
               (newRecord && newRecord.venue_id === venueId) || 
               (oldRecord && oldRecord.venue_id === venueId)) {
-            console.log('Machine games change affects current venue, refreshing...');
+            console.log('Machine games change affects current venue, refreshing customer games...');
             queryClient.invalidateQueries({ queryKey: ['customer-games', venueId] });
             queryClient.refetchQueries({ queryKey: ['customer-games', venueId] });
           }
