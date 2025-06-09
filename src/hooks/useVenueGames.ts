@@ -30,6 +30,7 @@ export function useVenueGames(venueId?: string) {
   const fetchVenueGames = async (): Promise<VenueGame[]> => {
     if (!venueId) return [];
 
+    console.log('=== Admin Venue Games Query ===');
     console.log('Fetching venue games for admin:', venueId);
 
     const { data, error } = await supabase
@@ -70,7 +71,18 @@ export function useVenueGames(venueId?: string) {
       assigned_by: mg.assigned_by
     })) as VenueGame[] || [];
 
-    console.log('Mapped venue games for admin:', mappedData);
+    console.log('Admin venue games result:', {
+      venue_id: venueId,
+      total_assigned: mappedData.length,
+      active_count: mappedData.filter(g => g.is_machine_active).length,
+      games: mappedData.map(g => ({ 
+        id: g.id, 
+        title: g.title, 
+        machine_active: g.is_machine_active,
+        global_active: g.is_active 
+      }))
+    });
+
     return mappedData;
   };
 
@@ -102,9 +114,11 @@ export function useVenueGames(venueId?: string) {
           const oldRecord = payload.old as any;
           
           if (newRecord?.venue_id === venueId || oldRecord?.venue_id === venueId) {
+            console.log('Machine games change affects current venue, refreshing...');
             queryClient.invalidateQueries({ queryKey: ['venue-games', venueId] });
             queryClient.invalidateQueries({ queryKey: ['customer-games', venueId] });
             queryClient.refetchQueries({ queryKey: ['venue-games', venueId] });
+            queryClient.refetchQueries({ queryKey: ['customer-games', venueId] });
           }
         }
       )
@@ -123,6 +137,7 @@ export function useVenueGames(venueId?: string) {
           queryClient.invalidateQueries({ queryKey: ['customer-games', venueId] });
           queryClient.invalidateQueries({ queryKey: ['games'] });
           queryClient.refetchQueries({ queryKey: ['venue-games', venueId] });
+          queryClient.refetchQueries({ queryKey: ['customer-games', venueId] });
         }
       )
       .subscribe((status) => {
@@ -138,7 +153,9 @@ export function useVenueGames(venueId?: string) {
   // Toggle venue-specific game status
   const toggleVenueGameStatus = useMutation({
     mutationFn: async ({ machineGameId, isActive }: { machineGameId: string; isActive: boolean }) => {
-      console.log('Toggling venue game status:', { machineGameId, isActive });
+      console.log('=== Toggle Venue Game Status ===');
+      console.log('Machine Game ID:', machineGameId);
+      console.log('New Active Status:', isActive);
       
       const { data, error } = await supabase
         .from('machine_games')
@@ -152,19 +169,24 @@ export function useVenueGames(venueId?: string) {
         throw error;
       }
       
+      console.log('Toggle successful:', data);
       return data;
     },
     onSuccess: (data) => {
       console.log('Venue game status toggle success:', data);
       
-      // Invalidate related queries
+      // Invalidate and refetch related queries immediately
       queryClient.invalidateQueries({ queryKey: ['venue-games', venueId] });
       queryClient.invalidateQueries({ queryKey: ['customer-games', venueId] });
       queryClient.invalidateQueries({ queryKey: ['machine-games', venueId] });
       
+      // Force immediate refetch
+      queryClient.refetchQueries({ queryKey: ['venue-games', venueId] });
+      queryClient.refetchQueries({ queryKey: ['customer-games', venueId] });
+      
       toast({
         title: "Game Status Updated",
-        description: "Venue game availability has been updated",
+        description: "Game availability has been updated for customers",
       });
     },
     onError: (error) => {

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Film, Loader2, Search, Star } from "lucide-react";
+import { Film, Loader2, Search, Star, AlertCircle } from "lucide-react";
 import { useCustomerGames } from "@/hooks/useCustomerGames";
 import { useVenueDetection } from "@/hooks/useVenueDetection";
 
@@ -23,12 +24,14 @@ const Games = () => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   
   // Use venue detection to get the current venue
-  const { venueId, hasVenue } = useVenueDetection();
+  const { venueId, hasVenue, isLoading: venueLoading } = useVenueDetection();
   
-  // Fetch venue-specific games for customers - ensure venueId is passed correctly
-  const { customerGames, isLoading, error } = useCustomerGames(venueId || undefined);
+  // Fetch venue-specific games for customers
+  const { customerGames, isLoading: gamesLoading, error } = useCustomerGames(venueId || undefined);
 
-  console.log('Games page - venue detection:', { 
+  const isLoading = venueLoading || gamesLoading;
+
+  console.log('Games page state:', { 
     venueId, 
     hasVenue, 
     gameCount: customerGames?.length,
@@ -62,9 +65,9 @@ const Games = () => {
               (Showing games available at this location - Venue: {venueId?.slice(0, 8)}...)
             </span>
           )}
-          {!hasVenue && (
+          {!hasVenue && !isLoading && (
             <span className="ml-2 text-vr-accent text-sm">
-              (Showing all available games)
+              (No venue context - please contact support)
             </span>
           )}
         </p>
@@ -101,9 +104,18 @@ const Games = () => {
         </div>
       ) : error ? (
         <div className="text-center py-12">
+          <AlertCircle className="h-16 w-16 text-vr-accent mx-auto mb-4" />
           <h3 className="text-xl font-medium text-vr-accent mb-2">Error loading games</h3>
           <p className="text-vr-muted mb-6">Please try again later</p>
           <p className="text-xs text-vr-muted">Error: {error.message}</p>
+        </div>
+      ) : !hasVenue ? (
+        <div className="text-center py-12">
+          <AlertCircle className="h-16 w-16 text-vr-muted mx-auto mb-4" />
+          <h3 className="text-xl font-medium text-vr-muted mb-2">No venue detected</h3>
+          <p className="text-vr-muted mb-6">
+            Unable to determine which venue you're viewing from. Please contact support.
+          </p>
         </div>
       ) : (
         <>
@@ -113,14 +125,21 @@ const Games = () => {
             ))}
           </div>
 
-          {filteredGames.length === 0 && (
+          {filteredGames.length === 0 && customerGames && customerGames.length === 0 && (
+            <div className="text-center py-12">
+              <AlertCircle className="h-16 w-16 text-vr-muted mx-auto mb-4" />
+              <h3 className="text-xl font-medium text-vr-muted mb-2">No games available</h3>
+              <p className="text-vr-muted mb-6">
+                No games are currently enabled for this venue. Please contact your venue administrator.
+              </p>
+            </div>
+          )}
+
+          {filteredGames.length === 0 && customerGames && customerGames.length > 0 && (
             <div className="text-center py-12">
               <h3 className="text-xl font-medium text-vr-muted mb-2">No games found</h3>
               <p className="text-vr-muted mb-6">
-                {hasVenue 
-                  ? `No games are currently available at this location (${venueId?.slice(0, 8)}...) or match your search criteria`
-                  : "Try changing your search or filter criteria"
-                }
+                No games match your search criteria
               </p>
               <Button 
                 variant="outline" 
