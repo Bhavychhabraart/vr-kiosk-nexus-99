@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Film, Loader2, Search, Star, AlertCircle, Settings } from "lucide-react";
+import { Film, Loader2, Search, Star, AlertCircle, Settings, Shield } from "lucide-react";
 import { useCustomerGames } from "@/hooks/useCustomerGames";
 import { useVenueDetection } from "@/hooks/useVenueDetection";
 import { useGameAssignment } from "@/hooks/useGameAssignment";
@@ -28,7 +28,7 @@ const Games = () => {
   const { venueId, hasVenue, isLoading: venueLoading } = useVenueDetection();
   
   // Check user roles to determine if they can assign games
-  const { isSuperAdmin, isMachineAdmin } = useUserRoles();
+  const { isSuperAdmin, isMachineAdmin, userVenues } = useUserRoles();
   
   // Fetch venue-specific games for customers
   const { customerGames, isLoading: gamesLoading, error } = useCustomerGames(venueId || undefined);
@@ -47,6 +47,9 @@ const Games = () => {
     isMachineAdmin,
     error: error?.message 
   });
+
+  // Get current venue name for display
+  const currentVenue = userVenues?.find(v => v.id === venueId);
 
   // Extract unique categories from games
   const uniqueCategories = customerGames 
@@ -77,14 +80,20 @@ const Games = () => {
         <h1 className="text-3xl font-bold mb-2">Game Library</h1>
         <p className="text-vr-muted">
           Browse our collection of VR games.
-          {hasVenue && (
+          {hasVenue && currentVenue && (
+            <span className="ml-2 text-vr-secondary text-sm flex items-center gap-1">
+              <Shield className="h-3 w-3" />
+              {currentVenue.name} ({currentVenue.city})
+            </span>
+          )}
+          {hasVenue && !currentVenue && (
             <span className="ml-2 text-vr-secondary text-sm">
-              (Showing games available at this location - Venue: {venueId?.slice(0, 8)}...)
+              (Venue: {venueId?.slice(0, 8)}...)
             </span>
           )}
           {!hasVenue && !isLoading && (
             <span className="ml-2 text-vr-accent text-sm">
-              (No venue context - please contact support)
+              (No venue access - contact support)
             </span>
           )}
         </p>
@@ -129,10 +138,22 @@ const Games = () => {
       ) : !hasVenue ? (
         <div className="text-center py-12">
           <AlertCircle className="h-16 w-16 text-vr-muted mx-auto mb-4" />
-          <h3 className="text-xl font-medium text-vr-muted mb-2">No venue detected</h3>
+          <h3 className="text-xl font-medium text-vr-muted mb-2">No venue access</h3>
           <p className="text-vr-muted mb-6">
-            Unable to determine which venue you're viewing from. Please contact support.
+            {isMachineAdmin 
+              ? "Unable to determine your assigned venue. Please contact support."
+              : "You don't have access to any venues. Please contact your administrator."
+            }
           </p>
+          {isMachineAdmin && (
+            <Button 
+              onClick={() => window.location.reload()} 
+              variant="outline"
+              className="border-vr-primary/50 text-vr-text hover:bg-vr-primary/20"
+            >
+              Refresh Page
+            </Button>
+          )}
         </div>
       ) : (
         <>
