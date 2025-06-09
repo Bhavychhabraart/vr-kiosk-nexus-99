@@ -71,7 +71,7 @@ export default function QuickUserSetup() {
       console.log('Setup result:', result);
 
       // Type cast the result to our interface
-      const setupResult = result as SetupResult;
+      const setupResult = result as unknown as SetupResult;
 
       if (setupResult?.success) {
         toast({
