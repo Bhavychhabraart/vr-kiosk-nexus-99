@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,6 +27,7 @@ import ProductCatalogManagement from "@/components/superadmin/ProductCatalogMana
 import SubscriptionManagement from "@/components/superadmin/SubscriptionManagement";
 import NotificationCenter from "@/components/superadmin/NotificationCenter";
 import ExistingUsersSetup from "@/components/admin/ExistingUsersSetup";
+import VenueAnalyticsTab from "@/components/superadmin/VenueAnalyticsTab";
 
 const SuperAdmin = () => {
   const { user, signOut } = useAuth();
@@ -125,7 +125,7 @@ const SuperAdmin = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               Overview
@@ -133,6 +133,10 @@ const SuperAdmin = () => {
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               Analytics
+            </TabsTrigger>
+            <TabsTrigger value="venue-analytics" className="flex items-center gap-2">
+              <Building className="w-4 h-4" />
+              Venue Analytics
             </TabsTrigger>
             <TabsTrigger value="venues" className="flex items-center gap-2">
               <Building className="w-4 h-4" />
@@ -214,6 +218,10 @@ const SuperAdmin = () => {
 
           <TabsContent value="analytics" className="space-y-6">
             <BusinessAnalytics />
+          </TabsContent>
+
+          <TabsContent value="venue-analytics" className="space-y-6">
+            <VenueAnalyticsTab />
           </TabsContent>
 
           <TabsContent value="venues" className="space-y-6">
