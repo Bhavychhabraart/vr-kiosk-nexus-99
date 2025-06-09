@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export async function checkUserSetup(email: string) {
@@ -95,6 +96,153 @@ export async function checkUserSetup(email: string) {
 
   } catch (error) {
     console.error('Setup check error:', error);
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function createUserVenueSetup(email: string) {
+  try {
+    console.log('=== Creating User Venue Setup ===');
+    console.log('Email:', email);
+
+    // Get user profile
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('email', email)
+      .single();
+    
+    if (profileError || !profileData) {
+      console.error('Error fetching user profile:', profileError);
+      return { success: false, error: 'User not found' };
+    }
+
+    // Check if user already has a venue
+    const { data: existingRoles } = await supabase
+      .from('simplified_user_roles')
+      .select('venue_id')
+      .eq('user_id', profileData.id)
+      .eq('is_active', true);
+
+    if (existingRoles && existingRoles.length > 0) {
+      return { success: false, error: 'User already has venue setup' };
+    }
+
+    // Create new venue
+    const venueName = `${email.split('@')[0]}'s VR Arcade`;
+    const serialNumber = `VR-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+
+    const { data: newVenue, error: venueError } = await supabase
+      .from('venues')
+      .insert({
+        name: venueName,
+        city: 'Mumbai',
+        state: 'Maharashtra',
+        address: '123 VR Street',
+        pin_code: '400001',
+        serial_number: serialNumber,
+        machine_model: 'VR-KIOSK-V1',
+        status: 'active'
+      })
+      .select()
+      .single();
+
+    if (venueError) {
+      console.error('Error creating venue:', venueError);
+      return { success: false, error: 'Failed to create venue' };
+    }
+
+    console.log('Created venue:', newVenue);
+
+    // Assign machine admin role
+    const { error: roleError } = await supabase
+      .from('simplified_user_roles')
+      .insert({
+        user_id: profileData.id,
+        role: 'machine_admin',
+        venue_id: newVenue.id,
+        is_active: true
+      });
+
+    if (roleError) {
+      console.error('Error assigning role:', roleError);
+      return { success: false, error: 'Failed to assign machine admin role' };
+    }
+
+    // Get all active games
+    const { data: allGames } = await supabase
+      .from('games')
+      .select('id')
+      .eq('is_active', true);
+
+    // Assign all games to venue
+    if (allGames && allGames.length > 0) {
+      const gameAssignments = allGames.map(game => ({
+        venue_id: newVenue.id,
+        game_id: game.id,
+        is_active: true,
+        assigned_by: 'admin-setup'
+      }));
+
+      const { error: gamesError } = await supabase
+        .from('machine_games')
+        .insert(gameAssignments);
+
+      if (gamesError) {
+        console.error('Error assigning games:', gamesError);
+        return { success: false, error: 'Failed to assign games' };
+      }
+    }
+
+    // Create venue settings
+    await supabase
+      .from('venue_settings')
+      .insert({ venue_id: newVenue.id });
+
+    // Create launch options
+    await supabase
+      .from('launch_options')
+      .insert({ venue_id: newVenue.id });
+
+    // Create machine auth
+    await supabase
+      .from('machine_auth')
+      .insert({
+        venue_id: newVenue.id,
+        product_id: `NGA-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+        product_key: Math.random().toString(36).substring(2, 18),
+        access_level: 'admin'
+      });
+
+    // Update onboarding status
+    await supabase
+      .from('user_onboarding_status')
+      .upsert({
+        user_id: profileData.id,
+        status: 'completed',
+        venue_id: newVenue.id,
+        machine_serial_number: serialNumber,
+        setup_progress: {
+          venue_created: true,
+          venue_name: venueName,
+          games_assigned: allGames?.length || 0,
+          settings_configured: true,
+          role_assigned: true
+        },
+        completed_at: new Date().toISOString()
+      });
+
+    return {
+      success: true,
+      venue: newVenue,
+      venueName,
+      serialNumber,
+      gamesAssigned: allGames?.length || 0,
+      message: 'User setup completed successfully'
+    };
+
+  } catch (error) {
+    console.error('Setup creation error:', error);
     return { success: false, error: (error as Error).message };
   }
 }

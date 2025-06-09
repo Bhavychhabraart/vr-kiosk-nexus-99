@@ -4,14 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, CheckCircle, User, Building, Gamepad2, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, User, Building, Gamepad2, Loader2, Plus } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import { checkUserSetup, ensureAllGamesAssigned } from '@/utils/adminSetup';
+import { checkUserSetup, ensureAllGamesAssigned, createUserVenueSetup } from '@/utils/adminSetup';
 
 export default function UserSetupCheck() {
   const [email, setEmail] = useState('littlejoys144@gmail.com');
   const [isChecking, setIsChecking] = useState(false);
   const [isFixing, setIsFixing] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [setupResult, setSetupResult] = useState(null);
 
   const handleCheckSetup = async () => {
@@ -41,6 +42,38 @@ export default function UserSetupCheck() {
       });
     } finally {
       setIsChecking(false);
+    }
+  };
+
+  const handleCreateSetup = async () => {
+    setIsCreating(true);
+    try {
+      const result = await createUserVenueSetup(email);
+      
+      if (result.success) {
+        toast({
+          title: "Setup Created",
+          description: `Created venue "${result.venueName}" with ${result.gamesAssigned} games`,
+        });
+        
+        // Refresh setup check
+        handleCheckSetup();
+      } else {
+        toast({
+          title: "Setup Failed",
+          description: result.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Create setup error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create user setup",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -168,26 +201,47 @@ export default function UserSetupCheck() {
                   <span>Games: {setupResult.activeGamesCount}/{setupResult.gamesCount} active</span>
                 </div>
 
-                {setupResult.venues?.length > 0 && (
-                  <Button 
-                    onClick={handleFixGames}
-                    disabled={isFixing}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    {isFixing ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Fixing Games...
-                      </>
-                    ) : (
-                      <>
-                        <Gamepad2 className="mr-2 h-4 w-4" />
-                        Ensure All Games Assigned
-                      </>
-                    )}
-                  </Button>
-                )}
+                <div className="grid grid-cols-2 gap-4">
+                  {setupResult.venues?.length > 0 && (
+                    <Button 
+                      onClick={handleFixGames}
+                      disabled={isFixing}
+                      variant="outline"
+                    >
+                      {isFixing ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Fixing Games...
+                        </>
+                      ) : (
+                        <>
+                          <Gamepad2 className="mr-2 h-4 w-4" />
+                          Fix Games
+                        </>
+                      )}
+                    </Button>
+                  )}
+
+                  {setupResult.venues?.length === 0 && (
+                    <Button 
+                      onClick={handleCreateSetup}
+                      disabled={isCreating}
+                      variant="default"
+                    >
+                      {isCreating ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating Setup...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Create Venue Setup
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="text-red-600">
