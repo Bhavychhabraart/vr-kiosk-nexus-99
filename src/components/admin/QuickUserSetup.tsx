@@ -5,8 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UserPlus, Loader2, CheckCircle } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+
+interface SetupResult {
+  success: boolean;
+  venue_name?: string;
+  games_assigned?: number;
+  message?: string;
+}
 
 export default function QuickUserSetup() {
   const [email, setEmail] = useState('littlejoys144@gmail.com');
@@ -63,16 +70,19 @@ export default function QuickUserSetup() {
 
       console.log('Setup result:', result);
 
-      if (result?.success) {
+      // Type cast the result to our interface
+      const setupResult = result as SetupResult;
+
+      if (setupResult?.success) {
         toast({
           title: "Setup Complete!",
-          description: `Successfully created venue "${result.venue_name}" and assigned ${result.games_assigned} games`,
+          description: `Successfully created venue "${setupResult.venue_name}" and assigned ${setupResult.games_assigned} games`,
         });
         setEmail('');
       } else {
         toast({
           title: "Setup Failed",
-          description: result?.message || "Unknown error occurred",
+          description: setupResult?.message || "Unknown error occurred",
           variant: "destructive",
         });
       }
