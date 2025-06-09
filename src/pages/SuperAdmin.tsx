@@ -31,6 +31,7 @@ import VenueAnalyticsTab from "@/components/superadmin/VenueAnalyticsTab";
 import UserSetupCheck from "@/components/admin/UserSetupCheck";
 import PendingUsersMonitor from "@/components/admin/PendingUsersMonitor";
 import ManualRoleAssignment from "@/components/admin/ManualRoleAssignment";
+import QuickUserSetup from "@/components/admin/QuickUserSetup";
 
 const SuperAdmin = () => {
   const { user, signOut } = useAuth();
@@ -248,17 +249,25 @@ const SuperAdmin = () => {
           </TabsContent>
 
           <TabsContent value="setup" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>System Setup & Management</CardTitle>
-                <CardDescription>
-                  Tools for managing user onboarding and system setup
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ExistingUsersSetup />
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <QuickUserSetup />
+              <PendingUsersMonitor />
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ManualRoleAssignment />
+              <Card>
+                <CardHeader>
+                  <CardTitle>Batch User Setup</CardTitle>
+                  <CardDescription>
+                    Setup multiple existing users at once
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ExistingUsersSetup />
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
