@@ -17,6 +17,7 @@ import Onboarding from './pages/Onboarding';
 import NotFound from './pages/NotFound';
 import { Toaster } from '@/components/ui/toaster';
 import UserSetup from "@/pages/UserSetup";
+import AdminSetup from "@/pages/AdminSetup";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ function App() {
             <Route path="/super-admin" element={<SuperAdmin />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/user-setup" element={<UserSetup />} />
+            <Route path="/admin-setup" element={<AdminSetup />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

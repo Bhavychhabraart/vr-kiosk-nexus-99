@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, CheckCircle, User, Building, GameController2, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, User, Building, Gamepad2, Loader2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { checkUserSetup, ensureAllGamesAssigned } from '@/utils/adminSetup';
 
@@ -164,7 +164,7 @@ export default function UserSetupCheck() {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <GameController2 className="h-4 w-4" />
+                  <Gamepad2 className="h-4 w-4" />
                   <span>Games: {setupResult.activeGamesCount}/{setupResult.gamesCount} active</span>
                 </div>
 
@@ -182,7 +182,7 @@ export default function UserSetupCheck() {
                       </>
                     ) : (
                       <>
-                        <GameController2 className="mr-2 h-4 w-4" />
+                        <Gamepad2 className="mr-2 h-4 w-4" />
                         Ensure All Games Assigned
                       </>
                     )}

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export async function checkUserSetup(email: string) {
@@ -7,14 +6,14 @@ export async function checkUserSetup(email: string) {
     console.log('Email:', email);
 
     // Get user from auth.users (this requires admin access)
-    const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
+    const { data, error: usersError } = await supabase.auth.admin.listUsers();
     
     if (usersError) {
       console.error('Error fetching users:', usersError);
       return { success: false, error: 'Could not fetch user data' };
     }
 
-    const user = users.find(u => u.email === email);
+    const user = data.users.find(u => u.email === email);
     if (!user) {
       return { success: false, error: 'User not found' };
     }
@@ -93,7 +92,7 @@ export async function checkUserSetup(email: string) {
 
   } catch (error) {
     console.error('Setup check error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: (error as Error).message };
   }
 }
 
