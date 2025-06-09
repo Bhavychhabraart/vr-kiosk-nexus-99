@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Input } from "@/components/ui/input";
@@ -11,9 +10,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Film, Loader2, Search, Star, AlertCircle } from "lucide-react";
+import { Film, Loader2, Search, Star, AlertCircle, Settings } from "lucide-react";
 import { useCustomerGames } from "@/hooks/useCustomerGames";
 import { useVenueDetection } from "@/hooks/useVenueDetection";
+import { useGameAssignment } from "@/hooks/useGameAssignment";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 const Games = () => {
   const navigate = useNavigate();
@@ -26,16 +27,24 @@ const Games = () => {
   // Use venue detection to get the current venue
   const { venueId, hasVenue, isLoading: venueLoading } = useVenueDetection();
   
+  // Check user roles to determine if they can assign games
+  const { isSuperAdmin, isMachineAdmin } = useUserRoles();
+  
   // Fetch venue-specific games for customers
   const { customerGames, isLoading: gamesLoading, error } = useCustomerGames(venueId || undefined);
+  
+  // Game assignment functionality
+  const { assignAllGamesToVenue, isAssigning } = useGameAssignment();
 
   const isLoading = venueLoading || gamesLoading;
 
-  console.log('Games page state:', { 
+  console.log('Games page - venue detection:', { 
     venueId, 
     hasVenue, 
     gameCount: customerGames?.length,
     isLoading,
+    isSuperAdmin,
+    isMachineAdmin,
     error: error?.message 
   });
 
@@ -53,6 +62,14 @@ const Games = () => {
     const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   }) || [];
+
+  const handleAssignGames = () => {
+    if (venueId) {
+      assignAllGamesToVenue(venueId);
+    }
+  };
+
+  const canAssignGames = (isSuperAdmin || isMachineAdmin) && hasVenue;
 
   return (
     <MainLayout>
@@ -128,10 +145,39 @@ const Games = () => {
           {filteredGames.length === 0 && customerGames && customerGames.length === 0 && (
             <div className="text-center py-12">
               <AlertCircle className="h-16 w-16 text-vr-muted mx-auto mb-4" />
-              <h3 className="text-xl font-medium text-vr-muted mb-2">No games available</h3>
+              <h3 className="text-xl font-medium text-vr-muted mb-2">No games assigned to this venue</h3>
               <p className="text-vr-muted mb-6">
-                No games are currently enabled for this venue. Please contact your venue administrator.
+                Games need to be assigned to this venue before customers can see them.
               </p>
+              {canAssignGames && (
+                <div className="space-y-4">
+                  <Button 
+                    onClick={handleAssignGames}
+                    disabled={isAssigning}
+                    className="bg-vr-primary hover:bg-vr-primary/90"
+                  >
+                    {isAssigning ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Assigning Games...
+                      </>
+                    ) : (
+                      <>
+                        <Settings className="mr-2 h-4 w-4" />
+                        Auto-Assign All Active Games
+                      </>
+                    )}
+                  </Button>
+                  <p className="text-xs text-vr-muted">
+                    This will assign all globally active games to this venue
+                  </p>
+                </div>
+              )}
+              {!canAssignGames && (
+                <p className="text-sm text-vr-muted">
+                  Contact your venue administrator to assign games to this location.
+                </p>
+              )}
             </div>
           )}
 

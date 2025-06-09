@@ -24,7 +24,7 @@ export function useCustomerGames(venueId?: string) {
 
     console.log('Fetching customer games for venue:', venueId);
 
-    // Always fetch venue-specific games from machine_games for customer view
+    // ONLY fetch venue-specific games from machine_games - no fallback to all games
     const { data: machineGamesData, error: machineGamesError } = await supabase
       .from('machine_games')
       .select(`
@@ -49,7 +49,7 @@ export function useCustomerGames(venueId?: string) {
       `)
       .eq('venue_id', venueId);
 
-    console.log('Machine games raw query result:', {
+    console.log('Machine games query result:', {
       data: machineGamesData?.length || 0,
       error: machineGamesError?.message,
       venueId
@@ -61,7 +61,8 @@ export function useCustomerGames(venueId?: string) {
     }
 
     if (!machineGamesData || machineGamesData.length === 0) {
-      console.log('No machine games found for venue:', venueId);
+      console.log('No machine games found for venue - customer will see no games');
+      console.log('This means games need to be assigned to this venue by an admin');
       return [];
     }
 
@@ -84,7 +85,7 @@ export function useCustomerGames(venueId?: string) {
     });
     
     console.log('Final filtered games for customers:', {
-      total_available: machineGamesData.length,
+      total_assigned_to_venue: machineGamesData.length,
       customer_visible: filteredData.length,
       venue_id: venueId
     });
@@ -116,7 +117,7 @@ export function useCustomerGames(venueId?: string) {
     if (error) {
       console.error('Customer games query error:', error);
     }
-    if (customerGames) {
+    if (customerGames !== undefined) {
       console.log('=== Customer Games Hook Result ===');
       console.log('Venue ID:', venueId);
       console.log('Games count:', customerGames.length);
