@@ -31,10 +31,22 @@ import ExistingUsersSetup from "@/components/admin/ExistingUsersSetup";
 
 const SuperAdmin = () => {
   const { user, signOut } = useAuth();
-  const { isSuperAdmin, isLoading, userVenues } = useUserRoles();
+  const { isSuperAdmin, isLoading, userVenues, userRoles, error } = useUserRoles();
   const [activeTab, setActiveTab] = useState("overview");
 
+  // Debug logging
+  console.log('SuperAdmin component loaded');
+  console.log('Auth state:', { user: !!user, userId: user?.id, email: user?.email });
+  console.log('useUserRoles state:', { 
+    isSuperAdmin, 
+    isLoading, 
+    userVenues: userVenues?.length, 
+    userRoles: userRoles?.length,
+    error: error?.message 
+  });
+
   if (isLoading) {
+    console.log('SuperAdmin: Still loading user roles...');
     return (
       <MainLayout backgroundVariant="grid" withPattern intensity="low">
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -47,9 +59,18 @@ const SuperAdmin = () => {
     );
   }
 
-  if (!isSuperAdmin) {
+  if (!user) {
+    console.log('SuperAdmin: No user found, redirecting to auth');
     return <Navigate to="/auth" replace />;
   }
+
+  if (!isSuperAdmin) {
+    console.log('SuperAdmin: User is not super admin, redirecting to auth');
+    console.log('User roles found:', userRoles);
+    return <Navigate to="/auth" replace />;
+  }
+
+  console.log('SuperAdmin: Rendering super admin dashboard');
 
   return (
     <MainLayout backgroundVariant="grid" withPattern intensity="low">
@@ -75,6 +96,32 @@ const SuperAdmin = () => {
             </Button>
           </div>
         </div>
+
+        {/* Debug Info Card - Remove this after debugging */}
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardHeader>
+            <CardTitle className="text-yellow-800">Debug Information</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-yellow-700">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p><strong>User ID:</strong> {user?.id}</p>
+                <p><strong>Email:</strong> {user?.email}</p>
+                <p><strong>Is Super Admin:</strong> {isSuperAdmin ? 'Yes' : 'No'}</p>
+              </div>
+              <div>
+                <p><strong>User Roles:</strong> {userRoles?.length || 0}</p>
+                <p><strong>User Venues:</strong> {userVenues?.length || 0}</p>
+                <p><strong>Loading:</strong> {isLoading ? 'Yes' : 'No'}</p>
+              </div>
+            </div>
+            {userRoles && userRoles.length > 0 && (
+              <div className="mt-2">
+                <p><strong>Roles:</strong> {userRoles.map(r => r.role).join(', ')}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

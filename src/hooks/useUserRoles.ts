@@ -23,11 +23,16 @@ export interface UserVenue {
 export function useUserRoles() {
   const { user } = useAuth();
 
+  console.log('useUserRoles hook - user:', { id: user?.id, email: user?.email });
+
   // First query: Get user roles
   const { data: userRoles, isLoading: rolesLoading, error: rolesError } = useQuery({
     queryKey: ['user-roles', user?.id],
     queryFn: async (): Promise<UserRole[]> => {
-      if (!user?.id) return [];
+      if (!user?.id) {
+        console.log('useUserRoles: No user ID, returning empty array');
+        return [];
+      }
 
       console.log('Fetching user roles for:', user.id);
       
@@ -43,6 +48,7 @@ export function useUserRoles() {
       }
       
       console.log('User roles fetched:', data);
+      console.log('User roles count:', data?.length || 0);
       return data || [];
     },
     enabled: !!user?.id
@@ -52,11 +58,20 @@ export function useUserRoles() {
   const isSuperAdmin = userRoles?.some(role => role.role === 'super_admin') || false;
   const isMachineAdmin = userRoles?.some(role => role.role === 'machine_admin') || false;
 
+  console.log('Role check results:', { 
+    isSuperAdmin, 
+    isMachineAdmin, 
+    rolesFound: userRoles?.map(r => r.role) 
+  });
+
   // Second query: Get user venues (independent of first query)
   const { data: userVenues, isLoading: venuesLoading, error: venuesError } = useQuery({
     queryKey: ['user-venues', user?.id, isSuperAdmin],
     queryFn: async (): Promise<UserVenue[]> => {
-      if (!user?.id) return [];
+      if (!user?.id) {
+        console.log('useUserRoles venues: No user ID');
+        return [];
+      }
 
       console.log('Fetching user venues. Is super admin:', isSuperAdmin);
 
@@ -73,7 +88,7 @@ export function useUserRoles() {
           throw venuesError;
         }
         
-        console.log('All venues fetched:', allVenues);
+        console.log('All venues fetched:', allVenues?.length || 0);
         return allVenues || [];
       }
 
@@ -98,7 +113,7 @@ export function useUserRoles() {
         throw venuesError;
       }
       
-      console.log('User venues fetched:', venues);
+      console.log('User venues fetched:', venues?.length || 0);
       return venues || [];
     },
     enabled: !!user?.id && rolesLoading === false // Only run after roles are loaded
@@ -107,13 +122,13 @@ export function useUserRoles() {
   const isLoading = rolesLoading || venuesLoading;
   const error = rolesError || venuesError;
 
-  console.log('useUserRoles state:', {
+  console.log('useUserRoles final state:', {
     isLoading,
     userRoles: userRoles?.length || 0,
     userVenues: userVenues?.length || 0,
     isSuperAdmin,
     isMachineAdmin,
-    error
+    error: error?.message
   });
 
   return {
