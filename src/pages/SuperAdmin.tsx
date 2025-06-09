@@ -28,6 +28,9 @@ import SubscriptionManagement from "@/components/superadmin/SubscriptionManageme
 import NotificationCenter from "@/components/superadmin/NotificationCenter";
 import ExistingUsersSetup from "@/components/admin/ExistingUsersSetup";
 import VenueAnalyticsTab from "@/components/superadmin/VenueAnalyticsTab";
+import UserSetupCheck from "@/components/admin/UserSetupCheck";
+import PendingUsersMonitor from "@/components/admin/PendingUsersMonitor";
+import ManualRoleAssignment from "@/components/admin/ManualRoleAssignment";
 
 const SuperAdmin = () => {
   const { user, signOut } = useAuth();
