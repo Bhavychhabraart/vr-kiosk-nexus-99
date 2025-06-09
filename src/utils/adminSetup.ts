@@ -13,7 +13,7 @@ export async function checkUserSetup(email: string) {
       return { success: false, error: 'Could not fetch user data' };
     }
 
-    const user = data.users.find(u => u.email === email);
+    const user = data.users.find((u: any) => u.email === email);
     if (!user) {
       return { success: false, error: 'User not found' };
     }
@@ -162,6 +162,6 @@ export async function ensureAllGamesAssigned(venueId: string) {
 
   } catch (error) {
     console.error('Game assignment error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: (error as Error).message };
   }
 }
