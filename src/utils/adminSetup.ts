@@ -5,26 +5,29 @@ export async function checkUserSetup(email: string) {
     console.log('=== Checking User Setup ===');
     console.log('Email:', email);
 
-    // Get user from auth.users (this requires admin access)
-    const { data, error: usersError } = await supabase.auth.admin.listUsers();
+    // Get user from profiles table (client-side accessible)
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('email', email)
+      .single();
     
-    if (usersError) {
-      console.error('Error fetching users:', usersError);
-      return { success: false, error: 'Could not fetch user data' };
+    if (profileError) {
+      console.error('Error fetching user profile:', profileError);
+      return { success: false, error: 'Could not fetch user profile' };
     }
 
-    const user = data.users.find((u: any) => u.email === email);
-    if (!user) {
+    if (!profileData) {
       return { success: false, error: 'User not found' };
     }
 
-    console.log('Found user:', { id: user.id, email: user.email });
+    console.log('Found user:', { id: profileData.id, email: profileData.email });
 
-    // Check user roles
+    // Check user roles using the simplified_user_roles table
     const { data: roles, error: rolesError } = await supabase
       .from('simplified_user_roles')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', profileData.id)
       .eq('is_active', true);
 
     if (rolesError) {
@@ -71,7 +74,7 @@ export async function checkUserSetup(email: string) {
 
           return {
             success: true,
-            user: { id: user.id, email: user.email },
+            user: { id: profileData.id, email: profileData.email },
             roles,
             venues,
             gamesCount: machineGames?.length || 0,
@@ -83,7 +86,7 @@ export async function checkUserSetup(email: string) {
 
     return {
       success: true,
-      user: { id: user.id, email: user.email },
+      user: { id: profileData.id, email: profileData.email },
       roles: roles || [],
       venues: [],
       gamesCount: 0,

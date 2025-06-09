@@ -12,16 +12,17 @@ import { useUserRoles } from "@/hooks/useUserRoles";
 const Index = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { isSuperAdmin, isMachineAdmin, isLoading } = useUserRoles();
+  const { isSuperAdmin, isMachineAdmin, isLoading, userVenues } = useUserRoles();
   const [showAdminOptions, setShowAdminOptions] = useState(false);
 
-  // Auto-redirect machine admins to their admin panel
+  // Auto-redirect machine admins to their admin panel, but only if they have venues
   useEffect(() => {
-    if (!isLoading && user && isMachineAdmin && !isSuperAdmin) {
+    if (!isLoading && user && isMachineAdmin && !isSuperAdmin && userVenues && userVenues.length > 0) {
       // Direct machine admins straight to their admin panel
+      console.log('Auto-redirecting machine admin to admin panel');
       navigate('/machine-admin');
     }
-  }, [user, isMachineAdmin, isSuperAdmin, isLoading, navigate]);
+  }, [user, isMachineAdmin, isSuperAdmin, isLoading, userVenues, navigate]);
 
   const handleStartExperience = () => {
     navigate('/games');
@@ -31,7 +32,7 @@ const Index = () => {
     if (user) {
       // Navigate based on user's highest role
       if (isSuperAdmin) {
-        navigate('/superadmin');
+        navigate('/super-admin');
       } else if (isMachineAdmin) {
         navigate('/machine-admin');
       } else {
@@ -70,6 +71,17 @@ const Index = () => {
           <div className="flex items-center space-x-2 bg-black/30 backdrop-blur-md rounded-lg px-4 py-2">
             <User className="w-4 h-4 text-vr-primary" />
             <span className="text-white text-sm">{user.email}</span>
+            {/* Show user role info */}
+            {isMachineAdmin && (
+              <span className="text-xs text-vr-secondary bg-vr-secondary/20 px-2 py-1 rounded">
+                Machine Admin
+              </span>
+            )}
+            {isSuperAdmin && (
+              <span className="text-xs text-vr-primary bg-vr-primary/20 px-2 py-1 rounded">
+                Super Admin
+              </span>
+            )}
             <Button
               onClick={handleSignOut}
               variant="ghost"
@@ -127,6 +139,13 @@ const Index = () => {
                   'Admin Dashboard'
                 ) : 'Admin Login'}
               </Button>
+              
+              {/* Debug info for machine admins */}
+              {user && isMachineAdmin && (
+                <div className="text-xs text-gray-500">
+                  Venues: {userVenues?.length || 0}
+                </div>
+              )}
             </div>
           </div>
         ) : (
