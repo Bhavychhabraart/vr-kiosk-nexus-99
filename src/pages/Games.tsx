@@ -247,7 +247,7 @@ const GameCard = ({ game }: GameCardProps) => {
   return (
     <div 
       className="vr-card cursor-pointer group h-full flex flex-col"
-      onClick={() => navigate(`/game/${game.id}`)}
+      onClick={() => navigate(`/games/${game.id}`)}
     >
       <div className="aspect-[16/9] overflow-hidden rounded-lg mb-3 relative">
         <img 
