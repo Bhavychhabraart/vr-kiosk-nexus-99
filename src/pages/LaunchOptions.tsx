@@ -19,7 +19,7 @@ import { useGames } from "@/hooks/useGames";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import useCommandCenter from "@/hooks/useCommandCenter";
 import { useSessionTracking } from "@/hooks/useSessionTracking";
-import { InlineRFIDInput } from "@/components/ui/inline-rfid-input";
+import { EnhancedRFIDInput } from "@/components/ui/enhanced-rfid-input";
 
 const LaunchOptions = () => {
   const navigate = useNavigate();
@@ -27,7 +27,7 @@ const LaunchOptions = () => {
   const { games } = useGames();
   const { userVenues } = useUserRoles();
   
-  // Get parameters from URL
+  // Get parameters from URL search params
   const gameId = searchParams.get("gameId");
   const gameTitle = searchParams.get("title") || "VR Game";
   
@@ -47,16 +47,27 @@ const LaunchOptions = () => {
   const [showRfidInput, setShowRfidInput] = useState(false);
 
   useEffect(() => {
-    if (!gameId || !gameData) {
-      console.error('Game not found - gameId:', gameId, 'gameData:', gameData);
+    if (!gameId) {
+      console.error('No gameId provided in URL parameters');
       toast({
         variant: "destructive",
         title: "Game Not Found",
-        description: "Redirecting to games page...",
+        description: "No game specified. Redirecting to games page...",
+      });
+      setTimeout(() => navigate('/games'), 2000);
+      return;
+    }
+
+    if (gameId && !gameData && games && games.length > 0) {
+      console.error('Game not found - gameId:', gameId, 'available games:', games.length);
+      toast({
+        variant: "destructive",
+        title: "Game Not Found",
+        description: "The selected game could not be found. Redirecting to games page...",
       });
       setTimeout(() => navigate('/games'), 2000);
     }
-  }, [gameId, gameData, navigate]);
+  }, [gameId, gameData, games, navigate]);
 
   useEffect(() => {
     if (error) {
@@ -117,7 +128,7 @@ const LaunchOptions = () => {
         paymentData = {
           method: 'free' as const,
           amount: 0,
-          venueId, // Include venue ID
+          venueId,
         };
       } else if (option === 'qr') {
         // Navigate to QR payment
@@ -128,7 +139,7 @@ const LaunchOptions = () => {
           sessionId,
           amount: amount.toString(),
           method: 'upi',
-          venueId, // Include venue ID in QR payment flow
+          venueId,
         });
         navigate(`/payment-selection?${params.toString()}`);
         return;
@@ -143,7 +154,7 @@ const LaunchOptions = () => {
         title: gameData.title,
         duration: durationSeconds.toString(),
         sessionId,
-        venueId, // Include venue ID in session page
+        venueId,
       });
       navigate(`/session?${sessionParams.toString()}`);
       
@@ -175,7 +186,7 @@ const LaunchOptions = () => {
         method: 'rfid' as const,
         amount: amount,
         rfidTag: rfidTag,
-        venueId: venueId // Ensure venue ID is included
+        venueId: venueId
       };
 
       // Launch game immediately
@@ -193,7 +204,7 @@ const LaunchOptions = () => {
         duration: durationSeconds.toString(),
         sessionId,
         rfidTag: rfidTag,
-        venueId, // Include venue ID
+        venueId,
       });
       navigate(`/session?${sessionParams.toString()}`);
       
@@ -359,7 +370,7 @@ const LaunchOptions = () => {
                       </Button>
                     ) : (
                       <div className="space-y-2">
-                        <InlineRFIDInput
+                        <EnhancedRFIDInput
                           onCardScanned={handleRfidScanned}
                           isLoading={isProcessing}
                         />

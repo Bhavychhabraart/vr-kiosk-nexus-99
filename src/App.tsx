@@ -42,7 +42,7 @@ function App() {
                 <Route path="/machine-admin" element={<MachineAdmin />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/payment/:gameId" element={<PaymentSelection />} />
-                <Route path="/launch-options/:gameId" element={<LaunchOptions />} />
+                <Route path="/launch-options" element={<LaunchOptions />} />
                 <Route path="/onboarding" element={<Onboarding />} />
                 <Route path="/user-setup" element={<UserSetup />} />
                 <Route path="/admin-setup" element={<AdminSetup />} />
