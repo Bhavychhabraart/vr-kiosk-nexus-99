@@ -1,6 +1,10 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Table, 
@@ -11,17 +15,96 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { format } from "date-fns";
-import { RefreshCw, TrendingUp, Clock, Users, DollarSign } from "lucide-react";
+import { 
+  RefreshCw, 
+  TrendingUp, 
+  TrendingDown, 
+  Clock, 
+  Users, 
+  DollarSign,
+  Download,
+  Calendar as CalendarIcon,
+  BarChart3,
+  Activity
+} from "lucide-react";
+import { useComprehensiveAnalytics, TimePeriod } from "@/hooks/useComprehensiveAnalytics";
+import { usePDFExport } from "@/hooks/usePDFExport";
 import { useSessionAnalytics } from "@/hooks/useSessionAnalytics";
+import { useState } from "react";
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell
+} from "recharts";
+import GlobalRefresh from "./GlobalRefresh";
 
 interface MachineAnalyticsTabProps {
   venueId: string;
 }
 
 const MachineAnalyticsTab = ({ venueId }: MachineAnalyticsTabProps) => {
-  const { sessions, stats, isLoading, refetchSessions } = useSessionAnalytics(venueId);
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('today');
+  const [customRange, setCustomRange] = useState<{ start: Date; end: Date } | undefined>();
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  
+  const { data: analytics, isLoading, refetch } = useComprehensiveAnalytics(venueId, timePeriod, customRange);
+  const { sessions } = useSessionAnalytics(venueId);
+  const { exportAnalyticsToPDF } = usePDFExport();
 
-  if (isLoading) {
+  const handleRefresh = () => {
+    refetch();
+    setLastRefresh(new Date());
+  };
+
+  const handleExportPDF = () => {
+    if (!analytics) return;
+    
+    exportAnalyticsToPDF({
+      venueName: "Machine Analytics", // You might want to fetch actual venue name
+      timePeriod: timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1),
+      dateRange: customRange 
+        ? `${format(customRange.start, 'PPP')} - ${format(customRange.end, 'PPP')}`
+        : getDateRangeLabel(timePeriod),
+      analytics,
+      sessionDetails: sessions || []
+    });
+  };
+
+  const getDateRangeLabel = (period: TimePeriod): string => {
+    const now = new Date();
+    switch (period) {
+      case 'today': return format(now, 'PPP');
+      case 'week': return `Week of ${format(now, 'PPP')}`;
+      case 'month': return format(now, 'MMMM yyyy');
+      case 'year': return format(now, 'yyyy');
+      default: return 'Custom Range';
+    }
+  };
+
+  const getTrendIcon = (change: number) => {
+    if (change > 0) return <TrendingUp className="h-4 w-4 text-green-600" />;
+    if (change < 0) return <TrendingDown className="h-4 w-4 text-red-600" />;
+    return <Activity className="h-4 w-4 text-gray-400" />;
+  };
+
+  const getTrendColor = (change: number) => {
+    if (change > 0) return "text-green-600";
+    if (change < 0) return "text-red-600";
+    return "text-gray-400";
+  };
+
+  if (isLoading && !analytics) {
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-4 gap-4">
@@ -37,33 +120,77 @@ const MachineAnalyticsTab = ({ venueId }: MachineAnalyticsTabProps) => {
 
   return (
     <div className="space-y-6">
+      {/* Header with Controls */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Machine Analytics</h2>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetchSessions()}
-          className="flex items-center gap-2"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Refresh Data
-        </Button>
+        <h2 className="text-2xl font-bold">Comprehensive Analytics</h2>
+        <div className="flex items-center gap-4">
+          <Select value={timePeriod} onValueChange={(value) => setTimePeriod(value as TimePeriod)}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="week">This Week</SelectItem>
+              <SelectItem value="month">This Month</SelectItem>
+              <SelectItem value="year">This Year</SelectItem>
+              <SelectItem value="custom">Custom Range</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          {timePeriod === 'custom' && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  {customRange ? `${format(customRange.start, 'MMM d')} - ${format(customRange.end, 'MMM d')}` : 'Select range'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="range"
+                  selected={customRange ? { from: customRange.start, to: customRange.end } : undefined}
+                  onSelect={(range) => {
+                    if (range?.from && range?.to) {
+                      setCustomRange({ start: range.from, end: range.to });
+                    }
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
+          
+          <Button onClick={handleExportPDF} variant="outline" className="flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            Export PDF
+          </Button>
+        </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Global Refresh Component */}
+      <GlobalRefresh 
+        onRefresh={handleRefresh}
+        isLoading={isLoading}
+        lastUpdated={lastRefresh}
+      />
+
+      {/* Enhanced Stats Cards with Trends */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Today's Sessions
+              Sessions
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats?.totalSessions || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Sessions completed today
-            </p>
+            <div className="text-3xl font-bold">{analytics?.currentPeriod.sessions || 0}</div>
+            <div className="flex items-center gap-2 mt-2">
+              {getTrendIcon(analytics?.trends.sessionsChange || 0)}
+              <span className={`text-sm ${getTrendColor(analytics?.trends.sessionsChange || 0)}`}>
+                {analytics?.trends.sessionsChange >= 0 ? '+' : ''}{analytics?.trends.sessionsChange?.toFixed(1) || 0}%
+              </span>
+              <span className="text-xs text-muted-foreground">vs previous period</span>
+            </div>
           </CardContent>
         </Card>
 
@@ -71,14 +198,18 @@ const MachineAnalyticsTab = ({ venueId }: MachineAnalyticsTabProps) => {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
-              Today's Revenue
+              Revenue
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">₹{stats?.totalRevenue || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Revenue generated today
-            </p>
+            <div className="text-3xl font-bold">₹{analytics?.currentPeriod.revenue?.toLocaleString() || 0}</div>
+            <div className="flex items-center gap-2 mt-2">
+              {getTrendIcon(analytics?.trends.revenueChange || 0)}
+              <span className={`text-sm ${getTrendColor(analytics?.trends.revenueChange || 0)}`}>
+                {analytics?.trends.revenueChange >= 0 ? '+' : ''}{analytics?.trends.revenueChange?.toFixed(1) || 0}%
+              </span>
+              <span className="text-xs text-muted-foreground">vs previous period</span>
+            </div>
           </CardContent>
         </Card>
 
@@ -91,159 +222,159 @@ const MachineAnalyticsTab = ({ venueId }: MachineAnalyticsTabProps) => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {Math.floor((stats?.avgDuration || 0) / 60)}m
+              {Math.floor((analytics?.currentPeriod.avgDuration || 0) / 60)}m
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Average session length
-            </p>
+            <div className="flex items-center gap-2 mt-2">
+              {getTrendIcon(analytics?.trends.durationChange || 0)}
+              <span className={`text-sm ${getTrendColor(analytics?.trends.durationChange || 0)}`}>
+                {analytics?.trends.durationChange >= 0 ? '+' : ''}{analytics?.trends.durationChange?.toFixed(1) || 0}%
+              </span>
+              <span className="text-xs text-muted-foreground">vs previous period</span>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Machine Status
+              <Users className="h-4 w-4" />
+              Unique Customers
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">Online</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              System operational
-            </p>
+            <div className="text-3xl font-bold">{analytics?.currentPeriod.uniqueCustomers || 0}</div>
+            <div className="flex items-center gap-2 mt-2">
+              {getTrendIcon(analytics?.trends.customersChange || 0)}
+              <span className={`text-sm ${getTrendColor(analytics?.trends.customersChange || 0)}`}>
+                {analytics?.trends.customersChange >= 0 ? '+' : ''}{analytics?.trends.customersChange?.toFixed(1) || 0}%
+              </span>
+              <span className="text-xs text-muted-foreground">vs previous period</span>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Sessions Table */}
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Time Distribution Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Session Distribution</CardTitle>
+            <CardDescription>
+              Sessions and revenue over time
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={analytics?.timeDistribution || []}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="period" />
+                <YAxis yAxisId="left" />
+                <YAxis yAxisId="right" orientation="right" />
+                <Tooltip />
+                <Area 
+                  yAxisId="left"
+                  type="monotone" 
+                  dataKey="sessions" 
+                  stackId="1"
+                  stroke="#00eaff" 
+                  fill="#00eaff" 
+                  fillOpacity={0.3}
+                />
+                <Line 
+                  yAxisId="right"
+                  type="monotone" 
+                  dataKey="revenue" 
+                  stroke="#ff6b6b" 
+                  strokeWidth={2}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Sessions by Hour */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Peak Hours</CardTitle>
+            <CardDescription>
+              Session distribution by hour of day
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={analytics?.sessionsByHour || []}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="hour" 
+                  tickFormatter={(hour) => `${hour}:00`}
+                />
+                <YAxis />
+                <Tooltip 
+                  labelFormatter={(hour) => `${hour}:00 - ${hour + 1}:00`}
+                />
+                <Bar 
+                  dataKey="sessions" 
+                  fill="#00eaff" 
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Game Performance Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Sessions</CardTitle>
+          <CardTitle>Game Performance</CardTitle>
           <CardDescription>
-            Latest VR gaming sessions on this machine
+            Top performing games for the selected period
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Session ID</TableHead>
                 <TableHead>Game</TableHead>
-                <TableHead>Start Time</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Payment Method</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Sessions</TableHead>
+                <TableHead className="text-right">Revenue</TableHead>
+                <TableHead className="text-right">Avg Duration</TableHead>
+                <TableHead className="text-right">Performance</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sessions && sessions.length > 0 ? (
-                sessions.slice(0, 20).map((session) => (
-                  <TableRow key={session.id}>
-                    <TableCell className="font-mono text-xs">
-                      {session.session_id || session.id.split('-')[0]}
-                    </TableCell>
-                    <TableCell className="font-medium">{session.game_title}</TableCell>
-                    <TableCell>{format(new Date(session.start_time), 'MMM d, HH:mm:ss')}</TableCell>
-                    <TableCell>
-                      {session.duration_seconds 
-                        ? `${Math.floor(session.duration_seconds / 60)}m ${session.duration_seconds % 60}s`
-                        : 'In progress'
-                      }
-                    </TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        session.payment_method === 'rfid' 
-                          ? 'bg-blue-100 text-blue-800' 
-                          : 'bg-purple-100 text-purple-800'
-                      }`}>
-                        {session.payment_method?.toUpperCase() || 'N/A'}
-                      </span>
-                    </TableCell>
-                    <TableCell>₹{session.amount_paid || 0}</TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        session.status === 'completed' 
-                          ? 'bg-green-100 text-green-800' 
-                          : session.status === 'active'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {session.status}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    No sessions found. Start a VR session to see analytics data.
+              {analytics?.gamePerformance?.slice(0, 10).map((game, index) => (
+                <TableRow key={game.gameId}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">#{index + 1}</Badge>
+                      {game.gameTitle}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">{game.sessions}</TableCell>
+                  <TableCell className="text-right">₹{game.revenue.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">
+                    {Math.round(game.avgDuration / 60)}m
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <div className="w-16 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-vr-primary h-2 rounded-full" 
+                          style={{ 
+                            width: `${Math.min((game.sessions / (analytics?.gamePerformance?.[0]?.sessions || 1)) * 100, 100)}%` 
+                          }}
+                        />
+                      </div>
+                    </div>
                   </TableCell>
                 </TableRow>
-              )}
+              ))}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
-
-      {/* Session History by Game */}
-      {sessions && sessions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Game Performance</CardTitle>
-            <CardDescription>
-              Session statistics by game
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Game</TableHead>
-                  <TableHead className="text-right">Total Sessions</TableHead>
-                  <TableHead className="text-right">Total Revenue</TableHead>
-                  <TableHead className="text-right">Avg Duration</TableHead>
-                  <TableHead className="text-right">Last Played</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Object.entries(
-                  sessions.reduce((acc, session) => {
-                    const gameTitle = session.game_title || 'Unknown Game';
-                    if (!acc[gameTitle]) {
-                      acc[gameTitle] = {
-                        sessions: 0,
-                        revenue: 0,
-                        totalDuration: 0,
-                        lastPlayed: session.start_time
-                      };
-                    }
-                    acc[gameTitle].sessions += 1;
-                    acc[gameTitle].revenue += session.amount_paid || 0;
-                    acc[gameTitle].totalDuration += session.duration_seconds || 0;
-                    if (new Date(session.start_time) > new Date(acc[gameTitle].lastPlayed)) {
-                      acc[gameTitle].lastPlayed = session.start_time;
-                    }
-                    return acc;
-                  }, {} as Record<string, any>)
-                ).map(([game, stats]) => (
-                  <TableRow key={game}>
-                    <TableCell className="font-medium">{game}</TableCell>
-                    <TableCell className="text-right">{stats.sessions}</TableCell>
-                    <TableCell className="text-right">₹{stats.revenue}</TableCell>
-                    <TableCell className="text-right">
-                      {Math.floor(stats.totalDuration / stats.sessions / 60)}m
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {format(new Date(stats.lastPlayed), 'MMM d, HH:mm')}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
