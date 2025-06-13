@@ -36,7 +36,7 @@ function App() {
                 <Route path="/" element={<Index />} />
                 <Route path="/games" element={<Games />} />
                 <Route path="/games/:id" element={<GameDetail />} />
-                <Route path="/session/:sessionId" element={<Session />} />
+                <Route path="/session" element={<Session />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/super-admin" element={<SuperAdmin />} />
                 <Route path="/machine-admin" element={<MachineAdmin />} />
