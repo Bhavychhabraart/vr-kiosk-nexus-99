@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,9 +14,11 @@ import {
   Clock,
   Settings,
   Wifi,
-  Monitor
+  Monitor,
+  Loader2
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSupportTickets } from "@/hooks/useSupportTickets";
 
 interface MachineSupportTabProps {
   venueId: string;
@@ -31,10 +32,49 @@ const MachineSupportTab = ({ venueId }: MachineSupportTabProps) => {
     priority: "medium"
   });
 
+  const { tickets, isLoading, createTicket, isCreating } = useSupportTickets(venueId);
+
   const handleSubmitTicket = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle ticket submission here
-    console.log("Submitting ticket for venue:", venueId, ticketForm);
+    if (!ticketForm.title.trim() || !ticketForm.description.trim() || !ticketForm.category) {
+      return;
+    }
+
+    createTicket({
+      title: ticketForm.title,
+      description: ticketForm.description,
+      category: ticketForm.category,
+      priority: ticketForm.priority,
+      venue_id: venueId,
+    });
+
+    // Clear form after submission
+    setTicketForm({
+      title: "",
+      description: "",
+      category: "",
+      priority: "medium"
+    });
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'bg-red-500';
+      case 'high': return 'bg-orange-500';
+      case 'medium': return 'bg-yellow-500';
+      case 'low': return 'bg-green-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'open': return 'bg-blue-500';
+      case 'in_progress': return 'bg-yellow-500';
+      case 'resolved': return 'bg-green-500';
+      case 'closed': return 'bg-gray-500';
+      default: return 'bg-gray-500';
+    }
   };
 
   const commonIssues = [
@@ -130,6 +170,8 @@ const MachineSupportTab = ({ venueId }: MachineSupportTabProps) => {
                   value={ticketForm.title}
                   onChange={(e) => setTicketForm(prev => ({ ...prev, title: e.target.value }))}
                   placeholder="Brief description of the issue"
+                  disabled={isCreating}
+                  required
                 />
               </div>
 
@@ -138,6 +180,8 @@ const MachineSupportTab = ({ venueId }: MachineSupportTabProps) => {
                 <Select 
                   value={ticketForm.category} 
                   onValueChange={(value) => setTicketForm(prev => ({ ...prev, category: value }))}
+                  disabled={isCreating}
+                  required
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select issue category" />
@@ -158,6 +202,7 @@ const MachineSupportTab = ({ venueId }: MachineSupportTabProps) => {
                 <Select 
                   value={ticketForm.priority} 
                   onValueChange={(value) => setTicketForm(prev => ({ ...prev, priority: value }))}
+                  disabled={isCreating}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -179,11 +224,20 @@ const MachineSupportTab = ({ venueId }: MachineSupportTabProps) => {
                   onChange={(e) => setTicketForm(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Detailed description of the issue, steps to reproduce, etc."
                   rows={4}
+                  disabled={isCreating}
+                  required
                 />
               </div>
 
-              <Button type="submit" className="w-full">
-                Submit Support Ticket
+              <Button type="submit" className="w-full" disabled={isCreating}>
+                {isCreating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Ticket...
+                  </>
+                ) : (
+                  'Submit Support Ticket'
+                )}
               </Button>
             </form>
           </CardContent>
@@ -241,6 +295,49 @@ const MachineSupportTab = ({ venueId }: MachineSupportTabProps) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Support Tickets */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Support Tickets</CardTitle>
+          <CardDescription>
+            Your submitted tickets and their current status
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : tickets && tickets.length > 0 ? (
+            <div className="space-y-4">
+              {tickets.slice(0, 5).map((ticket) => (
+                <div key={ticket.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium">{ticket.ticket_number}</span>
+                      <Badge className={`text-white ${getPriorityColor(ticket.priority)}`}>
+                        {ticket.priority}
+                      </Badge>
+                      <Badge className={`text-white ${getStatusColor(ticket.status)}`}>
+                        {ticket.status}
+                      </Badge>
+                    </div>
+                    <h4 className="font-medium">{ticket.title}</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {ticket.category} • {new Date(ticket.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">
+              No support tickets found. Create your first ticket above.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Common Issues & Solutions */}
       <Card>

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,7 +17,8 @@ import {
   CreditCard,
   Crown,
   LogOut,
-  Settings
+  Settings,
+  Headphones
 } from "lucide-react";
 
 // Import existing tab components
@@ -32,6 +34,7 @@ import UserSetupCheck from "@/components/admin/UserSetupCheck";
 import PendingUsersMonitor from "@/components/admin/PendingUsersMonitor";
 import ManualRoleAssignment from "@/components/admin/ManualRoleAssignment";
 import QuickUserSetup from "@/components/admin/QuickUserSetup";
+import SupportTicketManagement from "@/components/superadmin/SupportTicketManagement";
 
 const SuperAdmin = () => {
   const { user, signOut } = useAuth();
@@ -101,35 +104,9 @@ const SuperAdmin = () => {
           </div>
         </div>
 
-        {/* Debug Info Card - Remove this after debugging */}
-        <Card className="border-yellow-200 bg-yellow-50">
-          <CardHeader>
-            <CardTitle className="text-yellow-800">Debug Information</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-yellow-700">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p><strong>User ID:</strong> {user?.id}</p>
-                <p><strong>Email:</strong> {user?.email}</p>
-                <p><strong>Is Super Admin:</strong> {isSuperAdmin ? 'Yes' : 'No'}</p>
-              </div>
-              <div>
-                <p><strong>User Roles:</strong> {userRoles?.length || 0}</p>
-                <p><strong>User Venues:</strong> {userVenues?.length || 0}</p>
-                <p><strong>Loading:</strong> {isLoading ? 'Yes' : 'No'}</p>
-              </div>
-            </div>
-            {userRoles && userRoles.length > 0 && (
-              <div className="mt-2">
-                <p><strong>Roles:</strong> {userRoles.map(r => r.role).join(', ')}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-9">
+          <TabsList className="grid w-full grid-cols-10">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               Overview
@@ -157,6 +134,10 @@ const SuperAdmin = () => {
             <TabsTrigger value="subscriptions" className="flex items-center gap-2">
               <CreditCard className="w-4 h-4" />
               Subscriptions
+            </TabsTrigger>
+            <TabsTrigger value="support" className="flex items-center gap-2">
+              <Headphones className="w-4 h-4" />
+              Support
             </TabsTrigger>
             <TabsTrigger value="notifications" className="flex items-center gap-2">
               <Bell className="w-4 h-4" />
@@ -242,6 +223,10 @@ const SuperAdmin = () => {
 
           <TabsContent value="subscriptions" className="space-y-6">
             <SubscriptionManagement />
+          </TabsContent>
+
+          <TabsContent value="support" className="space-y-6">
+            <SupportTicketManagement />
           </TabsContent>
 
           <TabsContent value="notifications" className="space-y-6">

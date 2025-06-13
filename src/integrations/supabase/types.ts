@@ -1240,6 +1240,7 @@ export type Database = {
       support_tickets: {
         Row: {
           assigned_to: string | null
+          assigned_to_user_id: string | null
           attachments: Json | null
           category: string
           created_at: string | null
@@ -1250,12 +1251,14 @@ export type Database = {
           resolution: string | null
           resolved_at: string | null
           status: string | null
+          ticket_number: string | null
           title: string
           updated_at: string | null
           venue_id: string | null
         }
         Insert: {
           assigned_to?: string | null
+          assigned_to_user_id?: string | null
           attachments?: Json | null
           category: string
           created_at?: string | null
@@ -1266,12 +1269,14 @@ export type Database = {
           resolution?: string | null
           resolved_at?: string | null
           status?: string | null
+          ticket_number?: string | null
           title: string
           updated_at?: string | null
           venue_id?: string | null
         }
         Update: {
           assigned_to?: string | null
+          assigned_to_user_id?: string | null
           attachments?: Json | null
           category?: string
           created_at?: string | null
@@ -1282,6 +1287,7 @@ export type Database = {
           resolution?: string | null
           resolved_at?: string | null
           status?: string | null
+          ticket_number?: string | null
           title?: string
           updated_at?: string | null
           venue_id?: string | null
@@ -1607,6 +1613,10 @@ export type Database = {
         Returns: Json
       }
       generate_machine_serial: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_ticket_number: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
