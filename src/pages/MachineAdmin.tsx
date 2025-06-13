@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useMachineVenue } from "@/hooks/useMachineVenue";
+import { RefreshProvider } from "@/contexts/RefreshContext";
 import MachineAuthLogin from "@/components/auth/MachineAuthLogin";
 import MainLayout from "@/components/layout/MainLayout";
 import AdminPinProtection from "@/components/admin/AdminPinProtection";
@@ -48,11 +49,13 @@ const MachineAdmin = () => {
   // Show loading while checking authentication and roles
   if (rolesLoading || venueLoading) {
     return (
-      <MainLayout backgroundVariant="grid" withPattern intensity="low">
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-vr-primary"></div>
-        </div>
-      </MainLayout>
+      <RefreshProvider>
+        <MainLayout backgroundVariant="grid" withPattern intensity="low">
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-vr-primary"></div>
+          </div>
+        </MainLayout>
+      </RefreshProvider>
     );
   }
 
@@ -64,19 +67,21 @@ const MachineAdmin = () => {
   // If no venue data available, show error
   if (!machineVenueData && !hasMultipleVenues) {
     return (
-      <MainLayout backgroundVariant="grid" withPattern intensity="low">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-red-600">No Venue Access</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-red-600">You don't have access to any venues. Please contact your administrator.</p>
-            <Button onClick={signOut} className="mt-4">
-              Logout
-            </Button>
-          </CardContent>
-        </Card>
-      </MainLayout>
+      <RefreshProvider>
+        <MainLayout backgroundVariant="grid" withPattern intensity="low">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-red-600">No Venue Access</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-red-600">You don't have access to any venues. Please contact your administrator.</p>
+              <Button onClick={signOut} className="mt-4">
+                Logout
+              </Button>
+            </CardContent>
+          </Card>
+        </MainLayout>
+      </RefreshProvider>
     );
   }
 
@@ -92,68 +97,72 @@ const MachineAdmin = () => {
   // If multiple venues but none selected, show venue selector
   if (hasMultipleVenues && !selectedVenueId) {
     return (
-      <MainLayout backgroundVariant="grid" withPattern intensity="low">
-        <div className="space-y-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-vr-primary to-vr-secondary bg-clip-text text-transparent">
-                Select Your Venue
-              </h1>
-              <p className="text-vr-muted mt-2">Choose which venue you want to manage</p>
+      <RefreshProvider>
+        <MainLayout backgroundVariant="grid" withPattern intensity="low">
+          <div className="space-y-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-vr-primary to-vr-secondary bg-clip-text text-transparent">
+                  Select Your Venue
+                </h1>
+                <p className="text-vr-muted mt-2">Choose which venue you want to manage</p>
+              </div>
+              <Button variant="outline" onClick={signOut} className="flex items-center gap-2">
+                <LogOut className="w-4 h-4" />
+                Logout
+              </Button>
             </div>
-            <Button variant="outline" onClick={signOut} className="flex items-center gap-2">
-              <LogOut className="w-4 h-4" />
-              Logout
-            </Button>
-          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Available Venues</CardTitle>
-              <CardDescription>
-                You have access to multiple venues. Select one to manage.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Select value={selectedVenueId} onValueChange={setSelectedVenueId}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Choose a venue to manage..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {userVenues?.map((venue) => (
-                    <SelectItem key={venue.id} value={venue.id}>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4" />
-                        <span className="font-medium">{venue.name}</span>
-                        <span className="text-muted-foreground">({venue.city})</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-        </div>
-      </MainLayout>
+            <Card>
+              <CardHeader>
+                <CardTitle>Available Venues</CardTitle>
+                <CardDescription>
+                  You have access to multiple venues. Select one to manage.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Select value={selectedVenueId} onValueChange={setSelectedVenueId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Choose a venue to manage..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {userVenues?.map((venue) => (
+                      <SelectItem key={venue.id} value={venue.id}>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="w-4 h-4" />
+                          <span className="font-medium">{venue.name}</span>
+                          <span className="text-muted-foreground">({venue.city})</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
+          </div>
+        </MainLayout>
+      </RefreshProvider>
     );
   }
 
   if (!currentVenue) {
     return (
-      <MainLayout backgroundVariant="grid" withPattern intensity="low">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-red-600">Venue Not Found</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-red-600">Selected venue could not be found.</p>
-          </CardContent>
-        </Card>
-      </MainLayout>
+      <RefreshProvider>
+        <MainLayout backgroundVariant="grid" withPattern intensity="low">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-red-600">Venue Not Found</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-red-600">Selected venue could not be found.</p>
+            </CardContent>
+          </Card>
+        </MainLayout>
+      </RefreshProvider>
     );
   }
 
-  // Wrap admin content with PIN protection
+  // Wrap admin content with PIN protection and refresh provider
   const AdminContent = () => (
     <div className="space-y-8">
       {/* Header with Machine Info */}
@@ -314,14 +323,16 @@ const MachineAdmin = () => {
   );
 
   return (
-    <MainLayout backgroundVariant="grid" withPattern intensity="low">
-      <AdminPinProtection 
-        venueId={currentVenue.id} 
-        onSuccess={() => setIsAdminAuthenticated(true)}
-      >
-        <AdminContent />
-      </AdminPinProtection>
-    </MainLayout>
+    <RefreshProvider>
+      <MainLayout backgroundVariant="grid" withPattern intensity="low">
+        <AdminPinProtection 
+          venueId={currentVenue.id} 
+          onSuccess={() => setIsAdminAuthenticated(true)}
+        >
+          <AdminContent />
+        </AdminPinProtection>
+      </MainLayout>
+    </RefreshProvider>
   );
 };
 
