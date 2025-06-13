@@ -129,7 +129,7 @@ export const EnhancedRFIDInput = ({
                 onKeyDown={handleKeyDown}
                 className={`
                   mt-1 bg-vr-dark/50 border-vr-primary/30 pr-12 transition-all duration-200
-                  ${isScanning || isLoading ? 'border-vr-primary glow-border' : ''}
+                  ${isScanning || isLoading ? 'border-vr-primary shadow-[0_0_10px_rgba(139,92,246,0.3)]' : ''}
                   ${cardInput.trim() ? 'border-green-500/50' : ''}
                 `}
                 disabled={isLoading || isScanning}
@@ -255,12 +255,6 @@ export const EnhancedRFIDInput = ({
           </AnimatePresence>
         </Button>
       </form>
-
-      <style jsx>{`
-        .glow-border {
-          box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
-        }
-      `}</style>
     </div>
   );
 };

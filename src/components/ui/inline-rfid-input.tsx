@@ -114,7 +114,7 @@ export const InlineRFIDInput = ({
               disabled={isLoading || disabled || isScanning}
               className={`
                 bg-black/50 border-gray-600 text-white pr-10 transition-all duration-200
-                ${isScanning ? 'border-vr-primary glow-border' : ''}
+                ${isScanning ? 'border-vr-primary shadow-[0_0_8px_rgba(139,92,246,0.3)]' : ''}
                 ${cardInput.trim() ? 'border-green-500/50' : ''}
               `}
               autoComplete="off"
@@ -244,12 +244,6 @@ export const InlineRFIDInput = ({
       >
         Auto-scans after {autoSubmitDelay / 1000}s • Press Enter to scan immediately
       </motion.p>
-
-      <style jsx>{`
-        .glow-border {
-          box-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
-        }
-      `}</style>
     </div>
   );
 };
