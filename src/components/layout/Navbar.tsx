@@ -22,7 +22,6 @@ const Navbar = () => {
   }, []);
 
   const isActive = (path: string) => location.pathname === path;
-  const isAdminArea = location.pathname.includes('/admin') || location.pathname.includes('/machine-admin');
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? "bg-vr-dark/90 backdrop-blur-lg shadow-md" : "bg-transparent"}`}>
@@ -49,19 +48,17 @@ const Navbar = () => {
             <NavItem to="/games" icon={<Grid size={18} />} label="Games" active={isActive("/games")} />
             <NavItem to="/admin" icon={<Settings size={18} />} label="Admin" active={isActive("/admin")} />
             
-            {/* Global Refresh Button - only show in admin areas */}
-            {isAdminArea && (
-              <Button
-                onClick={triggerRefresh}
-                variant="outline"
-                size="sm"
-                disabled={isRefreshing}
-                className="flex items-center gap-2 ml-2"
-              >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-            )}
+            {/* Global Refresh Button - now visible on all screens */}
+            <Button
+              onClick={triggerRefresh}
+              variant="outline"
+              size="sm"
+              disabled={isRefreshing}
+              className="flex items-center gap-2 ml-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </div>
         </div>
       </div>
@@ -73,24 +70,22 @@ const Navbar = () => {
           <MobileNavItem to="/games" icon={<Grid size={18} />} label="Games" onClick={toggleMenu} active={isActive("/games")} />
           <MobileNavItem to="/admin" icon={<Settings size={18} />} label="Admin" onClick={toggleMenu} active={isActive("/admin")} />
           
-          {/* Mobile Refresh Button - only show in admin areas */}
-          {isAdminArea && (
-            <div className="px-4 py-3 border-b border-vr-primary/10">
-              <Button
-                onClick={() => {
-                  triggerRefresh();
-                  toggleMenu();
-                }}
-                variant="outline"
-                size="sm"
-                disabled={isRefreshing}
-                className="flex items-center gap-2 w-full"
-              >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Refresh Data
-              </Button>
-            </div>
-          )}
+          {/* Mobile Refresh Button - now visible on all screens */}
+          <div className="px-4 py-3 border-b border-vr-primary/10">
+            <Button
+              onClick={() => {
+                triggerRefresh();
+                toggleMenu();
+              }}
+              variant="outline"
+              size="sm"
+              disabled={isRefreshing}
+              className="flex items-center gap-2 w-full"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh Data
+            </Button>
+          </div>
         </div>
       )}
     </nav>
