@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -11,7 +12,8 @@ import {
   Clock,
   GamepadIcon,
   ArrowLeft,
-  Zap
+  Zap,
+  RefreshCw
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { useLaunchOptions } from "@/hooks/useLaunchOptions";
@@ -20,12 +22,14 @@ import { useUserRoles } from "@/hooks/useUserRoles";
 import useCommandCenter from "@/hooks/useCommandCenter";
 import { useSessionTracking } from "@/hooks/useSessionTracking";
 import { EnhancedRFIDInput } from "@/components/ui/enhanced-rfid-input";
+import { useRefresh } from "@/contexts/RefreshContext";
 
 const LaunchOptions = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { games } = useGames();
   const { userVenues } = useUserRoles();
+  const { isRefreshing, triggerRefresh } = useRefresh();
   
   // Get parameters from URL search params
   const gameId = searchParams.get("gameId");
@@ -260,8 +264,8 @@ const LaunchOptions = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 p-4">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
+        {/* Header with Back Button and Refresh */}
+        <div className="flex items-center justify-between mb-8">
           <Button
             variant="ghost"
             onClick={() => navigate('/games')}
@@ -269,6 +273,17 @@ const LaunchOptions = () => {
           >
             <ArrowLeft className="h-5 w-5 mr-2" />
             Back to Games
+          </Button>
+          
+          <Button
+            onClick={triggerRefresh}
+            variant="outline"
+            size="sm"
+            disabled={isRefreshing}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
         </div>
 
