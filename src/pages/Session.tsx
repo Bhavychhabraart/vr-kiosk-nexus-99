@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,7 @@ const Session = () => {
   const gameId = searchParams.get("gameId");
   const gameTitle = searchParams.get("title") || "VR Game";
   const sessionDuration = parseInt(searchParams.get("duration") || "300");
-  const sessionId = searchParams.get("sessionId");
+  const sessionId = searchParams.get("sessionId"); // Get sessionId from URL
   const rfidTag = searchParams.get("rfidTag");
   
   // Find the game data from the games list
@@ -50,7 +51,6 @@ const Session = () => {
     endSession, 
     serverStatus,
     isLaunching,
-    currentSessionId,
     submitRating
   } = useCommandCenter({
     onStatusChange: (status) => {
@@ -155,7 +155,8 @@ const Session = () => {
 
   const handleEndSession = async () => {
     try {
-      await endSession(sessionRating > 0 ? sessionRating : undefined);
+      // Pass the sessionId from URL parameters to endSession
+      await endSession(sessionRating > 0 ? sessionRating : undefined, sessionId || undefined);
       if (sessionRating === 0) {
         setShowRating(true);
       } else {
@@ -311,7 +312,7 @@ const Session = () => {
         </div>
 
         {/* Session Info */}
-        {currentSessionId && (
+        {sessionId && (
           <Card className="bg-black/80 border-gray-600">
             <CardHeader>
               <CardTitle className="text-white">Session Details</CardTitle>
@@ -320,7 +321,7 @@ const Session = () => {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-400">Session ID:</span>
-                  <span className="ml-2 text-white font-mono">{currentSessionId}</span>
+                  <span className="ml-2 text-white font-mono">{sessionId}</span>
                 </div>
                 <div>
                   <span className="text-gray-400">Payment Method:</span>

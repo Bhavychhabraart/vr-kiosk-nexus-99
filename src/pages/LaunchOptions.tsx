@@ -159,12 +159,12 @@ const LaunchOptions = () => {
       // For tap to start, launch immediately
       await launchGame(gameData.id, durationSeconds, paymentData);
       
-      // Navigate to session page
+      // Navigate to session page with sessionId
       const sessionParams = new URLSearchParams({
         gameId: gameData.id,
         title: gameData.title,
         duration: durationSeconds.toString(),
-        sessionId,
+        sessionId, // Pass the sessionId
         venueId,
       });
       navigate(`/session?${sessionParams.toString()}`);
@@ -208,12 +208,12 @@ const LaunchOptions = () => {
         description: `Card ${rfidTag.substring(0, 8)}... validated successfully`,
       });
       
-      // Navigate to session page
+      // Navigate to session page with sessionId
       const sessionParams = new URLSearchParams({
         gameId: gameData.id,
         title: gameData.title,
         duration: durationSeconds.toString(),
-        sessionId,
+        sessionId, // Pass the sessionId
         rfidTag: rfidTag,
         venueId,
       });
@@ -259,7 +259,7 @@ const LaunchOptions = () => {
               {error ? error.message : !venueId ? "No venue assigned to your account" : "Launch options not available"}
             </p>
             <Button onClick={() => navigate('/games')} variant="outline">
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="h-5 w-5 mr-2" />
               Back to Games
             </Button>
           </CardContent>
