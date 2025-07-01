@@ -27,8 +27,11 @@ const Session = () => {
   const sessionId = searchParams.get("sessionId"); // Get sessionId from URL
   const rfidTag = searchParams.get("rfidTag");
   
+  console.log('=== SESSION COMPONENT INIT ===');
   console.log('Session component - sessionId from URL:', sessionId);
   console.log('Session component - rfidTag from URL:', rfidTag);
+  console.log('Session component - gameId from URL:', gameId);
+  console.log('Session component - duration from URL:', sessionDuration);
   
   // Find the game data from the games list
   const gameData = games?.find(game => game.id === gameId);
@@ -157,11 +160,24 @@ const Session = () => {
 
   const handleEndSession = async () => {
     try {
+      console.log('=== HANDLE END SESSION ===');
       console.log('handleEndSession called with sessionId:', sessionId);
       console.log('handleEndSession called with rating:', sessionRating);
+      console.log('RFID tag from URL:', rfidTag);
+      
+      if (!sessionId) {
+        console.error('No sessionId available for ending session');
+        toast({
+          variant: "destructive",
+          title: "Session Error",
+          description: "Session ID not found. Cannot end session properly.",
+        });
+        return;
+      }
       
       // Pass the sessionId from URL parameters to endSession
-      await endSession(sessionRating > 0 ? sessionRating : undefined, sessionId || undefined);
+      // Parameters: (rating, sessionId)
+      await endSession(sessionRating > 0 ? sessionRating : undefined, sessionId);
       
       if (sessionRating === 0) {
         setShowRating(true);
@@ -306,16 +322,21 @@ const Session = () => {
             <CardContent>
               <Button
                 onClick={handleEndSession}
-                disabled={isLaunching}
+                disabled={isLaunching || !sessionId}
                 variant="destructive"
                 className="w-full"
               >
                 <Square className="mr-2 h-4 w-4" />
-                End Session
+                End Session {!sessionId && "(No Session ID)"}
               </Button>
               {sessionId && (
                 <p className="text-xs text-gray-400 mt-2">
                   Session ID: {sessionId.substring(0, 8)}...
+                </p>
+              )}
+              {!sessionId && (
+                <p className="text-xs text-red-400 mt-2">
+                  Warning: Session ID missing - button may not work
                 </p>
               )}
             </CardContent>
