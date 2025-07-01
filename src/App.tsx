@@ -31,7 +31,7 @@ function App() {
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <RefreshProvider>
+            <RefreshProvider queryClient={queryClient}>
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/games" element={<Games />} />

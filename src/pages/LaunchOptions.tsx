@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -13,7 +12,9 @@ import {
   GamepadIcon,
   ArrowLeft,
   Zap,
-  RefreshCw
+  RefreshCw,
+  ChevronDown,
+  RotateCcw
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { useLaunchOptions } from "@/hooks/useLaunchOptions";
@@ -23,13 +24,19 @@ import useCommandCenter from "@/hooks/useCommandCenter";
 import { useSessionTracking } from "@/hooks/useSessionTracking";
 import { EnhancedRFIDInput } from "@/components/ui/enhanced-rfid-input";
 import { useRefresh } from "@/contexts/RefreshContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const LaunchOptions = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { games } = useGames();
   const { userVenues } = useUserRoles();
-  const { isRefreshing, triggerRefresh } = useRefresh();
+  const { isRefreshing, softRefresh, hardRefresh } = useRefresh();
   
   // Get parameters from URL search params
   const gameId = searchParams.get("gameId");
@@ -264,7 +271,7 @@ const LaunchOptions = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 p-4">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header with Back Button and Refresh */}
+        {/* Header with Back Button and Enhanced Refresh */}
         <div className="flex items-center justify-between mb-8">
           <Button
             variant="ghost"
@@ -275,16 +282,30 @@ const LaunchOptions = () => {
             Back to Games
           </Button>
           
-          <Button
-            onClick={triggerRefresh}
-            variant="outline"
-            size="sm"
-            disabled={isRefreshing}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isRefreshing}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={softRefresh} disabled={isRefreshing}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh Data
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={hardRefresh} disabled={isRefreshing}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Restart App
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Game Info */}

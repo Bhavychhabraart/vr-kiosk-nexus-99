@@ -2,14 +2,20 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { PremiumVrIcon } from "../icons/PremiumVrIcon";
-import { Home, Grid, Settings, ChevronRight, Menu, X, RefreshCw } from "lucide-react";
+import { Home, Grid, Settings, ChevronRight, Menu, X, RefreshCw, RotateCcw, ChevronDown } from "lucide-react";
 import { useRefresh } from "@/contexts/RefreshContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
-  const { isRefreshing, triggerRefresh } = useRefresh();
+  const { isRefreshing, softRefresh, hardRefresh } = useRefresh();
   
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   
@@ -48,17 +54,31 @@ const Navbar = () => {
             <NavItem to="/games" icon={<Grid size={18} />} label="Games" active={isActive("/games")} />
             <NavItem to="/admin" icon={<Settings size={18} />} label="Admin" active={isActive("/admin")} />
             
-            {/* Global Refresh Button - now visible on all screens */}
-            <Button
-              onClick={triggerRefresh}
-              variant="outline"
-              size="sm"
-              disabled={isRefreshing}
-              className="flex items-center gap-2 ml-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+            {/* Enhanced Refresh Button with Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isRefreshing}
+                  className="flex items-center gap-2 ml-2"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  Refresh
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={softRefresh} disabled={isRefreshing}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh Data
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={hardRefresh} disabled={isRefreshing}>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Restart App
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
@@ -70,11 +90,11 @@ const Navbar = () => {
           <MobileNavItem to="/games" icon={<Grid size={18} />} label="Games" onClick={toggleMenu} active={isActive("/games")} />
           <MobileNavItem to="/admin" icon={<Settings size={18} />} label="Admin" onClick={toggleMenu} active={isActive("/admin")} />
           
-          {/* Mobile Refresh Button - now visible on all screens */}
-          <div className="px-4 py-3 border-b border-vr-primary/10">
+          {/* Mobile Refresh Options */}
+          <div className="px-4 py-3 border-b border-vr-primary/10 space-y-2">
             <Button
               onClick={() => {
-                triggerRefresh();
+                softRefresh();
                 toggleMenu();
               }}
               variant="outline"
@@ -84,6 +104,19 @@ const Navbar = () => {
             >
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh Data
+            </Button>
+            <Button
+              onClick={() => {
+                hardRefresh();
+                toggleMenu();
+              }}
+              variant="outline"
+              size="sm"
+              disabled={isRefreshing}
+              className="flex items-center gap-2 w-full"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Restart App
             </Button>
           </div>
         </div>
