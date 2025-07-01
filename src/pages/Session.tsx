@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -27,6 +26,9 @@ const Session = () => {
   const sessionDuration = parseInt(searchParams.get("duration") || "300");
   const sessionId = searchParams.get("sessionId"); // Get sessionId from URL
   const rfidTag = searchParams.get("rfidTag");
+  
+  console.log('Session component - sessionId from URL:', sessionId);
+  console.log('Session component - rfidTag from URL:', rfidTag);
   
   // Find the game data from the games list
   const gameData = games?.find(game => game.id === gameId);
@@ -155,8 +157,12 @@ const Session = () => {
 
   const handleEndSession = async () => {
     try {
+      console.log('handleEndSession called with sessionId:', sessionId);
+      console.log('handleEndSession called with rating:', sessionRating);
+      
       // Pass the sessionId from URL parameters to endSession
       await endSession(sessionRating > 0 ? sessionRating : undefined, sessionId || undefined);
+      
       if (sessionRating === 0) {
         setShowRating(true);
       } else {
@@ -307,6 +313,11 @@ const Session = () => {
                 <Square className="mr-2 h-4 w-4" />
                 End Session
               </Button>
+              {sessionId && (
+                <p className="text-xs text-gray-400 mt-2">
+                  Session ID: {sessionId.substring(0, 8)}...
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

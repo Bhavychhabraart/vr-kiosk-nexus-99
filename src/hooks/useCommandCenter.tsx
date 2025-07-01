@@ -158,12 +158,15 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
 
   const endSessionCommand = useCallback(async (rating?: number, sessionId?: string) => {
     try {
+      console.log('Ending session with rating:', rating, 'sessionId:', sessionId);
+      
       const response = await websocketService.sendCommand(CommandType.END_SESSION);
       
       // Use provided sessionId or fallback to currentSessionId
       const sessionToEnd = sessionId || currentSessionId;
       
       if (sessionToEnd) {
+        console.log('Ending session tracking for:', sessionToEnd);
         await endSession(sessionToEnd, rating);
         
         // Clear current session if it matches the ended session
