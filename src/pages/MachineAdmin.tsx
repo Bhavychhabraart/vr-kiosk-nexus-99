@@ -1,8 +1,10 @@
+
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useMachineVenue } from "@/hooks/useMachineVenue";
 import { RefreshProvider } from "@/contexts/RefreshContext";
+import { QueryClient } from "@tanstack/react-query";
 import MachineAuthLogin from "@/components/auth/MachineAuthLogin";
 import MainLayout from "@/components/layout/MainLayout";
 import AdminPinProtection from "@/components/admin/AdminPinProtection";
@@ -46,10 +48,13 @@ const MachineAdmin = () => {
   const [selectedVenueId, setSelectedVenueId] = useState<string>("");
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
 
+  // Create a query client instance for RefreshProvider
+  const queryClient = new QueryClient();
+
   // Show loading while checking authentication and roles
   if (rolesLoading || venueLoading) {
     return (
-      <RefreshProvider>
+      <RefreshProvider queryClient={queryClient}>
         <MainLayout backgroundVariant="grid" withPattern intensity="low">
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-vr-primary"></div>
@@ -59,15 +64,10 @@ const MachineAdmin = () => {
     );
   }
 
-  // If user is not logged in or not a machine admin, show login
-  if (!user || !isMachineAdmin) {
-    return <MachineAuthLogin onSuccess={() => {}} />;
-  }
-
   // If no venue data available, show error
   if (!machineVenueData && !hasMultipleVenues) {
     return (
-      <RefreshProvider>
+      <RefreshProvider queryClient={queryClient}>
         <MainLayout backgroundVariant="grid" withPattern intensity="low">
           <Card>
             <CardHeader>
@@ -97,7 +97,7 @@ const MachineAdmin = () => {
   // If multiple venues but none selected, show venue selector
   if (hasMultipleVenues && !selectedVenueId) {
     return (
-      <RefreshProvider>
+      <RefreshProvider queryClient={queryClient}>
         <MainLayout backgroundVariant="grid" withPattern intensity="low">
           <div className="space-y-8">
             <div className="flex items-center justify-between">
@@ -147,7 +147,7 @@ const MachineAdmin = () => {
 
   if (!currentVenue) {
     return (
-      <RefreshProvider>
+      <RefreshProvider queryClient={queryClient}>
         <MainLayout backgroundVariant="grid" withPattern intensity="low">
           <Card>
             <CardHeader>
@@ -160,6 +160,11 @@ const MachineAdmin = () => {
         </MainLayout>
       </RefreshProvider>
     );
+  }
+
+  // If user is not logged in or not a machine admin, show login
+  if (!user || !isMachineAdmin) {
+    return <MachineAuthLogin onSuccess={() => {}} />;
   }
 
   // Wrap admin content with PIN protection and refresh provider
@@ -323,7 +328,7 @@ const MachineAdmin = () => {
   );
 
   return (
-    <RefreshProvider>
+    <RefreshProvider queryClient={queryClient}>
       <MainLayout backgroundVariant="grid" withPattern intensity="low">
         <AdminPinProtection 
           venueId={currentVenue.id} 
