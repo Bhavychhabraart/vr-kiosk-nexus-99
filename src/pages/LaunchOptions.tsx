@@ -132,13 +132,6 @@ const LaunchOptions = () => {
       const durationSeconds = launchOptions.default_duration_minutes * 60;
       const amount = calculatePrice();
       
-      console.log('=== LAUNCH OPTION FLOW ===');
-      console.log('Option:', option);
-      console.log('Generated sessionId:', sessionId);
-      console.log('Game ID:', gameData.id);
-      console.log('Duration seconds:', durationSeconds);
-      console.log('Venue ID:', venueId);
-      
       let paymentData;
       
       if (option === 'tap') {
@@ -166,16 +159,14 @@ const LaunchOptions = () => {
       // For tap to start, launch immediately
       await launchGame(gameData.id, durationSeconds, paymentData);
       
-      // Navigate to session page with sessionId
+      // Navigate to session page
       const sessionParams = new URLSearchParams({
         gameId: gameData.id,
         title: gameData.title,
         duration: durationSeconds.toString(),
-        sessionId, // Pass the sessionId
+        sessionId,
         venueId,
       });
-      
-      console.log('Navigating to session with params:', sessionParams.toString());
       navigate(`/session?${sessionParams.toString()}`);
       
     } catch (error) {
@@ -196,19 +187,11 @@ const LaunchOptions = () => {
     setIsProcessing(true);
     
     try {
-      console.log('=== RFID SCAN FLOW ===');
       console.log('RFID card scanned:', rfidTag);
       
       const sessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const durationSeconds = launchOptions.default_duration_minutes * 60;
       const amount = calculatePrice();
-      
-      console.log('Generated RFID sessionId:', sessionId);
-      console.log('Game ID:', gameData.id);
-      console.log('Duration seconds:', durationSeconds);
-      console.log('Venue ID:', venueId);
-      console.log('RFID Tag:', rfidTag);
-      console.log('Amount:', amount);
       
       const paymentData = {
         method: 'rfid' as const,
@@ -225,17 +208,15 @@ const LaunchOptions = () => {
         description: `Card ${rfidTag.substring(0, 8)}... validated successfully`,
       });
       
-      // Navigate to session page with sessionId
+      // Navigate to session page
       const sessionParams = new URLSearchParams({
         gameId: gameData.id,
         title: gameData.title,
         duration: durationSeconds.toString(),
-        sessionId, // Pass the sessionId
+        sessionId,
         rfidTag: rfidTag,
         venueId,
       });
-      
-      console.log('RFID - Navigating to session with params:', sessionParams.toString());
       navigate(`/session?${sessionParams.toString()}`);
       
     } catch (error) {
@@ -278,7 +259,7 @@ const LaunchOptions = () => {
               {error ? error.message : !venueId ? "No venue assigned to your account" : "Launch options not available"}
             </p>
             <Button onClick={() => navigate('/games')} variant="outline">
-              <ArrowLeft className="h-5 w-5 mr-2" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Games
             </Button>
           </CardContent>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import websocketService, { 
@@ -156,25 +155,14 @@ const useCommandCenter = (options: CommandCenterOptions = {}) => {
     }
   }, [startSession, getUserVenueId]);
 
-  const endSessionCommand = useCallback(async (rating?: number, sessionId?: string) => {
+  const endSessionCommand = useCallback(async (rating?: number) => {
     try {
-      console.log('Ending session with rating:', rating, 'sessionId:', sessionId);
-      
       const response = await websocketService.sendCommand(CommandType.END_SESSION);
       
-      // Use provided sessionId or fallback to currentSessionId
-      const sessionToEnd = sessionId || currentSessionId;
-      
-      if (sessionToEnd) {
-        console.log('Ending session tracking for:', sessionToEnd);
-        await endSession(sessionToEnd, rating);
-        
-        // Clear current session if it matches the ended session
-        if (sessionToEnd === currentSessionId) {
-          setCurrentSessionId(null);
-        }
-      } else {
-        console.warn('No session ID available for session tracking cleanup');
+      // End session tracking if we have a current session
+      if (currentSessionId) {
+        await endSession(currentSessionId, rating);
+        setCurrentSessionId(null);
       }
       
       toast({

@@ -24,14 +24,8 @@ const Session = () => {
   const gameId = searchParams.get("gameId");
   const gameTitle = searchParams.get("title") || "VR Game";
   const sessionDuration = parseInt(searchParams.get("duration") || "300");
-  const sessionId = searchParams.get("sessionId"); // Get sessionId from URL
+  const sessionId = searchParams.get("sessionId");
   const rfidTag = searchParams.get("rfidTag");
-  
-  console.log('=== SESSION COMPONENT INIT ===');
-  console.log('Session component - sessionId from URL:', sessionId);
-  console.log('Session component - rfidTag from URL:', rfidTag);
-  console.log('Session component - gameId from URL:', gameId);
-  console.log('Session component - duration from URL:', sessionDuration);
   
   // Find the game data from the games list
   const gameData = games?.find(game => game.id === gameId);
@@ -56,6 +50,7 @@ const Session = () => {
     endSession, 
     serverStatus,
     isLaunching,
+    currentSessionId,
     submitRating
   } = useCommandCenter({
     onStatusChange: (status) => {
@@ -160,25 +155,7 @@ const Session = () => {
 
   const handleEndSession = async () => {
     try {
-      console.log('=== HANDLE END SESSION ===');
-      console.log('handleEndSession called with sessionId:', sessionId);
-      console.log('handleEndSession called with rating:', sessionRating);
-      console.log('RFID tag from URL:', rfidTag);
-      
-      if (!sessionId) {
-        console.error('No sessionId available for ending session');
-        toast({
-          variant: "destructive",
-          title: "Session Error",
-          description: "Session ID not found. Cannot end session properly.",
-        });
-        return;
-      }
-      
-      // Pass the sessionId from URL parameters to endSession
-      // Parameters: (rating, sessionId)
-      await endSession(sessionRating > 0 ? sessionRating : undefined, sessionId);
-      
+      await endSession(sessionRating > 0 ? sessionRating : undefined);
       if (sessionRating === 0) {
         setShowRating(true);
       } else {
@@ -322,29 +299,19 @@ const Session = () => {
             <CardContent>
               <Button
                 onClick={handleEndSession}
-                disabled={isLaunching || !sessionId}
+                disabled={isLaunching}
                 variant="destructive"
                 className="w-full"
               >
                 <Square className="mr-2 h-4 w-4" />
-                End Session {!sessionId && "(No Session ID)"}
+                End Session
               </Button>
-              {sessionId && (
-                <p className="text-xs text-gray-400 mt-2">
-                  Session ID: {sessionId.substring(0, 8)}...
-                </p>
-              )}
-              {!sessionId && (
-                <p className="text-xs text-red-400 mt-2">
-                  Warning: Session ID missing - button may not work
-                </p>
-              )}
             </CardContent>
           </Card>
         </div>
 
         {/* Session Info */}
-        {sessionId && (
+        {currentSessionId && (
           <Card className="bg-black/80 border-gray-600">
             <CardHeader>
               <CardTitle className="text-white">Session Details</CardTitle>
@@ -353,7 +320,7 @@ const Session = () => {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-400">Session ID:</span>
-                  <span className="ml-2 text-white font-mono">{sessionId}</span>
+                  <span className="ml-2 text-white font-mono">{currentSessionId}</span>
                 </div>
                 <div>
                   <span className="text-gray-400">Payment Method:</span>
