@@ -35,6 +35,7 @@ import ManualRoleAssignment from "@/components/admin/ManualRoleAssignment";
 import QuickUserSetup from "@/components/admin/QuickUserSetup";
 import SupportTicketManagement from "@/components/superadmin/SupportTicketManagement";
 import QuickSetupUser from "@/components/admin/QuickSetupUser";
+import AutoSetupNotification from "@/components/admin/AutoSetupNotification";
 
 const SuperAdmin = () => {
   const { user, signOut } = useAuth();
@@ -82,6 +83,9 @@ const SuperAdmin = () => {
   return (
     <MainLayout backgroundVariant="grid" withPattern intensity="low">
       <div className="space-y-8">
+        {/* Auto Setup Notification */}
+        <AutoSetupNotification />
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>

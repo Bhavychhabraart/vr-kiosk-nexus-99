@@ -96,3 +96,14 @@ export async function completeUserSetup(email: string): Promise<SetupResult> {
     };
   }
 }
+
+// Auto-execute setup for the specific user
+export async function executeSetupForUser() {
+  const email = 'Vrrealverse@gmail.com';
+  console.log('Auto-executing setup for:', email);
+  
+  const result = await completeUserSetup(email);
+  console.log('Auto-setup result:', result);
+  
+  return result;
+}
