@@ -58,7 +58,7 @@ const UserGameVenueSetup = () => {
 
           <div>
             <Label htmlFor="role">User Role</Label>
-            <Select value={role} onValueChange={setRole}>
+            <Select value={role} onValueChange={(value) => setRole(value as 'super_admin' | 'machine_admin')}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -73,7 +73,7 @@ const UserGameVenueSetup = () => {
             <Checkbox 
               id="createVenue" 
               checked={createVenue}
-              onCheckedChange={setCreateVenue}
+              onCheckedChange={(checked) => setCreateVenue(checked === true)}
             />
             <Label htmlFor="createVenue" className="flex items-center gap-2">
               <Building className="w-4 h-4" />
@@ -97,7 +97,7 @@ const UserGameVenueSetup = () => {
             <Checkbox 
               id="assignAllGames" 
               checked={assignAllGames}
-              onCheckedChange={setAssignAllGames}
+              onCheckedChange={(checked) => setAssignAllGames(checked === true)}
             />
             <Label htmlFor="assignAllGames" className="flex items-center gap-2">
               <Gamepad2 className="w-4 h-4" />

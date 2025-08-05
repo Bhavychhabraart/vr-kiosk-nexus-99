@@ -1,12 +1,12 @@
 
-import { completeUserSetup } from './completeUserSetup';
+import { setupVrRealverseUser } from './setupSpecificUser';
 
 export async function executeSetupForUser() {
   try {
-    console.log('Auto-executing user setup...');
+    console.log('Auto-executing user setup for vrrealverse@gmail.com...');
     
     // Execute setup for the specific user
-    const result = await completeUserSetup('Vrrealverse@gmail.com');
+    const result = await setupVrRealverseUser();
     
     if (result.success) {
       console.log('✅ Auto-setup completed successfully:', result.message);
@@ -15,6 +15,7 @@ export async function executeSetupForUser() {
       localStorage.setItem('autoSetupResult', JSON.stringify({
         success: true,
         message: result.message,
+        venue_id: result.venue_id,
         timestamp: new Date().toISOString()
       }));
     } else {
