@@ -1,70 +1,72 @@
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { useMutation } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
-export function useAdminPassword() {
-  const queryClient = useQueryClient();
+interface PasswordResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
 
+export const useAdminPassword = () => {
+  // Set admin password
   const setAdminPassword = useMutation({
-    mutationFn: async ({ venueId, password, enabled }: { venueId: string; password: string; enabled: boolean }) => {
-      // Use the set_admin_password function which should handle hashing internally
-      const { data, error } = await supabase
-        .rpc('set_admin_password', {
-          p_venue_id: venueId,
-          p_password: password,
-          p_enabled: enabled
-        });
-
-      if (error) {
-        throw error;
-      }
-
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['venue-settings'] });
-      toast({
-        title: "Password Updated",
-        description: "Admin password has been securely updated",
+    mutationFn: async ({ venueId, password, enabled }: {
+      venueId: string;
+      password: string;
+      enabled: boolean;
+    }) => {
+      const { data, error } = await supabase.rpc('set_admin_password', {
+        p_venue_id: venueId,
+        p_password: password,
+        p_enabled: enabled
       });
+
+      if (error) throw error;
+      return data as unknown as PasswordResponse;
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: data.message || "Password updated successfully"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to update password",
+          variant: "destructive"
+        });
+      }
     },
     onError: (error) => {
       toast({
-        title: "Error updating password",
+        title: "Error",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   });
 
+  // Verify admin password
   const verifyAdminPassword = useMutation({
-    mutationFn: async ({ venueId, password }: { venueId: string; password: string }) => {
-      const { data: isValid, error } = await supabase
-        .rpc('verify_admin_password', { 
-          p_venue_id: venueId, 
-          p_password: password 
-        });
-
-      if (error) {
-        throw error;
-      }
-
-      return isValid;
-    },
-    onError: (error) => {
-      toast({
-        title: "Verification failed",
-        description: error.message,
-        variant: "destructive",
+    mutationFn: async ({ venueId, password }: {
+      venueId: string;
+      password: string;
+    }) => {
+      const { data, error } = await supabase.rpc('verify_admin_password', {
+        p_venue_id: venueId,
+        p_password: password
       });
+
+      if (error) throw error;
+      return data as boolean;
     }
   });
 
   return {
     setAdminPassword,
-    verifyAdminPassword,
-    isSettingPassword: setAdminPassword.isPending,
-    isVerifying: verifyAdminPassword.isPending
+    verifyAdminPassword
   };
-}
+};

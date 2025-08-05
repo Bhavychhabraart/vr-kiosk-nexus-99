@@ -16,7 +16,7 @@ const AdminPasswordSetup = ({ venueId }: AdminPasswordSetupProps) => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [enabled, setEnabled] = useState(true);
-  const { setAdminPassword, isSettingPassword } = useAdminPassword();
+  const { setAdminPassword } = useAdminPassword();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,7 +75,7 @@ const AdminPasswordSetup = ({ venueId }: AdminPasswordSetupProps) => {
                   placeholder="Enter 4+ digit PIN"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  disabled={isSettingPassword}
+                  disabled={setAdminPassword.isPending}
                 />
               </div>
 
@@ -87,7 +87,7 @@ const AdminPasswordSetup = ({ venueId }: AdminPasswordSetupProps) => {
                   placeholder="Confirm your PIN"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={isSettingPassword}
+                  disabled={setAdminPassword.isPending}
                 />
               </div>
 
@@ -103,10 +103,10 @@ const AdminPasswordSetup = ({ venueId }: AdminPasswordSetupProps) => {
 
           <Button 
             type="submit" 
-            disabled={enabled && !isValid || isSettingPassword}
+            disabled={enabled && !isValid || setAdminPassword.isPending}
             className="w-full"
           >
-            {isSettingPassword ? "Saving..." : "Save PIN Settings"}
+            {setAdminPassword.isPending ? "Saving..." : "Save PIN Settings"}
           </Button>
         </form>
       </CardContent>
