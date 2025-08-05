@@ -23,6 +23,7 @@ export async function completeUserSetup(email: string): Promise<SetupResult> {
       console.error('User not found:', profileError);
       return { 
         success: false, 
+        message: 'User not found. They need to sign up first.',
         error: 'User not found. They need to sign up first.' 
       };
     }
@@ -41,6 +42,7 @@ export async function completeUserSetup(email: string): Promise<SetupResult> {
       console.error('Error checking existing roles:', roleError);
       return { 
         success: false, 
+        message: 'Error checking existing roles',
         error: 'Error checking existing roles' 
       };
     }
@@ -64,6 +66,7 @@ export async function completeUserSetup(email: string): Promise<SetupResult> {
       console.error('Setup function error:', setupError);
       return { 
         success: false, 
+        message: 'Setup function failed',
         error: setupError.message || 'Setup function failed' 
       };
     }
@@ -79,6 +82,7 @@ export async function completeUserSetup(email: string): Promise<SetupResult> {
     } else {
       return {
         success: false,
+        message: 'Setup failed',
         error: setupData.error || 'Setup failed'
       };
     }
@@ -87,6 +91,7 @@ export async function completeUserSetup(email: string): Promise<SetupResult> {
     console.error('Unexpected error during setup:', error);
     return { 
       success: false, 
+      message: 'Unexpected error occurred during setup',
       error: 'Unexpected error occurred during setup' 
     };
   }
