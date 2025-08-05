@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,6 +34,7 @@ import PendingUsersMonitor from "@/components/admin/PendingUsersMonitor";
 import ManualRoleAssignment from "@/components/admin/ManualRoleAssignment";
 import QuickUserSetup from "@/components/admin/QuickUserSetup";
 import SupportTicketManagement from "@/components/superadmin/SupportTicketManagement";
+import QuickSetupUser from "@/components/admin/QuickSetupUser";
 
 const SuperAdmin = () => {
   const { user, signOut } = useAuth();
@@ -235,7 +235,7 @@ const SuperAdmin = () => {
 
           <TabsContent value="setup" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <QuickUserSetup />
+              <QuickSetupUser />
               <PendingUsersMonitor />
             </div>
             
