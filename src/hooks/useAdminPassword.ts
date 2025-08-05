@@ -10,35 +10,39 @@ interface PasswordResponse {
 }
 
 export const useAdminPassword = () => {
-  // Set admin password
+  // Set admin password with hashing
   const setAdminPassword = useMutation({
     mutationFn: async ({ venueId, password, enabled }: {
       venueId: string;
       password: string;
       enabled: boolean;
     }) => {
-      const { data, error } = await supabase.rpc('set_admin_password', {
-        p_venue_id: venueId,
-        p_password: password,
-        p_enabled: enabled
+      // Hash the password using the new database function
+      const { data: hashedPassword, error: hashError } = await supabase.rpc('hash_password', {
+        password: password
       });
 
-      if (error) throw error;
-      return data as unknown as PasswordResponse;
+      if (hashError) throw hashError;
+
+      // Update venue settings with hashed password
+      const { error: updateError } = await supabase
+        .from('venue_settings')
+        .upsert({
+          venue_id: venueId,
+          admin_password_hash: hashedPassword,
+          password_protection_enabled: enabled,
+          updated_at: new Date().toISOString()
+        });
+
+      if (updateError) throw updateError;
+
+      return { success: true, message: "Password updated successfully" };
     },
     onSuccess: (data) => {
-      if (data.success) {
-        toast({
-          title: "Success",
-          description: data.message || "Password updated successfully"
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: data.error || "Failed to update password",
-          variant: "destructive"
-        });
-      }
+      toast({
+        title: "Success",
+        description: data.message || "Password updated successfully"
+      });
     },
     onError: (error) => {
       toast({
