@@ -8,29 +8,19 @@ export function useAdminPassword() {
 
   const setAdminPassword = useMutation({
     mutationFn: async ({ venueId, password, enabled }: { venueId: string; password: string; enabled: boolean }) => {
-      // Hash the password using our database function
-      const { data: hashedPassword, error: hashError } = await supabase
-        .rpc('hash_password', { password });
+      // Use the set_admin_password function which should handle hashing internally
+      const { data, error } = await supabase
+        .rpc('set_admin_password', {
+          p_venue_id: venueId,
+          p_password: password,
+          p_enabled: enabled
+        });
 
-      if (hashError) {
-        throw new Error('Failed to hash password');
+      if (error) {
+        throw error;
       }
 
-      // Update venue settings with hashed password
-      const { error: updateError } = await supabase
-        .from('venue_settings')
-        .update({
-          admin_password_hash: hashedPassword,
-          admin_password: null, // Clear old plain text password
-          password_protection_enabled: enabled
-        })
-        .eq('venue_id', venueId);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      return { success: true };
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['venue-settings'] });
@@ -72,10 +62,8 @@ export function useAdminPassword() {
   });
 
   return {
-    setAdminPassword: (venueId: string, password: string, enabled: boolean = true) => 
-      setAdminPassword.mutate({ venueId, password, enabled }),
-    verifyAdminPassword: (venueId: string, password: string) => 
-      verifyAdminPassword.mutate({ venueId, password }),
+    setAdminPassword,
+    verifyAdminPassword,
     isSettingPassword: setAdminPassword.isPending,
     isVerifying: verifyAdminPassword.isPending
   };

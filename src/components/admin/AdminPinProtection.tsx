@@ -16,14 +16,12 @@ interface AdminPinProtectionProps {
 const AdminPinProtection = ({ venueId, onSuccess, children }: AdminPinProtectionProps) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { verifyAdminPassword } = useAdminPassword();
+  const { verifyAdminPassword, isVerifying } = useAdminPassword();
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!password.trim()) return;
 
-    setIsLoading(true);
     try {
       const result = await verifyAdminPassword.mutateAsync({
         venueId,
@@ -37,7 +35,6 @@ const AdminPinProtection = ({ venueId, onSuccess, children }: AdminPinProtection
     } catch (error) {
       console.error('Admin password verification failed:', error);
     } finally {
-      setIsLoading(false);
       setPassword("");
     }
   };
@@ -71,16 +68,16 @@ const AdminPinProtection = ({ venueId, onSuccess, children }: AdminPinProtection
                 placeholder="Enter admin PIN"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
+                disabled={isVerifying}
                 autoFocus
               />
             </div>
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={isLoading || !password.trim()}
+              disabled={isVerifying || !password.trim()}
             >
-              {isLoading ? "Verifying..." : "Access Admin Panel"}
+              {isVerifying ? "Verifying..." : "Access Admin Panel"}
             </Button>
           </form>
         </CardContent>
