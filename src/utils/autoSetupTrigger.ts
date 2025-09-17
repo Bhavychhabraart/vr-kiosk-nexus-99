@@ -1,6 +1,7 @@
 
 import { executeSetupForUser } from './completeUserSetup';
 import { setupVrArcadiaUser } from './setupVrArcadia';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
 // Auto-trigger setup when this module is imported
@@ -29,6 +30,35 @@ export const triggerAutoSetup = async () => {
       console.log('✅ Auto-setup completed successfully for vrarcadia003@gmail.com:', result2.message);
     } else {
       console.error('❌ Auto-setup failed for vrarcadia003@gmail.com:', result2.error);
+    }
+
+    // Mark setup as completed for both users using backend function
+    if (result1.success && result1.venue_id) {
+      try {
+        await supabase.functions.invoke('mark-setup-completed', {
+          body: { 
+            email: 'Vrrealverse@gmail.com', 
+            venueId: result1.venue_id 
+          }
+        });
+        console.log('✅ Marked Vrrealverse@gmail.com setup as completed in backend');
+      } catch (error) {
+        console.error('❌ Failed to mark setup as completed for Vrrealverse@gmail.com:', error);
+      }
+    }
+
+    if (result2.success && result2.venue_id) {
+      try {
+        await supabase.functions.invoke('mark-setup-completed', {
+          body: { 
+            email: 'vrarcadia003@gmail.com', 
+            venueId: result2.venue_id 
+          }
+        });
+        console.log('✅ Marked vrarcadia003@gmail.com setup as completed in backend');
+      } catch (error) {
+        console.error('❌ Failed to mark setup as completed for vrarcadia003@gmail.com:', error);
+      }
     }
 
     // Show consolidated toast
