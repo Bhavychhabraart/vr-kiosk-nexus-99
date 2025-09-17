@@ -1467,6 +1467,7 @@ export type Database = {
       venue_settings: {
         Row: {
           admin_password: string | null
+          admin_password_hash: string | null
           brightness: number | null
           created_at: string | null
           id: string
@@ -1482,6 +1483,7 @@ export type Database = {
         }
         Insert: {
           admin_password?: string | null
+          admin_password_hash?: string | null
           brightness?: number | null
           created_at?: string | null
           id?: string
@@ -1497,6 +1499,7 @@ export type Database = {
         }
         Update: {
           admin_password?: string | null
+          admin_password_hash?: string | null
           brightness?: number | null
           created_at?: string | null
           id?: string
@@ -1645,6 +1648,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      hash_password: {
+        Args: { password: string }
+        Returns: string
+      }
       initialize_machine_setup: {
         Args: { p_model?: string; p_serial_number: string }
         Returns: Json
@@ -1684,6 +1691,10 @@ export type Database = {
       }
       verify_admin_password: {
         Args: { p_password: string; p_venue_id: string }
+        Returns: boolean
+      }
+      verify_password: {
+        Args: { hash: string; password: string }
         Returns: boolean
       }
     }
