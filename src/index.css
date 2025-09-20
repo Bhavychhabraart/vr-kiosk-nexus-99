@@ -104,6 +104,15 @@
   .animate-pulse-glow {
     animation: pulse-glow 2s infinite;
   }
+  
+  .animate-float-slow {
+    animation: float-slow 8s ease-in-out infinite;
+  }
+  
+  .animate-shimmer {
+    background-size: 200% 200%;
+    animation: shimmer 3s ease-in-out infinite;
+  }
 
   .glass-card {
     @apply backdrop-blur-md bg-white/5 border border-white/10 rounded-xl;
